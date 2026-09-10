@@ -214,7 +214,7 @@ void main() {
         }
         final l = _strings(tester);
         expect(
-          find.text(l.prototypeTemporarilyUnavailable),
+          find.text('${l.resultFailed}\nLog file does not exist.'),
           state.fileExists ? findsNothing : findsOneWidget,
         );
         expect(

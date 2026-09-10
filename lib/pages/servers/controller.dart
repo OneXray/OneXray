@@ -27,6 +27,8 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/servers/subscription/failure.dart';
+import 'package:onexray/service/servers/subscription/model.dart';
 
 export 'catalog.dart';
 
@@ -52,6 +54,7 @@ class ServersPageState {
     List<RoutingProfileState> customRoutes = const [],
     this.ready = false,
     this.failed = false,
+    this.failure,
     this.serverGroupingIndex = 0,
     this.activeServerGroupId,
     this.serverSearchQuery = '',
@@ -76,6 +79,7 @@ class ServersPageState {
   final List<RoutingProfileState> customRoutes;
   final bool ready;
   final bool failed;
+  final Object? failure;
 
   final int serverGroupingIndex;
   final String? activeServerGroupId;
@@ -93,6 +97,7 @@ class ServersPageState {
     List<RoutingProfileState>? customRoutes,
     bool? ready,
     bool? failed,
+    Object? failure,
     int? serverGroupingIndex,
     Object? activeServerGroupId = _unchanged,
     String? serverSearchQuery,
@@ -108,6 +113,7 @@ class ServersPageState {
     customRoutes: customRoutes ?? this.customRoutes,
     ready: ready ?? this.ready,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     serverGroupingIndex: serverGroupingIndex ?? this.serverGroupingIndex,
     activeServerGroupId: identical(activeServerGroupId, _unchanged)
         ? this.activeServerGroupId
@@ -206,7 +212,8 @@ class ServersController extends PageCubit<ServersPageState>
     }
   }
 
-  void _readFailed(Object error) => emit(state.copyWith(failed: true));
+  void _readFailed(Object error) =>
+      emit(state.copyWith(failed: true, failure: error));
   Future<void> addServers(BuildContext context) =>
       context.pushScoped(AppSecondaryDestination.serversImport);
   Future<void> run(BuildContext context, Future<void> Function() action) async {
@@ -611,6 +618,7 @@ class ServersController extends PageCubit<ServersPageState>
             source,
           );
           if (!context.mounted) return;
+          if (result.superseded) return;
           final l = AppLocalizations.of(context)!;
           if (result.success) {
             setSourceError(source.id, null);
@@ -619,14 +627,25 @@ class ServersController extends PageCubit<ServersPageState>
               l.prototypeUsableNodes(result.count),
             );
           } else {
-            setSourceError(source.id, l.prototypeSubscriptionUpdateFailed);
+            final reason = subscriptionFailureMessage(
+              l,
+              result.status,
+              error: result.error,
+              updating: true,
+            );
+            setSourceError(source.id, reason);
             final navigator = Navigator.of(context);
             final closeSources = ModalRoute.of(context) is PopupRoute;
             final dialogContext = navigator.context;
             if (closeSources) navigator.pop();
             await showAppDialog<void>(
               dialogContext,
-              (_) => SourceUpdateErrorDialog(sourceName: source.name),
+              (_) => SourceUpdateErrorDialog(
+                sourceName: source.name,
+                reason: reason,
+                existingNodesKept:
+                    result.status != SubscriptionUpdateResult.notFound,
+              ),
             );
           }
         }, sourceId: source.id);

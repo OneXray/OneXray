@@ -1,3 +1,5 @@
+import 'package:onexray/service/shared/failure.dart';
+
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
@@ -13,6 +15,7 @@ class ConfigFileViewerPageState {
   final String? displayText;
   final bool loading;
   final bool failed;
+  final Object? failure;
   final bool exporting;
   const ConfigFileViewerPageState({
     this.title = '',
@@ -20,6 +23,7 @@ class ConfigFileViewerPageState {
     this.displayText,
     this.loading = true,
     this.failed = false,
+    this.failure,
     this.exporting = false,
   });
   ConfigFileViewerPageState copyWith({
@@ -27,6 +31,7 @@ class ConfigFileViewerPageState {
     String? displayText,
     bool? loading,
     bool? failed,
+    Object? failure,
     bool? exporting,
   }) => ConfigFileViewerPageState(
     title: title,
@@ -34,6 +39,7 @@ class ConfigFileViewerPageState {
     displayText: displayText ?? this.displayText,
     loading: loading ?? this.loading,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     exporting: exporting ?? this.exporting,
   );
 }
@@ -61,8 +67,8 @@ class ConfigFileViewerController extends PageCubit<ConfigFileViewerPageState> {
       emit(
         state.copyWith(text: text, displayText: displayText, loading: false),
       );
-    } catch (_) {
-      emit(state.copyWith(loading: false, failed: true));
+    } catch (error) {
+      emit(state.copyWith(loading: false, failed: true, failure: error));
     }
   }
 
@@ -79,10 +85,18 @@ class ConfigFileViewerController extends PageCubit<ConfigFileViewerPageState> {
       ).show(context);
       if (confirmed != true || !isPageActive) return;
       await RuntimeDiagnosticFiles.exportConfiguration(state.text);
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.prototypeTemporarilyUnavailable)),
+          SnackBar(
+            content: Text(
+              appFailureMessage(
+                l,
+                error,
+                operation: l.actionResult(l.prototypeExport, l.resultFailed),
+              ),
+            ),
+          ),
         );
       }
     } finally {

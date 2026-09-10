@@ -33,8 +33,9 @@ class AppUpdateInfo {
 class AppUpdateCheckResult {
   final AppUpdateCheckStatus status;
   final AppUpdateInfo? updateInfo;
+  final Object? error;
 
-  const AppUpdateCheckResult._(this.status, this.updateInfo);
+  const AppUpdateCheckResult._(this.status, this.updateInfo, [this.error]);
 
   const AppUpdateCheckResult.available(AppUpdateInfo updateInfo)
     : this._(AppUpdateCheckStatus.available, updateInfo);
@@ -42,8 +43,8 @@ class AppUpdateCheckResult {
   const AppUpdateCheckResult.upToDate()
     : this._(AppUpdateCheckStatus.upToDate, null);
 
-  const AppUpdateCheckResult.failed()
-    : this._(AppUpdateCheckStatus.failed, null);
+  const AppUpdateCheckResult.failed([Object? error])
+    : this._(AppUpdateCheckStatus.failed, null, error);
 }
 
 class AppUpdateService {
@@ -109,7 +110,7 @@ class AppUpdateService {
       return const AppUpdateCheckResult.upToDate();
     } catch (e) {
       ygLogger("checkForUpdate error: $e");
-      return const AppUpdateCheckResult.failed();
+      return AppUpdateCheckResult.failed(e);
     }
   }
 

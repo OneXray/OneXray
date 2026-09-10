@@ -1,4 +1,9 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/event_bus/state.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -907,13 +912,39 @@ class ServerNodeRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => _row(
-    context,
-    running: controller.runningEntries.contains(row.id),
-    chosen: controller.chosen(row),
-    enabled: controller.canChoose(row),
-    protocol: controller.protocol(row),
-  );
+  Widget build(BuildContext context) =>
+      BlocSelector<AppEventBus, AppEventBusState, PingBatchResult?>(
+        bloc: AppEventBus.instance,
+        selector: (state) => state.pingFailures[row.id],
+        builder: (context, failure) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _row(
+              context,
+              running: controller.runningEntries.contains(row.id),
+              chosen: controller.chosen(row),
+              enabled: controller.canChoose(row),
+              protocol: controller.protocol(row),
+            ),
+            if (failure != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: SelectableText(
+                  appFailureMessage(
+                    AppLocalizations.of(context)!,
+                    failure.success ? failure.locationError : failure.error,
+                    operation: failure.success
+                        ? AppLocalizations.of(context)!.prototypeByNodeLocation
+                        : AppLocalizations.of(context)!.prototypeSpeedTest,
+                  ),
+                  style: AppTypography.settingsDetailNote.copyWith(
+                    color: ColorManager.palette(context).destructive,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
 
   Widget _row(
     BuildContext context, {

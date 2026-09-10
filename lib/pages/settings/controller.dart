@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:onexray/core/constants/preferences.dart';
@@ -27,6 +28,7 @@ class SettingsPageState {
   final bool saving;
   final bool checkingUpdate;
   final bool clearingData;
+  final Object? failure;
   const SettingsPageState({
     this.appVersion = '—',
     this.xrayVersion = '—',
@@ -36,6 +38,7 @@ class SettingsPageState {
     this.saving = false,
     this.checkingUpdate = false,
     this.clearingData = false,
+    this.failure,
   });
 
   SettingsPageState copyWith({
@@ -47,6 +50,8 @@ class SettingsPageState {
     bool? saving,
     bool? checkingUpdate,
     bool? clearingData,
+    Object? failure,
+    bool clearFailure = false,
   }) => SettingsPageState(
     appVersion: appVersion ?? this.appVersion,
     xrayVersion: xrayVersion ?? this.xrayVersion,
@@ -56,6 +61,7 @@ class SettingsPageState {
     saving: saving ?? this.saving,
     checkingUpdate: checkingUpdate ?? this.checkingUpdate,
     clearingData: clearingData ?? this.clearingData,
+    failure: clearFailure ? null : failure ?? this.failure,
   );
 }
 
@@ -82,13 +88,13 @@ class SettingsController extends PageCubit<SettingsPageState> {
     var xrayVersion = '—';
     try {
       appVersion = (await PackageInfo.fromPlatform()).version;
-    } catch (_) {
+    } catch (error) {
       // Optional display facts remain unavailable instead of using demo values.
     }
     try {
       final version = await AppHostApi().xrayVersion();
       if (version.isNotEmpty) xrayVersion = version;
-    } catch (_) {
+    } catch (error) {
       // App metadata can still be shown when the native version call fails.
     }
     emit(state.copyWith(appVersion: appVersion, xrayVersion: xrayVersion));
@@ -107,8 +113,8 @@ class SettingsController extends PageCubit<SettingsPageState> {
           loading: false,
         ),
       );
-    } catch (_) {
-      emit(state.copyWith(loading: false));
+    } catch (error) {
+      emit(state.copyWith(loading: false, failure: error));
     }
   }
 
@@ -124,12 +130,12 @@ class SettingsController extends PageCubit<SettingsPageState> {
 
   Future<void> setConnectOnLaunch(BuildContext context, bool value) async {
     if (state.saving || state.loading) return;
-    emit(state.copyWith(saving: true));
+    emit(state.copyWith(saving: true, clearFailure: true));
     try {
       await PreferencesKey().saveConnectOnAppLaunch(value);
       emit(state.copyWith(connectOnLaunch: value));
-    } catch (_) {
-      if (context.mounted) _showUnavailable(context);
+    } catch (error) {
+      if (context.mounted) _showUnavailable(context, error);
     } finally {
       emit(state.copyWith(saving: false));
     }
@@ -155,14 +161,22 @@ class SettingsController extends PageCubit<SettingsPageState> {
         case AppUpdateCheckStatus.failed:
           ContextAlert.showToast(
             context,
-            AppLocalizations.of(context)!.appUpdateCheckFailed,
+            appFailureMessage(
+              AppLocalizations.of(context)!,
+              result.error,
+              operation: AppLocalizations.of(context)!.appUpdateCheckFailed,
+            ),
           );
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.appUpdateCheckFailed,
+          appFailureMessage(
+            AppLocalizations.of(context)!,
+            error,
+            operation: AppLocalizations.of(context)!.appUpdateCheckFailed,
+          ),
         );
       }
     } finally {
@@ -173,7 +187,7 @@ class SettingsController extends PageCubit<SettingsPageState> {
   Future<void> clearData(BuildContext context) async {
     if (state.clearingData) return;
     final l10n = AppLocalizations.of(context)!;
-    emit(state.copyWith(clearingData: true));
+    emit(state.copyWith(clearingData: true, clearFailure: true));
     try {
       if (!await AppConfirmationDialog(
             title: l10n.prototypeClearAllDataQuestion,
@@ -195,22 +209,24 @@ class SettingsController extends PageCubit<SettingsPageState> {
       } else if (context.mounted) {
         _showUnavailable(context);
       }
-    } catch (_) {
-      if (context.mounted) _showUnavailable(context);
+    } catch (error) {
+      if (context.mounted) _showUnavailable(context, error);
     } finally {
       emit(state.copyWith(clearingData: false));
     }
   }
 
   Future<void> setTheme(BuildContext context, ThemeCode theme) async {
+    emit(state.copyWith(clearFailure: true));
     try {
       await AppEventBus.instance.updateThemeCode(theme);
-    } catch (_) {
-      if (context.mounted) _showUnavailable(context);
+    } catch (error) {
+      if (context.mounted) _showUnavailable(context, error);
     }
   }
 
   Future<void> openLink(BuildContext context, SettingsLink link) async {
+    emit(state.copyWith(clearFailure: true));
     final uri = switch (link) {
       SettingsLink.documentation => DocURLHelper.docUri(),
       SettingsLink.review => null,
@@ -233,18 +249,21 @@ class SettingsController extends PageCubit<SettingsPageState> {
         return;
       }
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        if (context.mounted) _showUnavailable(context);
+        if (context.mounted) {
+          _showUnavailable(context, 'No application could open this link.');
+        }
       }
-    } catch (_) {
-      if (context.mounted) _showUnavailable(context);
+    } catch (error) {
+      if (context.mounted) _showUnavailable(context, error);
     }
   }
 
-  void _showUnavailable(BuildContext context) {
+  void _showUnavailable(BuildContext context, [Object? error]) {
     if (context.mounted) {
+      emit(state.copyWith(failure: error));
       ContextAlert.showToast(
         context,
-        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+        appFailureMessage(AppLocalizations.of(context)!, error),
       );
     }
   }

@@ -1,7 +1,7 @@
 name: onexray
 description: "Cross Platform Xray-core Client"
 publish_to: "none"
-version: 26.9.1+1
+version: 26.9.2+1
 
 environment:
   sdk: ">=3.13.0 <4.0.0"
@@ -82,6 +82,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  share_plus_platform_interface: ^7.2.0
   build_runner: ^2.16.1
   json_serializable: ^6.14.1
   drift_dev: ^2.34.6

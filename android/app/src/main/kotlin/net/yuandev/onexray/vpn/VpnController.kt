@@ -15,6 +15,7 @@ import java.net.NetworkInterface
 import java.net.SocketException
 
 object VpnController {
+    var lastError: String? = null
     private const val stopRequestRelativePath = "run/vpn.stop"
     private val vpnAddresses by lazy {
         setOf(
@@ -67,7 +68,9 @@ object VpnController {
         }
 
     fun startVpn(context: Context): Boolean {
+        lastError = null
         if (!clearStopRequest(context)) {
+            lastError = "Unable to clear the VPN stop marker."
             return false
         }
         return try {
@@ -75,11 +78,13 @@ object VpnController {
             true
         } catch (error: RuntimeException) {
             XLog.e("VpnController: failed to start VPN service", error)
+            lastError = error.message ?: error.toString()
             false
         }
     }
 
     fun stopVpn(context: Context): Boolean {
+        lastError = null
         val markerWritten = writeStopRequest(context)
         val broadcastSent = try {
             context.sendBroadcast(
@@ -88,8 +93,10 @@ object VpnController {
             true
         } catch (error: RuntimeException) {
             XLog.e("VpnController: failed to broadcast VPN stop", error)
+            lastError = error.message ?: error.toString()
             false
         }
+        if (!markerWritten && lastError == null) lastError = "Unable to write the VPN stop marker."
         return markerWritten && broadcastSent
     }
 

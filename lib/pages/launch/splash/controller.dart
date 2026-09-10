@@ -8,8 +8,9 @@ import 'package:onexray/service/launch/app_startup.dart';
 class SplashPageState {
   final String? route;
   final bool failed;
+  final Object? error;
 
-  const SplashPageState({this.route, this.failed = false});
+  const SplashPageState({this.route, this.failed = false, this.error});
 
   factory SplashPageState.initial() => const SplashPageState();
 
@@ -36,7 +37,7 @@ class SplashController extends PageCubit<SplashPageState> {
         // Keep the original preparation failure and its retry path.
       }
       if (isPageActive) {
-        emit(const SplashPageState(failed: true));
+        emit(SplashPageState(failed: true, error: e));
       }
     }
   }

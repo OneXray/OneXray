@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
@@ -25,11 +27,23 @@ class AppHostApi {
   AppHostApi._internal();
 
   // ===============
-  final _errorResult = "error";
   var _tunFilesDir = "";
-  bool get needsVpnStatusPolling =>
-      AppPlatform.isWindows ||
-      (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
+  // Mobile and Apple notifications are registered by the native bridge.
+  Future<void> observeVpnStatus() async {
+    if (AppPlatform.isWindows) {
+      await WindowsFfiApi().observeVpnStatus();
+    } else if (AppPlatform.isLinux) {
+      await LinuxFfiApi().observeVpnStatus();
+    }
+  }
+
+  void disposeVpnStatus() {
+    if (AppPlatform.isWindows) {
+      WindowsFfiApi().disposeVpnStatus();
+    } else if (AppPlatform.isLinux) {
+      LinuxFfiApi().disposeVpnStatus();
+    }
+  }
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {
@@ -68,7 +82,7 @@ class AppHostApi {
       return await _readVpnStatus();
     } catch (error, stackTrace) {
       _reportUnexpected('readVpnStatus', error, stackTrace);
-      return _commandFailed();
+      return _commandFailed(failureDetails(error));
     }
   }
 
@@ -99,7 +113,7 @@ class AppHostApi {
       );
     } catch (error, stackTrace) {
       _reportUnexpected('startVpn', error, stackTrace);
-      return _commandFailed(error.toString());
+      return _commandFailed(failureDetails(error));
     }
   }
 
@@ -126,7 +140,7 @@ class AppHostApi {
       return await _stopVpn();
     } catch (error, stackTrace) {
       _reportUnexpected('stopVpn', error, stackTrace);
-      return _commandFailed();
+      return _commandFailed(failureDetails(error));
     }
   }
 
@@ -158,10 +172,13 @@ class AppHostApi {
           }
         }
       }
+      throw LibXrayInvokeException(
+        resp.error.isEmpty ? 'No free ports returned' : resp.error,
+      );
     } catch (error, stackTrace) {
       _reportUnexpected('getFreePorts', error, stackTrace);
+      rethrow;
     }
-    return [];
   }
 
   Future<List<Map<String, dynamic>>> convertShareLinksToXrayJson(
@@ -225,10 +242,11 @@ class AppHostApi {
           return data.links ?? "";
         }
       }
+      throw LibXrayInvokeException(resp.error);
     } catch (error, stackTrace) {
       _reportUnexpected('convertXrayJsonToShareLinks', error, stackTrace);
+      rethrow;
     }
-    return "";
   }
 
   Future<String> countGeoData(CountGeoDataRequest request) async {
@@ -245,8 +263,8 @@ class AppHostApi {
       return resp.error;
     } catch (error, stackTrace) {
       _reportUnexpected('countGeoData', error, stackTrace);
+      rethrow;
     }
-    return _errorResult;
   }
 
   Future<PingBatchResponse?> pingBatch(PingBatchRequest request) async {
@@ -261,10 +279,11 @@ class AppHostApi {
       if (resp.success && resp.data != null) {
         return PingBatchResponse.fromJson(resp.data!);
       }
+      throw LibXrayInvokeException(resp.error);
     } catch (error, stackTrace) {
       _reportUnexpected('pingBatch', error, stackTrace);
+      rethrow;
     }
-    return null;
   }
 
   Future<String> testXray(String xrayJson) async {
@@ -281,8 +300,8 @@ class AppHostApi {
       return resp.error;
     } catch (error, stackTrace) {
       _reportUnexpected('testXray', error, stackTrace);
+      rethrow;
     }
-    return _errorResult;
   }
 
   Future<String> xrayVersion() async {
@@ -330,7 +349,7 @@ class AppHostApi {
       return await _api.queryPlatformPermission();
     } catch (error, stackTrace) {
       _reportUnexpected('queryPlatformPermission', error, stackTrace);
-      return _platformPermissionFailed();
+      return _platformPermissionFailed(failureDetails(error));
     }
   }
 
@@ -357,7 +376,7 @@ class AppHostApi {
       return await _api.queryPlatformPermission();
     } catch (error, stackTrace) {
       _reportUnexpected('requestPlatformPermission', error, stackTrace);
-      return _platformPermissionFailed();
+      return _platformPermissionFailed(failureDetails(error));
     }
   }
 
@@ -368,6 +387,7 @@ class AppHostApi {
         return result;
       } catch (error, stackTrace) {
         _reportUnexpected('getInstalledApps', error, stackTrace);
+        rethrow;
       }
     }
     return [];
@@ -400,6 +420,7 @@ class AppHostApi {
         return await _api.setAppIcon(appIcon);
       } catch (error, stackTrace) {
         _reportUnexpected('setAppIcon', error, stackTrace);
+        rethrow;
       }
     }
     return false;
@@ -423,10 +444,11 @@ class AppHostApi {
     );
   }
 
-  PlatformPermissionResult _platformPermissionFailed() {
+  PlatformPermissionResult _platformPermissionFailed([String? message]) {
     return PlatformPermissionResult(
       kind: PlatformPermissionKind.none,
       state: PlatformPermissionState.failed,
+      message: message,
     );
   }
 

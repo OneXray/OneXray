@@ -35,7 +35,7 @@ void main() {
         return host = const HostConnection(VpnStatus.disconnected);
       },
     );
-    await coordinator.initialize(poll: false, registerReferences: false);
+    await coordinator.initialize(observe: false, registerReferences: false);
     addTearDown(() async {
       coordinator.dispose();
       await db.close();
@@ -347,6 +347,7 @@ ConnectionRuntime _runtime(ConnectionConfiguration configuration) {
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
+      validationJson: '{}',
       entries: [],
       finalExit: null,
       nodeTags: {},

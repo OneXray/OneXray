@@ -13,6 +13,7 @@ import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/traffic.dart';
 import 'package:re_editor/re_editor.dart';
 
@@ -425,7 +426,7 @@ void main() {
     );
     final l = AppLocalizations.of(tester.element(find.byType(ConnectView)))!;
 
-    expect(find.text(l.prototypeCheckNetwork), findsOneWidget);
+    expect(find.text(l.prototypeTemporarilyUnavailable), findsOneWidget);
     expect(find.text(l.prototypeVpnPermissionRequired), findsNothing);
   });
 
@@ -447,6 +448,30 @@ void main() {
     expect(find.text(l.prototypeChooseInterfaceNotice), findsOneWidget);
     expect(find.text(l.prototypeCheckNetwork), findsNothing);
   });
+
+  testWidgets(
+    'connection status shows resolver counts instead of a network error',
+    (tester) async {
+      await tester.pumpWidget(
+        app(
+          screen(
+            view: const ConnectionView(
+              issue: 'insufficientHealthyServers',
+              error: ConnectionResolutionException(
+                ConnectionResolutionFailure.insufficientHealthyServers,
+                requiredCount: 3,
+                availableCount: 1,
+              ),
+            ),
+          ),
+        ),
+      );
+      final l = AppLocalizations.of(tester.element(find.byType(ConnectView)))!;
+      expect(find.text('${l.prototypeNotEnoughServers} (1/3)'), findsOneWidget);
+      expect(find.text(l.prototypeCheckNetwork), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'all legacy Raw configurations remain visible; add hidden at 3+',

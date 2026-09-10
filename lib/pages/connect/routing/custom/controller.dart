@@ -12,6 +12,7 @@ import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
@@ -545,7 +546,18 @@ class CustomRoutingEditorController
         Navigator.of(context).pop(row.id);
       }
     } catch (failure) {
-      emit(state.copyWith(error: _failureMessage(l10n, failure)));
+      emit(
+        state.copyWith(
+          error: appFailureMessage(
+            l10n,
+            failure,
+            operation: l10n.actionResult(
+              l10n.prototypeDelete,
+              l10n.resultFailed,
+            ),
+          ),
+        ),
+      );
     } finally {
       emit(state.copyWith(processing: false, deleting: false));
     }
@@ -559,7 +571,7 @@ class CustomRoutingEditorController
           l10n.prototypeRouteNameUnique,
         CustomRoutingEditorException(reason: 'limit') =>
           l10n.prototypeCustomRouteLimit,
-        _ => l10n.buttonSaveFailed,
+        _ => appFailureMessage(l10n, failure, operation: l10n.buttonSaveFailed),
       };
 
   @override

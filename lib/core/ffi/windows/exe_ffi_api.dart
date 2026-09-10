@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:onexray/core/ffi/windows/core_process.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
@@ -19,6 +21,10 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   final String _corePath;
   final Future<StartVpnRequest> Function() _readRequest;
   final Future<void> Function(VpnStatus) _notify;
+  final void Function(Object) _notifyError;
+  DesktopCoreExitWatch? _exitWatch;
+  DesktopCoreProcessRecord? _watchedRecord;
+  bool _observing = false;
   DesktopCoreProcessRecord? _record;
   VpnStatus? _transition;
 
@@ -28,6 +34,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
     String? executable,
     Future<StartVpnRequest> Function()? readRequest,
     Future<void> Function(VpnStatus)? notify,
+    void Function(Object)? notifyError,
   }) : _process = process ?? WindowsCoreProcess(),
        _filesDirectory = filesDirectory,
        _store = DesktopCoreProcessStore(directory: filesDirectory),
@@ -36,6 +43,8 @@ class WindowsExeFfiApi extends WindowsFfiApi {
            p.join(p.dirname(Platform.resolvedExecutable), 'OneXrayCore.exe'),
        _readRequest = readRequest ?? StartVpnRequestReader.readFromStartFile,
        _notify = notify ?? AppFlutterApi().vpnStatusChanged,
+       _notifyError =
+           notifyError ?? AppFlutterApi().vpnStatusController.addError,
        super.base();
 
   @override
@@ -45,6 +54,43 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   @override
   Future<void> ensureRuntime() =>
       checkRuntimeFiles(const ['libXray.dll', 'OneXrayCore.exe', 'wintun.dll']);
+
+  @override
+  Future<void> observeVpnStatus() async {
+    _observing = true;
+    if (await _running()) _watch(_record!);
+  }
+
+  @override
+  void disposeVpnStatus() {
+    _observing = false;
+    _exitWatch?.cancel();
+    _exitWatch = null;
+    _watchedRecord = null;
+  }
+
+  void _watch(DesktopCoreProcessRecord record) {
+    if (!_observing || identical(_watchedRecord, record)) return;
+    _exitWatch?.cancel();
+    final watch = _process.watchExit(record, _corePath);
+    _exitWatch = watch;
+    _watchedRecord = record;
+    unawaited(
+      watch.exited
+          .then((exited) async {
+            if (!exited || !identical(_exitWatch, watch)) return;
+            _exitWatch = null;
+            _watchedRecord = null;
+            // Keep the identity on disk until a verified read/stop clears it. An
+            // asynchronous exit must never remove a newer process's record.
+            if (identical(_record, record)) _record = null;
+            if (_transition == null) await _notify(VpnStatus.disconnected);
+          })
+          .catchError((Object error) {
+            if (identical(_exitWatch, watch)) _notifyError(error);
+          }),
+    );
+  }
 
   Future<bool> _running() async {
     final record = _record ?? await _store.read();
@@ -109,6 +155,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       );
       _record = record;
       await _store.write(record);
+      _watch(record);
       await Future<void>.delayed(const Duration(seconds: 1));
       if (!await _running()) {
         throw StateError('Windows Core exited during start');
@@ -152,6 +199,11 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   }
 
   Future<void> _forget(DesktopCoreProcessRecord record) async {
+    if (identical(_watchedRecord, record)) {
+      _exitWatch?.cancel();
+      _exitWatch = null;
+      _watchedRecord = null;
+    }
     await _store.clear(pid: record.pid);
     _record = null;
   }

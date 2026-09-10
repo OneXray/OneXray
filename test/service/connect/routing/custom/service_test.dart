@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -32,8 +34,10 @@ void main() {
       expect(config['routing']['balancers'].single, {
         'tag': 'proxy',
         'selector': ['app-entry-0', 'app-entry-1', 'app-entry-2'],
+        'strategy': {'type': 'roundRobin'},
         'fallbackTag': 'direct',
       });
+      expect(config['observatory'], {'subjectSelector': []});
       return calls == 1 ? '' : 'Core rejected rule';
     }
 
@@ -41,11 +45,7 @@ void main() {
     await expectLater(
       CustomRoutingService.validate(state, testXray: check),
       throwsA(
-        isA<FormatException>().having(
-          (e) => e.message,
-          'message',
-          'Core rejected rule',
-        ),
+        isA<AppFailure>().having((e) => e.cause, 'cause', 'Core rejected rule'),
       ),
     );
     expect(calls, 2);

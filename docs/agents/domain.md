@@ -1,29 +1,23 @@
 # Domain Docs
 
-This is a single-context repository.
+This repository uses a single-context layout: domain terminology lives in
+`CONTEXT.md` at the repository root, and architecture decisions live in
+`docs/adr/`.
 
-## Before exploring
+## Reading rules
 
-- Read `CONTEXT.md` at the repository root when it exists.
-- Read ADRs under `docs/adr/` that affect the area being changed.
+- Before exploring the codebase, read the root `CONTEXT.md` when it exists.
+- Before changing an implementation, read ADRs under `docs/adr/` that affect
+  the area being changed.
+- If these files do not exist, proceed silently without creating setup
+  placeholders. The `/domain-modeling` skill creates them when terminology
+  or decisions actually need recording.
 
-If these files do not exist, proceed silently. The `/domain-modeling` skill creates them only when terminology or decisions need recording.
+## Vocabulary and decisions
 
-## Layout
-
-```text
-/
-├── CONTEXT.md
-├── docs/adr/
-└── lib/
-```
-
-## Vocabulary
-
-Use domain terms as defined in `CONTEXT.md`. Avoid synonyms that its glossary explicitly rejects.
-
-If a needed concept is absent, reconsider whether it is project terminology or note the gap for `/domain-modeling`.
-
-## ADR conflicts
-
-Explicitly flag output that contradicts an existing ADR rather than silently overriding it.
+- Use terms defined in `CONTEXT.md`; avoid synonyms the glossary explicitly
+  rejects.
+- If a needed concept is missing, first check whether it is existing project
+  terminology. Leave genuine gaps for `/domain-modeling` to resolve.
+- When a proposal contradicts an existing ADR, explicitly identify the
+  conflict and the reasoning instead of silently overriding the decision.

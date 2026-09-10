@@ -182,7 +182,7 @@ class RuntimeCodeUnavailable extends StatelessWidget {
           children: [
             Icon(LucideIcons.fileX, size: 36, color: palette.mutedForeground),
             const SizedBox(height: 12),
-            Text(
+            SelectableText(
               message,
               textAlign: TextAlign.center,
               style: AppTypography.supporting.copyWith(

@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -53,7 +54,7 @@ class ConfigFileViewerView extends StatelessWidget {
       code: state.loading
           ? const Center(child: CircularProgressIndicator())
           : state.failed
-          ? RuntimeCodeUnavailable(message: l.prototypeTemporarilyUnavailable)
+          ? RuntimeCodeUnavailable(message: appFailureMessage(l, state.failure))
           : SelectionArea(
               child: SingleChildScrollView(
                 key: const ValueKey('runtime-config-code-scroll'),

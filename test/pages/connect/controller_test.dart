@@ -19,12 +19,37 @@ import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart'
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
+  test('updated failure counts rebuild the connection status', () {
+    final before = ConnectPageState(
+      connectionView: const ConnectionView(
+        issue: 'insufficientHealthyServers',
+        error: ConnectionResolutionException(
+          ConnectionResolutionFailure.insufficientHealthyServers,
+          requiredCount: 3,
+          availableCount: 0,
+        ),
+      ),
+    );
+    final after = before.copyWith(
+      connectionView: const ConnectionView(
+        issue: 'insufficientHealthyServers',
+        error: ConnectionResolutionException(
+          ConnectionResolutionFailure.insufficientHealthyServers,
+          requiredCount: 3,
+          availableCount: 1,
+        ),
+      ),
+    );
+    expect(before.sameContentAs(after), isFalse);
+  });
+
   test('metrics updates leave non-traffic connection content unchanged', () {
     final before = ConnectPageState(
       connectionView: const ConnectionView(phase: ConnectionPhase.connected),
@@ -643,6 +668,7 @@ ConnectionRuntime _runtime({bool expert = false}) {
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: '{}',
+      validationJson: '{}',
       entries: [server(1, 'Singapore 03'), server(2, 'Japan 02')],
       finalExit: server(3, 'United States 01'),
       nodeTags: {},

@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -10,6 +9,7 @@ import 'package:onexray/pages/shared/widgets/responsive_content.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/failure.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class ConnectView extends StatelessWidget {
@@ -532,16 +532,12 @@ class ConnectView extends StatelessWidget {
             ? l.prototypeProtectedMinutes(elapsed)
             : l.prototypeProtectedHoursMinutes(elapsed ~/ 60, elapsed % 60),
       ConnectionPhase.disconnecting => l.prototypeFinishingConnection,
-      ConnectionPhase.failed =>
-        view.issue == 'permissionRequired'
-            ? view.permission?.kind ==
-                      PlatformPermissionKind.androidLocalNetwork
-                  ? l.prototypeAllowLocalNetworkHint
-                  : l.prototypeVpnPermissionRequired
-            : view.issue == 'interfaceRequired' ||
-                  view.issue == 'interfaceUnavailable'
-            ? l.prototypeChooseInterfaceNotice
-            : l.prototypeCheckNetwork,
+      ConnectionPhase.failed => connectionFailureMessage(
+        l,
+        issue: view.issue,
+        error: view.error,
+        permission: view.permission,
+      ),
     };
     final palette = ColorManager.palette(context);
     final color = failed

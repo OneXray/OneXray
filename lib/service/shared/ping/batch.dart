@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -98,12 +100,21 @@ class PingBatchRunner {
       pingState.realUrl,
       locationUrl: NetClient.geoIPUrl,
     );
-    final response = await AppHostApi().pingBatch(request);
+    final PingBatchResponse? response;
+    try {
+      response = await AppHostApi().pingBatch(request);
+    } catch (error) {
+      return [
+        for (final _ in sources) PingBatchResult.failed(failureDetails(error)),
+      ];
+    }
     final responseResults = response?.results;
     if (responseResults == null || responseResults.length != sources.length) {
       return List.generate(
         sources.length,
-        (_) => PingBatchResult.failed(),
+        (_) => PingBatchResult.failed(
+          'Invalid pingBatch response: result count does not match the request',
+        ),
         growable: false,
       );
     }

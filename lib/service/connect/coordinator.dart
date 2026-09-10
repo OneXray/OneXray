@@ -6,14 +6,15 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/preparation.dart';
-import 'package:onexray/service/connect/platform_requirements.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/shared/app_lifecycle.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 
@@ -34,6 +35,9 @@ class ConnectionView {
   final int uploadSpeed;
   final int downloadSpeed;
   final String? issue;
+
+  /// The command's cause (including resolver counts), kept only in memory.
+  final Object? error;
   final PlatformPermissionResult? permission;
   const ConnectionView({
     this.phase = ConnectionPhase.disconnected,
@@ -43,6 +47,7 @@ class ConnectionView {
     this.uploadSpeed = 0,
     this.downloadSpeed = 0,
     this.issue,
+    this.error,
     this.permission,
   });
   bool get busy =>
@@ -81,19 +86,18 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
   final Stream<VpnStatus> _statusEvents;
-  final bool Function() _needsStatusPolling;
+  final Future<void> Function() _observeStatus;
+  final void Function() _disposeStatus;
   final _commands = CommandSerialExecutor();
   final state = ValueNotifier(const ConnectionView());
   Future<void>? _initializing;
   Future<void>? _connectRequested;
   StreamSubscription<VpnStatus>? _statusSubscription;
-  Timer? _statusPoll;
   Timer? _trafficPoll;
-  bool _polling = false;
+  bool _refreshing = false;
   bool _readingTraffic = false;
   bool _trafficVisible = false;
   bool _ready = false;
-  VpnStatus? _lastNativeStatus;
   VpnStatus? _pendingStatus;
   int _commandGeneration = 0;
   int _trafficGeneration = 0;
@@ -103,7 +107,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Set<int> _preparingNodeIds = {};
   bool _closed = false;
   bool _observingLifecycle = false;
-  bool _foreground = true;
+  bool _appVisible = true;
   bool _resetSpeed = true;
   bool _failureLatched = false;
 
@@ -118,12 +122,13 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
     Stream<VpnStatus>? statusEvents,
-    bool Function()? needsStatusPolling,
+    Future<void> Function()? observeStatus,
+    void Function()? disposeStatus,
   }) : db = database ?? AppDatabase(),
        _statusEvents =
            statusEvents ?? AppFlutterApi().vpnStatusController.stream,
-       _needsStatusPolling =
-           needsStatusPolling ?? (() => AppHostApi().needsVpnStatusPolling) {
+       _observeStatus = observeStatus ?? AppHostApi().observeVpnStatus,
+       _disposeStatus = disposeStatus ?? AppHostApi().disposeVpnStatus {
     final host = ConnectionRuntimeHost();
     _start = start ?? host.start;
     _stop = stop ?? host.stop;
@@ -156,16 +161,31 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _preparingNodeIds.addAll(ids);
   }
 
-  Future<void> initialize({bool poll = true, bool registerReferences = true}) {
+  Future<void> initialize({
+    bool observe = true,
+    bool registerReferences = true,
+    Future<PlatformPermissionResult> Function()? requestPermission,
+  }) {
     return _initializing ??= _commands
         .run(() async {
           if (registerReferences) {
             SubscriptionService().referenceReader = readReferences;
           }
-          if (poll) {
-            _statusSubscription ??= _statusEvents.listen(_onNativeStatus);
+          if (observe) {
+            _statusSubscription ??= _statusEvents.listen(
+              _onNativeStatus,
+              onError: _onStatusError,
+            );
+            await _observeStatus();
           }
-          final current = await _inspect(await _known());
+          var current = await _inspect(await _known());
+          // Only normal startup supplies this action; passive refreshes never
+          // request permission or repeat a dismissed prompt.
+          if (requestPermission != null &&
+              _permissionRequired(current.permission)) {
+            await requestPermission();
+            current = await _inspect(await _known());
+          }
           final permission = current.permission;
           final permissionRequired = _permissionRequired(permission);
           _failureLatched = false;
@@ -175,14 +195,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             permission: permissionRequired ? permission : null,
           );
           _ready = true;
-          if (poll) {
+          if (observe) {
             WidgetsBinding.instance.addObserver(this);
             _observingLifecycle = true;
-            _foreground =
-                WidgetsBinding.instance.lifecycleState == null ||
-                WidgetsBinding.instance.lifecycleState ==
-                    AppLifecycleState.resumed;
-            _syncPolling();
+            _appVisible = isAppVisible(WidgetsBinding.instance.lifecycleState);
+            _syncTrafficSampling();
             _drainNativeStatus();
           }
         })
@@ -190,12 +207,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           unawaited(_statusSubscription?.cancel());
           _statusSubscription = null;
           _initializing = null;
-          _lastNativeStatus = null;
+          _disposeStatus();
           state.value = ConnectionView(
             phase: ConnectionPhase.failed,
-            issue: error is ConnectionHostException
-                ? error.reason
-                : 'runtimeUnavailable',
+            issue: connectionFailureReason(
+              error,
+              fallback: 'runtimeUnavailable',
+            ),
+            error: error,
             permission: error is ConnectionHostException
                 ? error.permission
                 : null,
@@ -207,12 +226,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final wasForeground = _foreground;
-    _foreground = state == AppLifecycleState.resumed;
-    _resetSpeed = true;
-    _trafficGeneration++;
-    _syncPolling();
-    if (_foreground && !wasForeground && _ready && _observingLifecycle) {
+    final wasVisible = _appVisible;
+    _appVisible = isAppVisible(state);
+    if (_appVisible != wasVisible) {
+      _resetSpeed = true;
+      _trafficGeneration++;
+      _syncTrafficSampling();
+    }
+    if (_appVisible &&
+        (!wasVisible || state == AppLifecycleState.resumed) &&
+        _ready &&
+        _observingLifecycle) {
       unawaited(refresh());
     }
   }
@@ -224,40 +248,20 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _trafficVisible = visible;
     _trafficGeneration++;
     _resetSpeed = true;
-    _syncPolling();
+    _syncTrafficSampling();
   }
 
   bool get _trafficWanted =>
       _ready &&
       !_closed &&
-      _foreground &&
+      _appVisible &&
       _trafficVisible &&
       !_commandActive &&
-      _lastNativeStatus == VpnStatus.connected &&
+      (_pendingStatus == null || _pendingStatus == VpnStatus.connected) &&
       state.value.phase == ConnectionPhase.connected &&
       state.value.runtime != null;
 
-  void _syncPolling() {
-    final watchStatus =
-        _ready &&
-        !_closed &&
-        _foreground &&
-        _observingLifecycle &&
-        _needsStatusPolling();
-    if (!watchStatus) {
-      _statusPoll?.cancel();
-      _statusPoll = null;
-    } else {
-      // ponytail: only query-only hosts need this fallback; replace it when
-      // their existing bridge can report external state changes directly.
-      _statusPoll ??= Timer.periodic(const Duration(seconds: 5), (_) {
-        if (_needsStatusPolling()) {
-          unawaited(refresh());
-        } else {
-          _syncPolling();
-        }
-      });
-    }
+  void _syncTrafficSampling() {
     if (!_trafficWanted) {
       if (_trafficPoll != null) {
         _trafficPoll!.cancel();
@@ -274,35 +278,60 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }
 
   void _onNativeStatus(VpnStatus status) {
-    if (_closed || status == _lastNativeStatus) return;
-    _lastNativeStatus = status;
+    if (_closed || status == _pendingStatus) return;
+    final phase = switch (status) {
+      VpnStatus.connected => ConnectionPhase.connected,
+      VpnStatus.connecting => ConnectionPhase.connecting,
+      VpnStatus.disconnecting => ConnectionPhase.disconnecting,
+      VpnStatus.disconnected => ConnectionPhase.disconnected,
+    };
+    if (!_commandActive &&
+        !_refreshing &&
+        _pendingStatus == null &&
+        state.value.phase == phase &&
+        state.value.issue != 'runtimeUnavailable') {
+      return;
+    }
     _pendingStatus = status;
     _trafficGeneration++;
     _resetSpeed = true;
-    _syncPolling();
+    _syncTrafficSampling();
     _drainNativeStatus();
   }
 
   void _drainNativeStatus() {
-    if (!_ready || _closed || _commandActive || _polling) return;
+    if (!_ready || _closed || _commandActive || _refreshing) return;
     final status = _pendingStatus;
     if (status == null) return;
     _pendingStatus = null;
     unawaited(refresh(observedStatus: status));
   }
 
+  void _onStatusError(Object error) {
+    if (_closed || _commandActive) return;
+    final old = state.value;
+    state.value = ConnectionView(
+      phase: old.phase,
+      runtime: old.runtime,
+      traffic: old.traffic,
+      issue: 'runtimeUnavailable',
+      error: error,
+      permission: old.permission,
+    );
+  }
+
   Future<SubscriptionNodeReferences> readReferences() async {
     final stored = await configuration;
-    if (state.value.runtime == null &&
+    final current = await _inspect(await _known());
+    if (current.runtime == null &&
         _pendingRuntime == null &&
         _preparingNodeIds.isEmpty &&
-        state.value.phase != ConnectionPhase.disconnected &&
-        _lastNativeStatus != VpnStatus.disconnected) {
+        current.status != VpnStatus.disconnected) {
       throw const ConnectionHostException('runtimeMetadataUnavailable');
     }
     return SubscriptionNodeReferences(
       runningIds: {
-        ...?state.value.runtime?.nodeIds,
+        ...?current.runtime?.nodeIds,
         ...?_pendingRuntime?.nodeIds,
         ..._preparingNodeIds,
       },
@@ -324,12 +353,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }
 
   Future<void> refresh({VpnStatus? observedStatus}) async {
-    if (_closed || (!_foreground && observedStatus == null)) return;
-    if (_commandActive || _polling) {
+    if (_closed || (!_appVisible && observedStatus == null)) return;
+    if (_commandActive || _refreshing) {
       if (observedStatus != null) _pendingStatus = observedStatus;
       return;
     }
-    _polling = true;
+    _refreshing = true;
     final commandGeneration = _commandGeneration;
     try {
       final runtimes = await _known();
@@ -358,6 +387,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
               traffic: old.traffic,
             ),
             issue: old.issue ?? 'runtimeUnavailable',
+            error: old.error,
             permission: old.permission,
           );
         } else {
@@ -366,13 +396,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             runtime: old.runtime,
             traffic: old.traffic,
             issue: old.issue ?? 'runtimeUnavailable',
+            error: old.error,
             permission: old.permission,
           );
         }
       }
     } finally {
-      _polling = false;
-      _syncPolling();
+      _refreshing = false;
+      _syncTrafficSampling();
       _drainNativeStatus();
     }
   }
@@ -410,6 +441,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           runtime: old.runtime,
           traffic: old.traffic,
           issue: old.issue,
+          error: old.error,
           permission: old.permission,
         );
       }
@@ -424,7 +456,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<void> _connectOnce() async {
     await initialize();
-    if (state.value.canDisconnect || state.value.busy) {
+    if (_commandActive) return;
+    final current = await _inspect(await _known());
+    if (current.status != VpnStatus.disconnected) {
+      _publish(current);
       return;
     }
     await apply(await configuration, connect: true);
@@ -552,14 +587,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         }
         final issue = cancellation.isCompleted
             ? 'cancelled'
-            : error is ConnectionHostException
-            ? error.reason
-            : error is ConnectionPlatformRequirementException
-            ? error.reason
-            : 'changeFailed';
+            : connectionFailureReason(error);
         if (touchedHost) {
           final status = failed?.status;
-          _lastNativeStatus = status;
           _failureLatched = true;
           state.value = ConnectionView(
             phase: ConnectionPhase.failed,
@@ -571,11 +601,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
                       current.runtime,
             traffic: failed?.traffic ?? current.traffic,
             issue: issue,
+            error: error,
             permission: permission,
           );
-          _syncPolling();
+          _syncTrafficSampling();
         } else {
-          _publish(current, issue: issue, permission: permission);
+          _publish(current, issue: issue, error: error, permission: permission);
         }
         rethrow;
       } finally {
@@ -645,10 +676,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }) async {
     ConnectionRuntime? runtime;
     var traffic = state.value.traffic;
-    _lastNativeStatus = null;
     try {
       final current = await _inspect(await _known());
-      _lastNativeStatus = current.status;
       traffic = current.traffic ?? traffic;
       // The actual runtime can differ from saved settings after a failed change.
       // Keep it visible and protect its nodes without committing it.
@@ -663,6 +692,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       runtime: runtime,
       traffic: traffic,
       issue: issue,
+      error: error,
       permission:
           permission ??
           (error is ConnectionHostException ? error.permission : null),
@@ -681,12 +711,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _commandGeneration++;
     _trafficGeneration++;
     _resetSpeed = true;
-    _syncPolling();
+    _syncTrafficSampling();
     try {
       await action();
     } finally {
       _commandActive = false;
-      _syncPolling();
+      _syncTrafficSampling();
       _drainNativeStatus();
     }
   }
@@ -694,6 +724,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   void _publish(
     HostConnection current, {
     String? issue,
+    Object? error,
     PlatformPermissionResult? permission,
     bool keepResult = false,
     bool liveTraffic = false,
@@ -703,12 +734,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     final permissionRequired = _permissionRequired(checkedPermission);
     if (permissionRequired) {
       issue = 'permissionRequired';
+      error = null;
       permission = checkedPermission;
     }
-    // Query replies also travel through the event stream. Consume only the
-    // matching reply; a newer, different native status must still be reconciled.
+    // A newer, different native notification must still be reconciled.
     if (_pendingStatus == current.status) _pendingStatus = null;
-    _lastNativeStatus = current.status;
     if (keepResult) {
       // Reconciliation/sampling does not replace the last command's result.
       // A newly successful system connection resolves an old disconnected error.
@@ -719,6 +749,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       if (!(current.connected && old.phase != ConnectionPhase.connected) &&
           !permissionResolved) {
         if (old.issue != 'runtimeUnavailable') issue ??= old.issue;
+        if (issue == old.issue) error ??= old.error;
         permission ??= old.permission;
       }
     }
@@ -772,8 +803,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
               ? 'runtimeMetadataUnavailable'
               : null),
       permission: permission,
+      error: error,
     );
-    _syncPolling();
+    _syncTrafficSampling();
   }
 
   static bool _permissionRequired(PlatformPermissionResult? permission) =>
@@ -785,11 +817,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _commandGeneration++;
     _trafficGeneration++;
     _pendingStatus = null;
-    _lastNativeStatus = null;
     _resetSpeed = true;
     _failureLatched = false;
     state.value = const ConnectionView();
-    _syncPolling();
+    _syncTrafficSampling();
   }
 
   void dispose() {
@@ -797,7 +828,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     if (_observingLifecycle) WidgetsBinding.instance.removeObserver(this);
     cancel();
     unawaited(_statusSubscription?.cancel());
-    _statusPoll?.cancel();
+    _disposeStatus();
     _trafficPoll?.cancel();
     state.dispose();
   }

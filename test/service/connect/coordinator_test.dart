@@ -9,6 +9,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -167,6 +168,241 @@ void main() {
   );
 
   test(
+    'focus changes preserve in-flight traffic and the speed baseline',
+    () async {
+      final runtime = _runtime('a');
+      var reads = 0;
+      Completer<ConnectionTraffic>? pending;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => runtime,
+          inspect: (_) async =>
+              HostConnection(VpnStatus.connected, runtime: runtime),
+          readTraffic: (_) async {
+            reads++;
+            return pending == null
+                ? ConnectionTraffic(
+                    uplink: reads * 100,
+                    downlink: reads * 200,
+                    sampledAtMs: reads * 1000,
+                  )
+                : await pending.future;
+          },
+        ),
+      );
+      coordinator.setTrafficVisible(true);
+      await Future<void>.delayed(Duration.zero);
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.downloadSpeed, 200);
+
+      pending = Completer<ConnectionTraffic>();
+      final reading = coordinator.refreshTraffic();
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      pending.complete(
+        const ConnectionTraffic(uplink: 300, downlink: 600, sampledAtMs: 3000),
+      );
+      await reading;
+      pending = null;
+      expect(coordinator.state.value.traffic!.downlink, 600);
+      expect(coordinator.state.value.downloadSpeed, 200);
+
+      await coordinator.refreshTraffic();
+      expect(reads, 4);
+      expect(coordinator.state.value.downloadSpeed, 200);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        reads,
+        4,
+        reason: 'Focus changes must not restart the sampling timer.',
+      );
+      await coordinator.refreshTraffic();
+      expect(reads, 5);
+      expect(coordinator.state.value.downloadSpeed, 200);
+    },
+  );
+
+  testWidgets(
+    'visible inactive windows retain traffic sampling without common status polling',
+    (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      final runtime = _runtime('a');
+      var statusReads = 0;
+      var trafficReads = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => runtime,
+        inspect: (_) async {
+          statusReads++;
+          return HostConnection(VpnStatus.connected, runtime: runtime);
+        },
+        readTraffic: (_) async {
+          trafficReads++;
+          return ConnectionTraffic(
+            uplink: trafficReads * 100,
+            downlink: trafficReads * 200,
+            sampledAtMs: trafficReads * 1000,
+          );
+        },
+        observeStatus: () async {},
+        statusEvents: const Stream.empty(),
+      );
+      try {
+        await coordinator.initialize(registerReferences: false);
+        coordinator.setTrafficVisible(true);
+        await tester.pump();
+        expect(trafficReads, 1);
+        final initialStatusReads = statusReads;
+        await tester.pump(const Duration(seconds: 5));
+        expect(statusReads, initialStatusReads);
+        expect(trafficReads, greaterThan(1));
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        final hiddenStatusReads = statusReads;
+        final hiddenTrafficReads = trafficReads;
+        await tester.pump(const Duration(seconds: 5));
+        await coordinator.refresh();
+        await coordinator.refreshTraffic();
+        expect(statusReads, hiddenStatusReads);
+        expect(trafficReads, hiddenTrafficReads);
+
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump();
+        expect(statusReads, greaterThan(hiddenStatusReads));
+        expect(trafficReads, greaterThan(hiddenTrafficReads));
+        expect(coordinator.state.value.downloadSpeed, 0);
+        final restoredStatusReads = statusReads;
+        final restoredTrafficReads = trafficReads;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        expect(
+          statusReads,
+          restoredStatusReads + 1,
+          reason:
+              'Reactivation still reconciles native status and permissions.',
+        );
+        expect(trafficReads, restoredTrafficReads);
+        await tester.pump(const Duration(seconds: 1));
+        expect(coordinator.state.value.downloadSpeed, 200);
+      } finally {
+        coordinator.dispose();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+      }
+    },
+  );
+
+  testWidgets('native notifications remain active when the window is hidden', (
+    tester,
+  ) async {
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final runtime = _runtime('observed');
+    var reads = 0;
+    var subscriptions = 0;
+    var disposals = 0;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      readRuntime: () async => runtime,
+      inspect: (_) async {
+        reads++;
+        return HostConnection(VpnStatus.connected, runtime: runtime);
+      },
+      statusEvents: events.stream,
+      observeStatus: () async {
+        subscriptions++;
+        expect(events.hasListener, isTrue);
+      },
+      disposeStatus: () => disposals++,
+    );
+    try {
+      await coordinator.initialize(registerReferences: false);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      events.add(VpnStatus.disconnected);
+      await tester.pump();
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.runtime, isNull);
+      await tester.pump(const Duration(seconds: 15));
+      expect(
+        reads,
+        1,
+        reason: 'A native event requires no extra platform query.',
+      );
+      expect(subscriptions, 1);
+    } finally {
+      coordinator.dispose();
+      await events.close();
+    }
+    expect(disposals, 1);
+  });
+
+  test('connect does not trust the displayed connected state', () async {
+    var current = const HostConnection(VpnStatus.disconnected);
+    final runtime = _runtime('fresh');
+    var starts = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => current.runtime,
+        inspect: (_) async => current,
+        prepare: (_, _) async => runtime,
+        start: (runtime) async {
+          starts++;
+          return current = HostConnection(
+            VpnStatus.connected,
+            runtime: runtime,
+          );
+        },
+      ),
+    );
+    coordinator.state.value = ConnectionView(
+      phase: ConnectionPhase.connected,
+      runtime: runtime,
+    );
+    await coordinator.connect();
+    expect(starts, 1);
+    // Conversely an idle-looking UI must not start a second running Core.
+    coordinator.state.value = const ConnectionView();
+    await coordinator.connect();
+    expect(starts, 1);
+    expect(coordinator.state.value.phase, ConnectionPhase.connected);
+  });
+
+  testWidgets('a same-state native notification clears a monitoring error', (
+    tester,
+  ) async {
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final runtime = _runtime('recovered');
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      readRuntime: () async => runtime,
+      inspect: (_) async =>
+          HostConnection(VpnStatus.connected, runtime: runtime),
+      statusEvents: events.stream,
+      observeStatus: () async {},
+      disposeStatus: () {},
+    );
+    try {
+      await coordinator.initialize(registerReferences: false);
+      events.addError(StateError('Native monitoring failed'));
+      await tester.pump();
+      expect(coordinator.state.value.issue, 'runtimeUnavailable');
+      events.add(VpnStatus.connected);
+      await tester.pump();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+    } finally {
+      coordinator.dispose();
+      await events.close();
+    }
+  });
+
+  test(
     'read-only status and metrics do not enter the paused command queue',
     () async {
       final runtime = _runtime('a');
@@ -262,7 +498,10 @@ void main() {
           readStatus: () async => VpnStatus.disconnected,
           stopVpn: () async {
             stopCalls++;
-            return NativeVpnCommandResult(state: NativeVpnCommandState.success);
+            return NativeVpnCommandResult(
+              state: NativeVpnCommandState.success,
+              status: VpnStatus.disconnected,
+            );
           },
         ).stop,
       ),
@@ -378,6 +617,163 @@ void main() {
     expect(coordinator.state.value.issue, 'permissionRequired');
     expect(coordinator.state.value.permission, permission);
   });
+
+  for (final kind in [
+    PlatformPermissionKind.appleVpn,
+    PlatformPermissionKind.macosSystemExtension,
+    PlatformPermissionKind.androidVpn,
+    PlatformPermissionKind.androidLocalNetwork,
+  ]) {
+    test('home initialization requests $kind before becoming ready', () async {
+      var permission = PlatformPermissionResult(
+        kind: kind,
+        state: PlatformPermissionState.notDetermined,
+      );
+      final calls = <String>[];
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          calls.add('read');
+          return HostConnection(VpnStatus.disconnected, permission: permission);
+        },
+        prepare: (_, _) async => fail('Authorization must not prepare nodes'),
+        start: (_) async => fail('Authorization must not start VPN'),
+        stop: () async => fail('Authorization must not stop VPN'),
+      );
+      addTearDown(coordinator.dispose);
+
+      final requested = Completer<void>();
+      final permissionReply = Completer<PlatformPermissionResult>();
+      Future<PlatformPermissionResult> request() {
+        calls.add('request');
+        requested.complete();
+        return permissionReply.future;
+      }
+
+      final first = coordinator.initialize(
+        observe: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      final second = coordinator.initialize(
+        observe: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      var ready = false;
+      final initialization = Future.wait([first, second]).then((_) {
+        ready = true;
+      });
+      await requested.future.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+      expect(calls, ['read', 'request']);
+      expect(ready, isFalse);
+
+      permission = PlatformPermissionResult(
+        kind: kind,
+        state: PlatformPermissionState.granted,
+      );
+      permissionReply.complete(permission);
+      await initialization;
+
+      expect(calls, ['read', 'request', 'read']);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.permission, isNull);
+    });
+  }
+
+  test(
+    'home permission denial allows entry without repeated prompts',
+    () async {
+      var permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.notDetermined,
+      );
+      var requests = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.disconnected, permission: permission),
+      );
+      addTearDown(coordinator.dispose);
+
+      Future<PlatformPermissionResult> request() async {
+        requests++;
+        permission = PlatformPermissionResult(
+          kind: PlatformPermissionKind.appleVpn,
+          state: PlatformPermissionState.denied,
+        );
+        return permission;
+      }
+
+      await coordinator.initialize(
+        observe: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      expect(requests, 1);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, 'permissionRequired');
+      expect(
+        coordinator.state.value.permission?.state,
+        PlatformPermissionState.denied,
+      );
+
+      await coordinator.initialize(
+        observe: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      await coordinator.refresh();
+      expect(requests, 1);
+      expect(coordinator.state.value.issue, 'permissionRequired');
+
+      permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.granted,
+      );
+      await coordinator.refresh();
+      expect(requests, 1);
+      expect(coordinator.state.value.issue, isNull);
+    },
+  );
+
+  for (final permission in <PlatformPermissionResult?>[
+    null,
+    PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.granted,
+    ),
+    PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.notRequired,
+    ),
+  ]) {
+    test('home initialization skips permission ${permission?.state}', () async {
+      var reads = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          reads++;
+          return HostConnection(VpnStatus.disconnected, permission: permission);
+        },
+      );
+      addTearDown(coordinator.dispose);
+
+      await coordinator.initialize(
+        observe: false,
+        registerReferences: false,
+        requestPermission: () async => fail('Permission is already satisfied'),
+      );
+      expect(reads, 1);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+    });
+  }
 
   test(
     'startup and foreground refresh track local network permission',
@@ -513,7 +909,7 @@ void main() {
       addTearDown(coordinator.dispose);
 
       await expectLater(
-        coordinator.initialize(poll: false, registerReferences: false),
+        coordinator.initialize(observe: false, registerReferences: false),
         throwsA(isA<ConnectionHostException>()),
       );
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
@@ -539,13 +935,13 @@ void main() {
       addTearDown(coordinator.dispose);
 
       await expectLater(
-        coordinator.initialize(poll: false, registerReferences: false),
+        coordinator.initialize(observe: false, registerReferences: false),
         throwsA(isA<ConnectionHostException>()),
       );
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
 
       fail = false;
-      await coordinator.initialize(poll: false, registerReferences: false);
+      await coordinator.initialize(observe: false, registerReferences: false);
 
       expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
       expect(coordinator.state.value.issue, isNull);
@@ -708,6 +1104,44 @@ void main() {
     expect(starts, 0);
   });
 
+  test(
+    'resolver reason and counts survive refresh and clear on successful retry',
+    () async {
+      const error = ConnectionResolutionException(
+        ConnectionResolutionFailure.insufficientHealthyServers,
+        requiredCount: 3,
+        availableCount: 1,
+      );
+      final runtime = _runtime('a');
+      var fail = true;
+      var host = const HostConnection(VpnStatus.disconnected);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => host.runtime,
+          inspect: (_) async => host,
+          prepare: (_, _) async {
+            if (fail) throw error;
+            return runtime;
+          },
+          start: (runtime) async =>
+              host = HostConnection(VpnStatus.connected, runtime: runtime),
+        ),
+      );
+      await expectLater(coordinator.connect(), throwsA(same(error)));
+      expect(coordinator.state.value.issue, 'insufficientHealthyServers');
+      expect(coordinator.state.value.error, same(error));
+      await coordinator.refresh();
+      expect(coordinator.state.value.issue, 'insufficientHealthyServers');
+      expect(coordinator.state.value.error, same(error));
+      fail = false;
+      await coordinator.connect();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.error, isNull);
+    },
+  );
+
   test('active node IDs protect subscription replacement', () async {
     final active = _runtime('a', entryIds: const [2, 3], exitId: 4);
     final coordinator = await _initialize(
@@ -820,7 +1254,7 @@ Future<ConnectionCoordinator> _initialize(
   ConnectionCoordinator coordinator,
 ) async {
   addTearDown(coordinator.dispose);
-  await coordinator.initialize(poll: false, registerReferences: false);
+  await coordinator.initialize(observe: false, registerReferences: false);
   return coordinator;
 }
 
@@ -855,6 +1289,7 @@ ConnectionRuntime _runtime(
   });
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
+    validationJson: '{}',
     entries: entries,
     finalExit: finalExit,
     nodeTags: const {},

@@ -284,10 +284,17 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                   padding: const EdgeInsets.all(12),
                   child: Semantics(
                     liveRegion: true,
-                    child: Text(
-                      error,
-                      style: AppTypography.actionHelp.copyWith(
-                        color: ColorManager.palette(context).destructive,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.sizeOf(context).height / 4,
+                      ),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          error,
+                          style: AppTypography.actionHelp.copyWith(
+                            color: ColorManager.palette(context).destructive,
+                          ),
+                        ),
                       ),
                     ),
                   ),

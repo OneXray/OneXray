@@ -1,8 +1,8 @@
 import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:image/image.dart' as img;
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -10,7 +10,6 @@ import 'package:onexray/core/db/database/enum.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/file.dart';
 import 'package:onexray/core/tools/logger.dart';
-import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/shared/alert.dart';
@@ -19,7 +18,6 @@ import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/shared/share/app_link_share_service.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:zxing2/qrcode.dart';
 
 enum ShareLinkFormat { original, onexray }
@@ -27,7 +25,6 @@ enum ShareLinkFormat { original, onexray }
 class SharePageState {
   const SharePageState({
     this.loading = true,
-    this.sharing = false,
     this.savingQr = false,
     this.name = '',
     this.originalLink = '',
@@ -40,7 +37,6 @@ class SharePageState {
   });
 
   final bool loading;
-  final bool sharing;
   final bool savingQr;
   final String name;
   final String originalLink;
@@ -56,7 +52,6 @@ class SharePageState {
 
   SharePageState copyWith({
     bool? loading,
-    bool? sharing,
     bool? savingQr,
     String? name,
     String? originalLink,
@@ -69,7 +64,6 @@ class SharePageState {
     String? qrError,
   }) => SharePageState(
     loading: loading ?? this.loading,
-    sharing: sharing ?? this.sharing,
     savingQr: savingQr ?? this.savingQr,
     name: name ?? this.name,
     originalLink: originalLink ?? this.originalLink,
@@ -111,7 +105,7 @@ class ShareController extends PageCubit<SharePageState> {
       }
     } catch (error) {
       ygLogger('generate share link failed (${error.runtimeType})');
-      _finishLinkError();
+      _finishLinkError(error);
     } finally {
       emit(state.copyWith(loading: false));
     }
@@ -164,9 +158,17 @@ class ShareController extends PageCubit<SharePageState> {
     );
   }
 
-  void _finishLinkError() {
+  void _finishLinkError([Object? error]) {
     final l = appLocalizationsNoContext();
-    emit(state.copyWith(linkError: '${l.sharePageLink}: ${l.resultFailed}'));
+    emit(
+      state.copyWith(
+        linkError: appFailureMessage(
+          l,
+          error,
+          operation: '${l.sharePageLink}: ${l.resultFailed}',
+        ),
+      ),
+    );
   }
 
   void selectFormat(ShareLinkFormat format) {
@@ -189,10 +191,12 @@ class ShareController extends PageCubit<SharePageState> {
     if (link.isEmpty) return;
     final generation = ++_qrGeneration;
     Uint8List? image;
+    Object? failure;
     try {
       image = await _qrEncoder(link);
-    } catch (_) {
+    } catch (error) {
       // Generation failure is shown only for the currently selected format.
+      failure = error;
     }
     if (!isPageActive ||
         generation != _qrGeneration ||
@@ -205,52 +209,15 @@ class ShareController extends PageCubit<SharePageState> {
       state.copyWith(
         qrCode: image,
         clearQr: image == null,
-        qrError: image == null ? '${l.sharePageQRCode}: ${l.resultFailed}' : '',
+        qrError: image == null
+            ? appFailureMessage(
+                l,
+                failure,
+                operation: '${l.sharePageQRCode}: ${l.resultFailed}',
+              )
+            : '',
       ),
     );
-  }
-
-  Future<void> shareSelectedLink(BuildContext context) async {
-    final url = state.selectedLink;
-    if (state.loading || state.sharing || url.isEmpty) return;
-    emit(state.copyWith(sharing: true));
-    try {
-      if (AppPlatform.isLinux) {
-        await _copyUrl(context, url);
-        return;
-      }
-      Rect? sharePositionOrigin;
-      if (context.mounted) {
-        final box = context.findRenderObject() as RenderBox?;
-        if (box != null) {
-          sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
-        }
-      }
-      final result = await SharePlus.instance.share(
-        ShareParams(
-          text: url,
-          subject: state.name,
-          sharePositionOrigin: sharePositionOrigin,
-        ),
-      );
-      if (context.mounted && result.status != ShareResultStatus.dismissed) {
-        _showActionResult(
-          context,
-          result.status == ShareResultStatus.success,
-          AppLocalizations.of(context)!.sharePageShareLink,
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        _showActionResult(
-          context,
-          false,
-          AppLocalizations.of(context)!.sharePageShareLink,
-        );
-      }
-    } finally {
-      emit(state.copyWith(sharing: false));
-    }
   }
 
   Future<void> saveQr(BuildContext context) async {
@@ -263,21 +230,20 @@ class ShareController extends PageCubit<SharePageState> {
         '${state.name}.png',
         '.png',
       );
-      if (context.mounted) {
+      if (context.mounted && success) {
         _showActionResult(
           context,
           success,
           AppLocalizations.of(context)!.sharePageSaveQRCode,
-          closeOnSuccess: false,
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         _showActionResult(
           context,
           false,
           AppLocalizations.of(context)!.sharePageSaveQRCode,
-          closeOnSuccess: false,
+          error: error,
         );
       }
     } finally {
@@ -289,30 +255,19 @@ class ShareController extends PageCubit<SharePageState> {
     BuildContext context,
     bool success,
     String action, {
-    bool closeOnSuccess = true,
+    Object? error,
   }) {
     final l = AppLocalizations.of(context)!;
     ContextAlert.showToast(
       context,
-      l.actionResult(action, success ? l.resultSuccess : l.resultFailed),
+      success
+          ? l.actionResult(action, l.resultSuccess)
+          : appFailureMessage(
+              l,
+              error,
+              operation: l.actionResult(action, l.resultFailed),
+            ),
     );
-    if (success &&
-        closeOnSuccess &&
-        ModalRoute.of(context)?.isCurrent == true) {
-      context.pop();
-    }
-  }
-
-  Future<void> _copyUrl(BuildContext context, String url) async {
-    await Clipboard.setData(ClipboardData(text: url));
-    if (context.mounted) {
-      final l = AppLocalizations.of(context)!;
-      ContextAlert.showToast(
-        context,
-        l.actionResult(l.sharePageCopyLink, l.resultSuccess),
-      );
-      if (ModalRoute.of(context)?.isCurrent == true) context.pop();
-    }
   }
 }
 
@@ -347,7 +302,7 @@ Uint8List? _drawQrcode(String shareLink) {
       }
     }
     return img.encodePng(image);
-  } catch (_) {
-    return null;
+  } catch (error) {
+    throw AppFailure(FailureCategory.input, 'qrEncoding', cause: error);
   }
 }

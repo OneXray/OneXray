@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
@@ -94,6 +95,7 @@ class _ServersPageState extends State<ServersPage> {
             child: ServerLoadState(
               ready: controller.ready,
               failed: controller.failed,
+              failure: state.failure,
               onRetry: controller.initialize,
               child: ResponsiveContent(
                 desktopMaxWidth: AppLayout.standardMaxWidth,
@@ -155,12 +157,14 @@ class ServerGroupPage extends StatelessWidget {
 
 class ServerLoadState extends StatelessWidget {
   final bool ready, failed;
+  final Object? failure;
   final VoidCallback onRetry;
   final Widget child;
   const ServerLoadState({
     super.key,
     required this.ready,
     required this.failed,
+    this.failure,
     required this.onRetry,
     required this.child,
   });
@@ -169,7 +173,16 @@ class ServerLoadState extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     if (failed) {
       return Center(
-        child: FilledButton(onPressed: onRetry, child: Text(l.prototypeRetry)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(appFailureMessage(l, failure)),
+              FilledButton(onPressed: onRetry, child: Text(l.prototypeRetry)),
+            ],
+          ),
+        ),
       );
     }
     if (!ready) {

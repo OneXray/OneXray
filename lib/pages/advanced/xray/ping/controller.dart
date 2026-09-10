@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:go_router/go_router.dart';
@@ -51,8 +52,8 @@ class PingController extends PageCubit<PingPageState> {
       if (!isPageActive) return;
       customUrlController.text = pingState.customUrl;
       emit(PingPageState(pingState: pingState, loading: false, loaded: true));
-    } catch (_) {
-      emit(state.copyWith(loading: false, error: 'unavailable'));
+    } catch (error) {
+      emit(state.copyWith(loading: false, error: failureDetails(error)));
     }
   }
 
@@ -91,8 +92,8 @@ class PingController extends PageCubit<PingPageState> {
       state.pingState.customUrl = customUrl;
       await state.pingState.saveToPreferences();
       if (context.mounted) ContextAlert.settingsSaved(context, closePage: true);
-    } catch (_) {
-      emit(state.copyWith(error: 'unavailable'));
+    } catch (error) {
+      emit(state.copyWith(error: failureDetails(error)));
     } finally {
       emit(state.copyWith(saving: false, error: state.error));
     }

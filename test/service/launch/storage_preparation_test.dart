@@ -17,6 +17,9 @@ class _IsolatedPaths extends PathProviderPlatform {
   Future<String?> getApplicationDocumentsPath() async => path;
 
   @override
+  Future<String?> getApplicationSupportPath() async => path;
+
+  @override
   Future<String?> getTemporaryPath() async => path;
 }
 
@@ -24,7 +27,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'upgrade retries failed native checks and reads status without events',
+    'storage retries failed migration without VPN commands or snapshots',
     () async {
       final root = await Directory(
         '../references/onexray-refactor-validation/test-fixtures',
@@ -58,6 +61,7 @@ void main() {
         );
         INSERT INTO subscription (name, url, timestamp, count, expanded)
         VALUES ('Existing', 'https://example.com/sub', 123, 0, 0);
+        CREATE INDEX connection_config ON core_config(name);
         PRAGMA user_version = 2;
       ''');
       legacy.close();
@@ -72,86 +76,47 @@ void main() {
       );
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      var replies = <NativeVpnCommandResult>[];
-      var stopResult = NativeVpnCommandResult(
-        state: NativeVpnCommandState.success,
-      );
+      var reads = 0;
       var stops = 0;
-      messenger.setMockDecodedMessageHandler(
-        statusChannel,
-        (_) async => [replies.removeAt(0)],
-      );
+      messenger.setMockDecodedMessageHandler(statusChannel, (_) async {
+        reads++;
+        return [NativeVpnCommandResult(state: NativeVpnCommandState.failed)];
+      });
       messenger.setMockDecodedMessageHandler(stopChannel, (_) async {
         stops++;
-        return [stopResult];
+        return [NativeVpnCommandResult(state: NativeVpnCommandState.failed)];
       });
       addTearDown(() {
         messenger.setMockDecodedMessageHandler(statusChannel, null);
         messenger.setMockDecodedMessageHandler(stopChannel, null);
       });
 
-      void expectUnchanged() {
-        final db = sqlite3.open(file.path, mode: OpenMode.readOnly);
-        try {
-          expect(db.userVersion, 2);
-          expect(
-            db.select('SELECT name FROM subscription').single['name'],
-            'Existing',
-          );
-        } finally {
-          db.close();
-        }
+      final failed = StoragePreparation.ensureReady();
+      expect(StoragePreparation.ensureReady(), same(failed));
+      await expectLater(failed, throwsA(anything));
+
+      final db = sqlite3.open(file.path);
+      try {
+        expect(db.userVersion, 2);
         expect(
-          directory.listSync().where(
-            (entry) => entry.path.contains('.pre-v3-'),
-          ),
-          isEmpty,
+          db.select('SELECT name FROM subscription').single['name'],
+          'Existing',
         );
+        expect(
+          db.select('PRAGMA table_info(core_config)').map((row) => row['name']),
+          isNot(contains('favorite')),
+        );
+        db.execute('DROP INDEX connection_config');
+      } finally {
+        db.close();
       }
 
-      // Retry is part of startup: rejected status must not modify the old DB.
-      for (final reply in [
-        NativeVpnCommandResult(
-          state: NativeVpnCommandState.failed,
-          status: VpnStatus.disconnected,
-        ),
-        NativeVpnCommandResult(state: NativeVpnCommandState.success),
-      ]) {
-        replies = [reply];
-        await expectLater(StoragePreparation.ensureReady(), throwsStateError);
-        expect(stops, 0);
-        expectUnchanged();
-      }
-
-      NativeVpnCommandResult status(VpnStatus value) => NativeVpnCommandResult(
-        state: NativeVpnCommandState.success,
-        status: value,
-      );
-
-      replies = [status(VpnStatus.connected)];
-      stopResult = NativeVpnCommandResult(state: NativeVpnCommandState.failed);
-      await expectLater(StoragePreparation.ensureReady(), throwsStateError);
-      expect(stops, 1);
-      expectUnchanged();
-
-      // A successful stop alone is not proof of disconnection.
-      replies = [
-        status(VpnStatus.connected),
-        NativeVpnCommandResult(state: NativeVpnCommandState.success),
-      ];
-      stopResult = NativeVpnCommandResult(state: NativeVpnCommandState.success);
-      await expectLater(StoragePreparation.ensureReady(), throwsStateError);
-      expect(stops, 2);
-      expectUnchanged();
-
-      replies = [
-        status(VpnStatus.connected),
-        status(VpnStatus.disconnecting),
-        status(VpnStatus.disconnected),
-      ];
-      expect(await StoragePreparation.ensureReady(), isFalse);
-      expect(stops, 3);
-      expect(replies, isEmpty);
+      final retried = StoragePreparation.ensureReady();
+      expect(retried, isNot(same(failed)));
+      expect(await retried, isFalse);
+      expect(StoragePreparation.ensureReady(), same(retried));
+      expect(reads, 0);
+      expect(stops, 0);
       expect(
         (await AppDatabase().subscriptionDao.allRows).single.name,
         'Existing',
@@ -161,19 +126,10 @@ void main() {
             .read<int>('user_version'),
         3,
       );
-      final snapshot = directory.listSync().singleWhere(
-        (entry) => entry.path.contains('.pre-v3-'),
+      expect(
+        directory.listSync().where((entry) => entry.path.contains('.pre-v3-')),
+        isEmpty,
       );
-      final saved = sqlite3.open(snapshot.path, mode: OpenMode.readOnly);
-      try {
-        expect(saved.userVersion, 2);
-        expect(
-          saved.select('SELECT name FROM subscription').single['name'],
-          'Existing',
-        );
-      } finally {
-        saved.close();
-      }
     },
     skip: !Platform.isMacOS,
   );

@@ -13,6 +13,9 @@ import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
+import android.os.Binder
+import android.os.IBinder
+import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
@@ -38,6 +41,7 @@ import net.yuandev.onexray.pigeon.PerAppVPNMode
 import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import net.yuandev.onexray.pigeon.XrayEnv
+import net.yuandev.onexray.pigeon.VpnStatus
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -53,6 +57,7 @@ class OneVpnService : VpnService() {
         const val IPV6_ADDRESS = "fc00::1"
         const val ACTION_VPN_STATUS: String = "net.yuandev.onexray.VPN_STATUS"
         const val EXTRA_RUNNING: String = "running"
+        const val EXTRA_ERROR: String = "error"
         const val NOTIFICATION_OPEN_REQUEST_CODE = 1
         const val NOTIFICATION_STOP_REQUEST_CODE = 2
     }
@@ -66,10 +71,11 @@ class OneVpnService : VpnService() {
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
 
-    private fun sendStatusBroadcast(running: Boolean) {
+    private fun sendStatusBroadcast(running: Boolean, error: String? = null) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
             setPackage(packageName) // 限定仅本包接收
             putExtra(EXTRA_RUNNING, running)
+            putExtra(EXTRA_ERROR, error)
         }
         sendBroadcast(intent)
         VpnController.requestTileRefresh(this)
@@ -85,6 +91,29 @@ class OneVpnService : VpnService() {
         }
     }
     private var stopRequestReceiverRegistered = false
+
+    private val statusBinder = object : Binder() {
+        override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+            if (code != VpnStatusConnection.READ_STATUS) return super.onTransact(code, data, reply, flags)
+            data.enforceInterface(VpnStatusConnection.DESCRIPTOR)
+            val status = when {
+                running && !released.get() -> VpnStatus.CONNECTED
+                released.get() && tunnel != null -> VpnStatus.DISCONNECTING
+                !released.get() -> VpnStatus.CONNECTING
+                else -> VpnStatus.DISCONNECTED
+            }
+            reply?.writeNoException()
+            reply?.writeInt(status.ordinal)
+            return true
+        }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? =
+        if (intent?.action == VpnStatusConnection.ACTION_BIND) statusBinder else super.onBind(intent)
+
+    override fun onRevoke() {
+        stopTun()
+    }
 
     class VPNController : DialerController {
         var vpn: OneVpnService? = null
@@ -185,7 +214,7 @@ class OneVpnService : VpnService() {
         stopSelf()
     }
 
-    private fun releaseTun(): Boolean {
+    private fun releaseTun(error: String? = null): Boolean {
         if (!released.compareAndSet(false, true)) {
             return false
         }
@@ -213,7 +242,7 @@ class OneVpnService : VpnService() {
         tunnel = null
         controller.vpn = null
         running = false
-        sendStatusBroadcast(false)
+        sendStatusBroadcast(false, error)
         return true
     }
 
@@ -224,7 +253,8 @@ class OneVpnService : VpnService() {
             return
         }
         XLog.e(message, error)
-        releaseTun()
+        val reason = error.message ?: error.toString()
+        if (!releaseTun(reason)) sendStatusBroadcast(false, reason)
         stopSelf()
     }
 

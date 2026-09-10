@@ -40,8 +40,13 @@ abstract class BaseFfiApi {
   }
 
   Future<NativeVpnCommandResult> readVpnStatus();
+
+  /// Successful commands return the confirmed terminal status. Each platform
+  /// owns its notification/wait mechanism; callers do not poll for completion.
   Future<NativeVpnCommandResult> startVpn();
   Future<NativeVpnCommandResult> stopVpn();
+  Future<void> observeVpnStatus();
+  void disposeVpnStatus();
 
   @protected
   LibXrayRunConfig readRunXrayRequest(StartVpnRequest request) {

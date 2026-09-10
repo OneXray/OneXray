@@ -1,20 +1,12 @@
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 
-/// Keep untrusted source URLs out of diagnostics; every redirect stays HTTPS.
-/// Bound each routing-data download before indexing and publication.
+/// Keep every redirect HTTPS and bound downloads before indexing/publication.
 Future<void> downloadGeoData(String url, File destination) async {
-  try {
-    await _downloadGeoData(url, destination);
-  } catch (_) {
-    // HttpException may include the complete source URL, including its token.
-    throw const FormatException('Geodata download failed');
-  }
-}
-
-Future<void> _downloadGeoData(String url, File destination) async {
   var uri = GeoDataInput.httpsUri(url);
   await NetClient().asyncInit();
   for (var redirects = 0; redirects <= 5; redirects++) {
@@ -39,9 +31,19 @@ Future<void> _downloadGeoData(String url, File destination) async {
         continue;
       }
       const limit = 512 * 1024 * 1024;
-      if (response.statusCode != HttpStatus.ok ||
-          response.contentLength > limit) {
-        throw const FormatException('Geodata download failed');
+      if (response.statusCode != HttpStatus.ok) {
+        throw AppFailure(
+          FailureCategory.network,
+          'httpStatus',
+          cause: 'HTTP ${response.statusCode}',
+        );
+      }
+      if (response.contentLength > limit) {
+        throw const AppFailure(
+          FailureCategory.input,
+          'contentTooLarge',
+          cause: 'Geodata exceeds the 512 MiB download limit',
+        );
       }
       var received = 0;
       final sink = destination.openWrite();

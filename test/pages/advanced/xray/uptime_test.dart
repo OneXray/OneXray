@@ -14,8 +14,53 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 
 void main() {
+  testWidgets('visible inactive windows keep the uptime clock running', (
+    tester,
+  ) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = ConnectionCoordinator(database: db);
+    var now = DateTime(2026, 9, 3);
+    coordinator.state.value = ConnectionView(
+      phase: ConnectionPhase.connected,
+      runtime: _runtime(now.subtract(const Duration(minutes: 1))),
+    );
+    final controller = _AdvancedController(
+      coordinator: coordinator,
+      now: () => now,
+    );
+    try {
+      controller.setVisible(true);
+      await tester.pump();
+      now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.state.uptime, '0:01:01');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.state.uptime, '0:01:02');
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      now = now.add(const Duration(seconds: 5));
+      await tester.pump(const Duration(seconds: 5));
+      expect(controller.state.uptime, '0:01:02');
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      expect(controller.state.uptime, '0:01:07');
+      now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(controller.state.uptime, '0:01:08');
+    } finally {
+      await controller.close();
+      coordinator.dispose();
+      await db.close();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    }
+  });
+
   testWidgets(
-    'uptime uses a visible foreground clock, without metrics updates',
+    'uptime uses a visible application clock, without metrics updates',
     (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final coordinator = ConnectionCoordinator(database: db);
@@ -120,6 +165,7 @@ ConnectionRuntime _runtime(DateTime startedAt) => ConnectionRuntime.create(
   configuration: ConnectionConfiguration(),
   compiled: CompiledConnection(
     xrayJson: '{}',
+    validationJson: '{}',
     entries: const [],
     finalExit: null,
     nodeTags: const {},

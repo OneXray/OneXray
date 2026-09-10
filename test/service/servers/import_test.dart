@@ -1,11 +1,15 @@
+import 'package:onexray/core/errors/failure.dart';
+
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
@@ -31,7 +35,21 @@ void main() {
     const source =
         '{"outbounds":[{"tag":"one","protocol":"freedom"},{"tag":"two","protocol":"freedom"}]}';
     final preview = await service.preview(source, manual: true);
-    expect(validated, [jsonDecode(source)]);
+    expect(validated, [
+      {
+        ...jsonDecode(source) as Map<String, dynamic>,
+        'env': {
+          'xray.location.asset': VpnConstants.datDir,
+          'xray.location.cert': VpnConstants.datDir,
+        },
+        'log': {
+          'access': 'none',
+          'error': 'none',
+          'loglevel': 'none',
+          'dnsLog': false,
+        },
+      },
+    ]);
     expect(preview.count, 2);
     expect(await db.coreConfigDao.allOutboundRowsWithDataBySubId(0), isEmpty);
     expect(queued, isEmpty);
@@ -45,6 +63,41 @@ void main() {
     ]);
     expect(saved.every((row) => row.delay == PingDelayConstants.unknown), true);
   });
+
+  test(
+    'batch subscription import retains errors and continues with later sources',
+    () async {
+      const downloadError = HttpException('HTTP 403');
+      const writeError = FileSystemException(
+        'Permission denied',
+        'subscriptions',
+      );
+      final service = ServerImportService(
+        subscribe: (link) async => switch (link.name) {
+          'download' => const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.downloadFailed,
+            error: downloadError,
+          ),
+          'write' => throw writeError,
+          _ => const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.success,
+            subId: 3,
+            count: 1,
+          ),
+        },
+      );
+      final results = await service.importSubscriptions([
+        for (final name in ['download', 'write', 'success'])
+          OneXraySubscriptionLink(name: name, url: 'https://example.com/$name'),
+      ]);
+
+      expect(results[0].result.error, same(downloadError));
+      expect(results[1].result.status, SubscriptionUpdateResult.writeFailed);
+      expect(results[1].result.error, same(writeError));
+      expect(results[2].result.success, isTrue);
+      expect(results[2].result.subId, 3);
+    },
+  );
 
   test(
     'manual import delegates node values and duplicate tags to libXray',
@@ -93,7 +146,13 @@ void main() {
     ]) {
       await expectLater(
         service.preview(source, manual: true),
-        throwsFormatException,
+        throwsA(
+          isA<AppFailure>().having(
+            (e) => e.cause,
+            'core reason',
+            'Invalid node',
+          ),
+        ),
       );
     }
     expect(validations, 2);
@@ -147,7 +206,10 @@ void main() {
       'file:///tmp/sub',
     ]) {
       expect(NetClient.isHttpsDownloadUri(origin.resolve(target)), false);
-      expect(await NetClient().getText(target, httpsOnly: true), isNull);
+      await expectLater(
+        NetClient().getText(target, httpsOnly: true),
+        throwsA(isA<AppFailure>().having((e) => e.code, 'code', 'downloadUrl')),
+      );
     }
   });
 

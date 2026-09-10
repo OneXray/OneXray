@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 class AppleVpnController extends PolicyEditorController {
   AppleVpnController({required PolicyEditorDraft draft}) : super(draft: draft);
@@ -18,13 +19,15 @@ class AppleVpnController extends PolicyEditorController {
   bool get capabilityLoading => state.appleCapabilitiesLoading;
 
   Future<void> readCapabilities() async {
-    emit(state.copyWith(appleCapabilitiesLoading: true));
+    emit(state.copyWith(appleCapabilitiesLoading: true, error: null));
     try {
       final value = await AppHostApi().appleVpnCapabilities();
       emit(state.copyWith(appleCapabilities: value));
-    } catch (_) {
+    } catch (error) {
       // Do not infer a product version from Darwin's kernel version.
-      emit(state.copyWith(appleCapabilities: null));
+      emit(
+        state.copyWith(appleCapabilities: null, error: failureDetails(error)),
+      );
     } finally {
       emit(state.copyWith(appleCapabilitiesLoading: false));
     }

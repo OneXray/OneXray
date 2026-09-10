@@ -15,7 +15,8 @@ void main() {
 
       for (final source in [shortcut, tray]) {
         expect(source, contains('NotificationService().pushNotification('));
-        expect(source, contains('prototypeConnectionFailed'));
+        expect(source, contains('connectionFailureMessage('));
+        expect(source, isNot(contains('prototypeConnectionFailed')));
       }
       expect(connect, isNot(contains('NotificationService')));
     },

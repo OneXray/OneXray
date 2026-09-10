@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/advanced/xray/data_update/scheduler.dart';
+import 'package:onexray/service/advanced/xray/data_update/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -23,7 +26,84 @@ final class _CountingPreferences extends InMemorySharedPreferencesAsync {
   }
 }
 
+final class _RecordingUpdates implements DataUpdateService {
+  final checks =
+      <({bool subscriptions, bool geodata, bool Function() isVpnConnected})>[];
+
+  @override
+  Future<void> checkAndRun({
+    required bool Function() isVpnConnected,
+    bool updateSubscription = true,
+    bool updateGeoData = true,
+  }) async {
+    checks.add((
+      subscriptions: updateSubscription,
+      geodata: updateGeoData,
+      isVpnConnected: isVpnConnected,
+    ));
+  }
+
+  @override
+  Future<void> pauseForDataClear() async {}
+
+  @override
+  void resumeAfterDataClear() {}
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  for (final connected in [false, true]) {
+    test(
+      'status errors are handled without changing connected=$connected',
+      () async {
+        final error = StateError('Native status read failed');
+        final handled = <Object>[];
+        final escaped = <Object>[];
+        final updates = _RecordingUpdates();
+        final service = BackgroundTaskService.forTesting(updates);
+        bool? connectedAfterError;
+
+        await runZonedGuarded<Future<void>>(() async {
+          final status = AppFlutterApi().vpnStatusController;
+          // A broadcast error must be handled by each listener independently.
+          final otherListener = status.stream.listen(
+            (_) {},
+            onError: (Object error) => handled.add(error),
+          );
+          try {
+            service.init(vpnConnected: connected);
+            status.addError(error);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+            connectedAfterError = updates.checks.last.isVpnConnected();
+
+            status.add(VpnStatus.disconnected);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+
+            status.add(VpnStatus.connected);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+          } finally {
+            service.dispose();
+            await otherListener.cancel();
+          }
+        }, (error, stackTrace) => escaped.add(error));
+
+        expect(handled, [same(error)]);
+        expect(escaped, isEmpty);
+        expect(connectedAfterError, connected);
+        expect(updates.checks.map((check) => check.geodata), [
+          connected,
+          connected,
+          false,
+          true,
+        ]);
+      },
+    );
+  }
+
   testWidgets('only new connected edges retry; resume and hourly checks remain', (
     tester,
   ) async {
@@ -68,5 +148,109 @@ void main() {
     expect(preferences.updateReads, 5);
     // Widget tests verify pending timers before the outer test tear-down runs.
     service.dispose();
+  });
+
+  testWidgets('disconnected startup, resume and hourly checks skip Geodata', (
+    tester,
+  ) async {
+    final updates = _RecordingUpdates();
+    final service = BackgroundTaskService.forTesting(updates);
+    try {
+      service.init();
+      await tester.pump();
+      service.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump(const Duration(hours: 1));
+
+      expect(updates.checks, hasLength(3));
+      for (final check in updates.checks) {
+        expect(check.subscriptions, isTrue);
+        expect(check.geodata, isFalse);
+        expect(check.isVpnConnected(), isFalse);
+      }
+    } finally {
+      service.dispose();
+    }
+  });
+
+  testWidgets('connected checks wait three seconds and keep a live status', (
+    tester,
+  ) async {
+    final updates = _RecordingUpdates();
+    final service = BackgroundTaskService.forTesting(updates);
+    try {
+      service.init();
+      await tester.pump();
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connected);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(updates.checks, hasLength(1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(updates.checks, hasLength(2));
+      final connectedCheck = updates.checks.last;
+      expect(connectedCheck.geodata, isTrue);
+      expect(connectedCheck.isVpnConnected(), isTrue);
+
+      // Waiting for subscription updates must not retain a connected snapshot.
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
+      await tester.pump();
+      expect(connectedCheck.isVpnConnected(), isFalse);
+      service.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(updates.checks.last.geodata, isFalse);
+    } finally {
+      service.dispose();
+    }
+  });
+
+  testWidgets('disconnect and dispose cancel the delayed connected check', (
+    tester,
+  ) async {
+    final updates = _RecordingUpdates();
+    final service = BackgroundTaskService.forTesting(updates);
+    try {
+      service.init();
+      await tester.pump();
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connected);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connected);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(updates.checks, hasLength(1));
+      await tester.pump(const Duration(seconds: 2));
+      expect(updates.checks, hasLength(2));
+      expect(updates.checks.last.geodata, isTrue);
+
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connected);
+      await tester.pump();
+      service.dispose();
+      await tester.pump(const Duration(seconds: 3));
+      expect(updates.checks, hasLength(2));
+    } finally {
+      service.dispose();
+    }
+  });
+
+  testWidgets('startup reuses an already confirmed native connection', (
+    tester,
+  ) async {
+    final updates = _RecordingUpdates();
+    final service = BackgroundTaskService.forTesting(updates);
+    try {
+      service.init(vpnConnected: true);
+      await tester.pump();
+      expect(updates.checks.single.geodata, isTrue);
+      expect(updates.checks.single.isVpnConnected(), isTrue);
+
+      await AppFlutterApi().vpnStatusChanged(VpnStatus.connected);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(updates.checks, hasLength(1));
+    } finally {
+      service.dispose();
+    }
   });
 }

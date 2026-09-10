@@ -13,7 +13,14 @@ Material 控件和主题统一使用 `material_ui`，与 `go_router` 的页面�
 按钮反馈按实际操作区分：异步操作保留按钮内 loading；保存成功使用共享 toast，失败或取消
 不显示成功提示。恢复默认只修改编辑草稿，提示仍需保存，不隐式写入数据库或重连。
 导航、选项切换、草稿内增删等已有直接视觉反馈的操作不重复提示；系统跳转失败时显示 toast。
-首次初始化导入节点仍不显示成功 toast。
+
+Outgoing sharing uses the shared `ShareAction` around the existing buttons.
+Only the active share button shows loading and rejects duplicate activation;
+other page actions remain independent. A native share result never closes the
+share page or claims delivery. Linux shows an explicit copy label and icon with
+the existing two-second copy toast. Raw/custom sharing keeps its sensitive-data
+confirmation. Page departure suppresses late dialogs and feedback; losing window
+focus alone is not cancellation. See [sharing](subscriptions-and-sharing.md#outgoing-system-sharing).
 
 ## 公共主题与布局
 
@@ -96,6 +103,27 @@ Raw 新增最多三份；已有超额旧数据仍完整显示、可编辑和选�
 隐私政策使用 HTTPS 链接，App 不内置隐私正文，不收集匿名分析数据。
 
 ## 实现入口
+
+### 错误反馈
+
+错误保留操作与原始原因，区分输入、配置、网络、权限、本地读写、状态冲突和运行失败；
+未知错误不猜测为网络问题。提示标题复用现有国际化文案，系统与 libXray 的诊断保留来源文本，
+不重新翻译或改写内核错误。配置仍由 libXray 校验，不因提示分类增加 App 侧校验。
+
+- 连接页、托盘和快捷方式共用连接失败解释，区分节点不足、权限、网卡、校验、启停失败与超时。
+  原生桥保留系统返回的具体错误；Android 异步启动失败通过状态广播传递原因，Apple 在系统支持时
+  读取本次启动失败的断开原因。错误信息不替代原生 VPN 状态。
+- 表单保留输入与错误，JSON 编辑器可复制内核诊断，长错误可滚动查看，不遮挡保存按钮。
+  页面加载失败展示可用的具体原因并保留重试；设置页保留操作失败详情。
+- 订阅区分下载、Age 解密、空内容和保存失败，更新失败保留原节点；HTTP 错误保留状态码，
+  不把整个请求对象或响应体当作提示。取消、被新操作替代的更新不显示失败。
+- Geodata 下载、文件读写和删除失败不再统一提示检查网络，自动更新失败不影响 VPN 状态。
+  测速失败保留在当前进程的节点行中，位置识别失败与延迟请求失败分开展示，成功重试清除旧提示；
+  不写入数据库或建立错误历史。
+- 清理数据在停止 VPN 之前失败时明确尚未删除数据；进入删除阶段后的失败不承诺数据完整保留。
+  不增加全局错误弹窗，也不通过全局禁用交互处理失败。
+
+### 目录组织
 
 `lib/pages/` 和 `lib/service/` 按相同的业务归属组织：`connect`、`servers`、
 `advanced`、`settings`；`launch` 负责启动与初始化，`shared` 保存跨页面复用的实现。

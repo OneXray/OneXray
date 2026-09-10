@@ -26,7 +26,7 @@ void main() {
       stop: () async => throw StateError('Unexpected VPN stop'),
     );
     addTearDown(coordinator.dispose);
-    await coordinator.initialize(poll: false, registerReferences: false);
+    await coordinator.initialize(observe: false, registerReferences: false);
   });
 
   test(

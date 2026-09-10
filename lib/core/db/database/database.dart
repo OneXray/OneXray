@@ -37,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
 
   AppDatabase._internal() : super(_openConnection());
 
-  /// Only the exclusive startup upgrade flow may call this after an open error.
+  /// Startup database preparation calls this after an open error.
   /// The next factory call creates a fresh executor; a failed one is not reused.
   static Future<void> resetAfterOpenFailure() async {
     final failed = _singleton;
@@ -61,6 +61,12 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => transaction(() async {
+      final tables = await customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+      ).get();
+      if (tables.isNotEmpty) {
+        throw StateError('Unsupported database schema');
+      }
       await migrator.createAll();
       await customStatement('PRAGMA user_version = $schemaVersion');
     }),

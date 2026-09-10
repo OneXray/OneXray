@@ -8,6 +8,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/advanced/tunnel/interface.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class OutboundInterfaceController extends PolicyEditorController {
@@ -24,13 +25,21 @@ class OutboundInterfaceController extends PolicyEditorController {
   bool get failed => state.interfacesFailed;
 
   Future<void> readInterfaces() async {
-    emit(state.copyWith(interfacesLoading: true, interfacesFailed: false));
+    emit(
+      state.copyWith(
+        interfacesLoading: true,
+        interfacesFailed: false,
+        error: null,
+      ),
+    );
     try {
       final values =
           await (loadInterfaces?.call() ?? queryXrayOutboundInterfaces());
       emit(state.copyWith(interfaces: values));
-    } catch (_) {
-      emit(state.copyWith(interfacesFailed: true));
+    } catch (error) {
+      emit(
+        state.copyWith(interfacesFailed: true, error: failureDetails(error)),
+      );
     } finally {
       emit(state.copyWith(interfacesLoading: false));
     }

@@ -59,6 +59,15 @@ void main() {
     expect(row.countryCode, isNull);
     expect(PingService.isUnmeasured(row), isFalse);
     expect((await db.coreConfigDao.searchRow(second))!.countryCode, 'SG');
+    expect(
+      AppEventBus.instance.state.pingFailures[first]?.locationError,
+      'unavailable',
+    );
+    expect(AppEventBus.instance.state.pingFailures[first]?.success, isTrue);
+    expect(
+      AppEventBus.instance.state.pingFailures.containsKey(second),
+      isFalse,
+    );
   });
 
   test('imported-node and subscription queues always run', () async {

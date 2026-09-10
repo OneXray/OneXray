@@ -30,6 +30,7 @@ class XrayRuntimePageState {
   final String uptime;
   final bool loading;
   final bool failed;
+  final Object? failure;
   final bool saving;
   final bool systemExtension;
 
@@ -44,6 +45,7 @@ class XrayRuntimePageState {
     this.uptime = '—',
     this.loading = true,
     this.failed = false,
+    this.failure,
     this.saving = false,
     this.systemExtension = false,
   }) : log = Map<String, dynamic>.unmodifiable(log);
@@ -59,6 +61,7 @@ class XrayRuntimePageState {
     String? uptime,
     bool? loading,
     bool? failed,
+    Object? failure,
     bool? saving,
     bool? systemExtension,
   }) => XrayRuntimePageState(
@@ -76,6 +79,7 @@ class XrayRuntimePageState {
     uptime: uptime ?? this.uptime,
     loading: loading ?? this.loading,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     saving: saving ?? this.saving,
     systemExtension: systemExtension ?? this.systemExtension,
   );
@@ -159,8 +163,8 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
           runtime: reader.state.runtime.runtime ?? currentRuntime,
         ),
       );
-    } catch (_) {
-      emit(state.copyWith(failed: true));
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
     } finally {
       emit(state.copyWith(loading: false));
     }
@@ -227,8 +231,8 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
           ContextAlert.showToast(context, l.prototypeSettingsSaved);
         }
       }
-    } catch (_) {
-      emit(state.copyWith(failed: true));
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
     } finally {
       emit(state.copyWith(saving: false));
     }

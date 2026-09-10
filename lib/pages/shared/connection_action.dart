@@ -3,10 +3,10 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/runtime.dart';
-import 'package:onexray/service/connect/platform_requirements.dart';
-import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 Future<bool> runConnectionAction(
   BuildContext context,
@@ -17,15 +17,14 @@ Future<bool> runConnectionAction(
     await action();
     return true;
   } catch (error) {
-    if (coordinator.state.value.issue != 'cancelled' && context.mounted) {
+    if (!failureCancelled(error) &&
+        connectionFailureReason(error) != 'cancelled' &&
+        coordinator.state.value.issue != 'cancelled' &&
+        context.mounted) {
       final l = AppLocalizations.of(context)!;
       ContextAlert.showToast(
         context,
-        error is ConnectionPlatformRequirementException
-            ? l.prototypeChooseInterfaceNotice
-            : error is ConnectionResolutionException
-            ? l.prototypeNotEnoughServers
-            : l.prototypeCheckNetwork,
+        connectionFailureMessage(l, error: error),
       );
     }
     return false;

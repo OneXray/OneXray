@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/log/controller.dart';
@@ -95,7 +96,12 @@ class _LogFileViewerViewState extends State<LogFileViewerView> {
               _scrollToBottom();
             },
       code: !state.fileExists
-          ? RuntimeCodeUnavailable(message: l.prototypeTemporarilyUnavailable)
+          ? RuntimeCodeUnavailable(
+              message: appFailureMessage(
+                l,
+                state.failure ?? 'Log file does not exist.',
+              ),
+            )
           : SelectionArea(
               child: NotificationListener<ScrollNotification>(
                 onNotification: (notification) {

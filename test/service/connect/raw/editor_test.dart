@@ -209,7 +209,7 @@ void main() {
           ConnectionCoordinator(
             database: db,
             readRuntime: () async => null,
-            needsStatusPolling: () => false,
+            observeStatus: () async {},
             inspect: (_) async => host,
             prepare: (next, _) async => _runtime('b', next, _text),
             start: (runtime) async {
@@ -288,7 +288,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => null,
-          needsStatusPolling: () => false,
+          observeStatus: () async {},
           inspect: (_) async => host,
           prepare: (configuration, _) async =>
               _runtime('b', configuration, _text),
@@ -381,7 +381,7 @@ Future<ConnectionCoordinator> _initialize(
   ConnectionCoordinator coordinator,
 ) async {
   addTearDown(coordinator.dispose);
-  await coordinator.initialize(poll: false, registerReferences: false);
+  await coordinator.initialize(observe: false, registerReferences: false);
   return coordinator;
 }
 
@@ -398,6 +398,7 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
+      validationJson: '{}',
       entries: [],
       finalExit: null,
       nodeTags: {},

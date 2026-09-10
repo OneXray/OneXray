@@ -265,7 +265,7 @@ Future<ConnectionCoordinator> _initialize(
   ConnectionCoordinator coordinator,
 ) async {
   addTearDown(coordinator.dispose);
-  await coordinator.initialize(poll: false, registerReferences: false);
+  await coordinator.initialize(observe: false, registerReferences: false);
   return coordinator;
 }
 
@@ -278,6 +278,7 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
+      validationJson: '{}',
       entries: [],
       finalExit: null,
       nodeTags: {},

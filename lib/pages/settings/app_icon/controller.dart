@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -100,7 +101,7 @@ class AppIconController extends PageCubit<AppIconPageState> {
           appIcon: AppIcon.fromString(currentIcon) ?? AppIcon.primary,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       // Keep the default preview if the optional native icon query fails.
     } finally {
       emit(state.copyWith(loading: false));
@@ -130,11 +131,15 @@ class AppIconController extends PageCubit<AppIconPageState> {
         );
         if (ModalRoute.of(context)?.isCurrent == true) context.pop();
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.appIconPageSetFailed,
+          appFailureMessage(
+            AppLocalizations.of(context)!,
+            error,
+            operation: AppLocalizations.of(context)!.appIconPageSetFailed,
+          ),
         );
       }
     } finally {

@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
@@ -298,7 +299,7 @@ class XrayRuntimePage extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.all(20),
                               child: Text(
-                                l.prototypeTemporarilyUnavailable,
+                                appFailureMessage(l, state.failure),
                                 style: TextStyle(
                                   color: Theme.of(context).colorScheme.error,
                                 ),

@@ -243,7 +243,7 @@ class PingPage extends StatelessWidget {
                                 top: 10,
                               ),
                               child: Text(
-                                l.prototypeTemporarilyUnavailable,
+                                state.error!,
                                 style: AppTypography.settingsDetailNote
                                     .copyWith(color: palette.destructive),
                               ),

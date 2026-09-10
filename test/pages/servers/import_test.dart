@@ -90,6 +90,7 @@ void main() {
         release.complete(
           const SubscriptionInsertResult(
             status: SubscriptionUpdateResult.downloadFailed,
+            error: HttpException('HTTP 403'),
           ),
         );
         await Future<void>.delayed(Duration.zero);
@@ -97,6 +98,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(urls.length, 3);
+    expect(find.textContaining('HTTP 403'), findsNWidgets(3));
     expect(find.byType(ButtonProgressIndicator), findsNothing);
     expect(
       tester
@@ -109,60 +111,57 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final notify in [true, false]) {
-    testWidgets('node import success toast follows the entry point ($notify)', (
-      tester,
-    ) async {
-      var writes = 0;
-      ServerImportResult? result;
-      final controller = ServerImportController(
-        showSuccessToast: notify,
-        loadSubscription: (_) async => null,
-        service: ServerImportService(
-          parse: (_) async => [
-            outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
-          ],
-          write: (rows) async {
-            writes++;
-            return ConfigWriteResult(count: rows.length, ids: [1]);
-          },
-          schedule: (_) {},
-        ),
-      );
-      addTearDown(controller.close);
-      controller.text.text = 'vless://local';
-      await tester.pumpWidget(
-        _app(
-          Builder(
-            builder: (context) => TextButton(
-              onPressed: () async {
-                result = await showAppDialog<ServerImportResult>(
-                  context,
-                  (_) => ServerImportFormPage(
-                    controller: controller,
-                    action: ServerImportAction.paste,
-                  ),
-                );
-              },
-              child: const Text('Open'),
-            ),
+  testWidgets('node import reports success without confirmation', (
+    tester,
+  ) async {
+    var writes = 0;
+    ServerImportResult? result;
+    final controller = ServerImportController(
+      loadSubscription: (_) async => null,
+      service: ServerImportService(
+        parse: (_) async => [
+          outboundCompanion({'tag': 'local', 'protocol': 'freedom'}),
+        ],
+        write: (rows) async {
+          writes++;
+          return ConfigWriteResult(count: rows.length, ids: [1]);
+        },
+        schedule: (_) {},
+      ),
+    );
+    addTearDown(controller.close);
+    controller.text.text = 'vless://local';
+    await tester.pumpWidget(
+      _app(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () async {
+              result = await showAppDialog<ServerImportResult>(
+                context,
+                (_) => ServerImportFormPage(
+                  controller: controller,
+                  action: ServerImportAction.paste,
+                ),
+              );
+            },
+            child: const Text('Open'),
           ),
         ),
-      );
-      await tester.tap(find.text('Open'));
-      await tester.pumpAndSettle();
-      await _tapVisible(
-        tester,
-        find.widgetWithText(FilledButton, 'Import links'),
-      );
-      await tester.pumpAndSettle();
-      expect(writes, 1);
-      expect(find.byType(ServerImportPreviewPage), findsNothing);
-      expect(result?.count, 1);
-      expect(find.byType(ShadToast), notify ? findsOneWidget : findsNothing);
-      expect(tester.takeException(), isNull);
-    });
-  }
+      ),
+    );
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.widgetWithText(FilledButton, 'Import links'),
+    );
+    await tester.pumpAndSettle();
+    expect(writes, 1);
+    expect(find.byType(ServerImportPreviewPage), findsNothing);
+    expect(result?.count, 1);
+    expect(find.byType(ShadToast), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final action in [ServerImportAction.paste, ServerImportAction.json]) {
     testWidgets(
@@ -173,7 +172,6 @@ void main() {
         var writes = 0;
         final queued = <int>[];
         final controller = ServerImportController(
-          showSuccessToast: false,
           loadSubscription: (_) async => null,
           service: ServerImportService(
             parse: (_) async {

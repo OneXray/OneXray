@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/settings/app_update/service.dart';
@@ -64,7 +65,9 @@ abstract final class ServiceManager {
     await ConnectionPlatformRequirements().ensureRuntime();
     // Recovery must succeed before external commands or automatic connection
     // are enabled. The legacy Profile runtime must not initialize alongside it.
-    await ConnectionCoordinator.instance.initialize();
+    await ConnectionCoordinator.instance.initialize(
+      requestPermission: AppHostApi().requestPlatformPermission,
+    );
     await _runInit(
       "NotificationService",
       () => NotificationService().asyncInit(),
@@ -82,7 +85,11 @@ abstract final class ServiceManager {
       "AppStartupService",
       () => AppStartupService().handleServicesReady(),
     );
-    BackgroundTaskService().init();
+    BackgroundTaskService().init(
+      vpnConnected:
+          ConnectionCoordinator.instance.state.value.phase ==
+          ConnectionPhase.connected,
+    );
     _initialized = true;
     PingService().startAutomatic();
     unawaited(_checkUpdate());

@@ -39,14 +39,15 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
                     completion(.success(NativeVpnCommandResult(
                         state: .success,
                         status: status,
-                        permission: permission
+                        permission: permission,
+                        message: status == .disconnected ? VPNManager.shared.lastCommandError : nil
                     )))
                 }
             } catch {
                 completion(.success(NativeVpnCommandResult(
                     state: .failed,
                     permission: permission,
-                    message: "VPN status is unavailable."
+                    message: error.localizedDescription
                 )))
             }
         }
@@ -57,7 +58,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             let installed = await VPNManager.shared.startVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
             flutterApi.refreshVpn(result: installed)
-            completion(.success(commandResult(installed, permission: permission)))
+            completion(.success(await commandResult(installed, permission: permission)))
         }
     }
 
@@ -66,7 +67,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             let installed = await VPNManager.shared.stopVpn()
             let permission = await VPNManager.shared.queryPlatformPermission()
             flutterApi.refreshVpn(result: installed)
-            completion(.success(commandResult(installed, permission: permission)))
+            completion(.success(await commandResult(installed, permission: permission)))
         }
     }
     
@@ -176,7 +177,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         UIApplication.shared.setAlternateIconName(iconName) { error in
             if let error = error {
                 YGLog(error.localizedDescription)
-                completion(.success(false))
+                completion(.failure(error))
             } else {
                 completion(.success(true))
             }
@@ -201,14 +202,19 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     private func commandResult(
         _ result: RefreshVpnResult,
         permission: PlatformPermissionResult
-    ) -> NativeVpnCommandResult {
+    ) async -> NativeVpnCommandResult {
         switch result {
         case .installed:
-            return NativeVpnCommandResult(
-                state: .success,
-                permission: permission,
-                message: nil
-            )
+            do {
+                return NativeVpnCommandResult(
+                    state: .success,
+                    status: try await flutterApi.readVpnStatus(),
+                    permission: permission,
+                    message: nil
+                )
+            } catch {
+                return NativeVpnCommandResult(state: .failed, permission: permission, message: error.localizedDescription)
+            }
         case .waitForApproval:
             return NativeVpnCommandResult(
                 state: .waitingForPlatformPermission,
@@ -226,7 +232,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             return NativeVpnCommandResult(
                 state: .failed,
                 permission: permission,
-                message: nil
+                message: VPNManager.shared.lastCommandError ?? permission.message
             )
         }
     }

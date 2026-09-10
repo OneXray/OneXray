@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:go_router/go_router.dart';
@@ -51,11 +52,15 @@ class LanguageController extends PageCubit<LanguagePageState> {
         );
         if (ModalRoute.of(context)?.isCurrent == true) context.pop();
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.buttonSaveFailed,
+          appFailureMessage(
+            AppLocalizations.of(context)!,
+            error,
+            operation: AppLocalizations.of(context)!.buttonSaveFailed,
+          ),
         );
       }
     } finally {

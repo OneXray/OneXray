@@ -4,6 +4,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
@@ -35,12 +37,11 @@ class HostConnection {
   bool get connected => status == VpnStatus.connected;
 }
 
-class ConnectionHostException implements Exception {
+class ConnectionHostException extends AppFailure {
   final String reason;
   final PlatformPermissionResult? permission;
-  const ConnectionHostException(this.reason, {this.permission});
-  @override
-  String toString() => reason;
+  const ConnectionHostException(this.reason, {this.permission, super.cause})
+    : super(FailureCategory.runtime, reason);
 }
 
 /// Native status owns VPN state. Xray metrics supplies current-session counters.
@@ -52,9 +53,6 @@ class ConnectionRuntimeHost {
   final Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
   _startVpn;
   final Future<NativeVpnCommandResult> Function()? _stopVpn;
-  final Duration startTimeout;
-  final Duration stopTimeout;
-  final Duration pollInterval;
 
   ConnectionRuntimeHost({
     String? runDirectory,
@@ -63,9 +61,6 @@ class ConnectionRuntimeHost {
     Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
     startVpn,
     Future<NativeVpnCommandResult> Function()? stopVpn,
-    this.startTimeout = const Duration(seconds: 30),
-    this.stopTimeout = const Duration(seconds: 15),
-    this.pollInterval = const Duration(milliseconds: 200),
   }) : _runDirectory = runDirectory,
        _readStatus = readStatus,
        _startVpn = startVpn,
@@ -74,11 +69,13 @@ class ConnectionRuntimeHost {
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
 
-  Future<({VpnStatus status, PlatformPermissionResult? permission})>
+  Future<
+    ({VpnStatus status, PlatformPermissionResult? permission, String? message})
+  >
   _status() async {
     final readStatus = _readStatus;
     if (readStatus != null) {
-      return (status: await readStatus(), permission: null);
+      return (status: await readStatus(), permission: null, message: null);
     }
     final result = await _host.readVpnStatus();
     if (result.state != NativeVpnCommandState.success ||
@@ -86,9 +83,14 @@ class ConnectionRuntimeHost {
       throw ConnectionHostException(
         'nativeStatusFailed',
         permission: result.permission,
+        cause: result.message ?? result.permission?.message,
       );
     }
-    return (status: result.status!, permission: result.permission);
+    return (
+      status: result.status!,
+      permission: result.permission,
+      message: result.message,
+    );
   }
 
   static Map<String, dynamic> _jsonObject(String text) {
@@ -195,7 +197,7 @@ class ConnectionRuntimeHost {
   }) async {
     final platform = observedStatus == null
         ? await _status()
-        : (status: observedStatus, permission: null);
+        : (status: observedStatus, permission: null, message: null);
     return HostConnection(
       platform.status,
       runtime: platform.status == VpnStatus.disconnected
@@ -246,36 +248,27 @@ class ConnectionRuntimeHost {
             ? 'permissionRequired'
             : 'startFailed',
         permission: result.permission,
+        cause: result.message ?? result.permission?.message,
       );
     }
-    final deadline = DateTime.now().add(startTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final platform = await _status();
-      if (platform.status == VpnStatus.connected) {
-        return HostConnection(
-          platform.status,
-          runtime: runtime,
-          permission: platform.permission,
-        );
-      }
-      await Future<void>.delayed(pollInterval);
+    if (result.status != VpnStatus.connected) {
+      throw ConnectionHostException('startNotConfirmed', cause: result.message);
     }
-    throw const ConnectionHostException('startTimeout');
+    return HostConnection(
+      result.status!,
+      runtime: runtime,
+      permission: result.permission,
+    );
   }
 
   Future<HostConnection> stop() async {
     final result = await (_stopVpn?.call() ?? _host.stopVpn());
     if (result.state != NativeVpnCommandState.success) {
-      throw const ConnectionHostException('stopFailed');
+      throw ConnectionHostException('stopFailed', cause: result.message);
     }
-    final deadline = DateTime.now().add(stopTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final platform = await _status();
-      if (platform.status == VpnStatus.disconnected) {
-        return HostConnection(platform.status, permission: platform.permission);
-      }
-      await Future<void>.delayed(pollInterval);
+    if (result.status != VpnStatus.disconnected) {
+      throw ConnectionHostException('stopNotConfirmed', cause: result.message);
     }
-    throw const ConnectionHostException('stopTimeout');
+    return HostConnection(result.status!, permission: result.permission);
   }
 }

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,7 +52,7 @@ void main() {
         return const HostConnection(VpnStatus.disconnected);
       },
     );
-    await coordinator.initialize(poll: false, registerReferences: false);
+    await coordinator.initialize(observe: false, registerReferences: false);
     addTearDown(coordinator.dispose);
     // This test exercises the real file queue, but never accesses the filesystem.
     geodata = GeoDataService.forTesting(
@@ -223,7 +225,18 @@ void main() {
       },
     );
     stopFails = true;
-    expect(await cleanup.clearFromSettings(), isFalse);
+    await expectLater(
+      cleanup.clearFromSettings(),
+      throwsA(
+        isA<AppFailure>()
+            .having((error) => error.code, 'stage', 'cleanupBeforeDelete')
+            .having(
+              (error) => error.cause,
+              'cause',
+              isA<ConnectionHostException>(),
+            ),
+      ),
+    );
     expect(clears, 0);
     expect(await db.coreConfigDao.searchRow(id), isNotNull);
     await ping.pingConfigIds([id]);

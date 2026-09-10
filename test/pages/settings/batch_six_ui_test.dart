@@ -197,7 +197,10 @@ void main() {
     launched.complete(false);
     await tester.pumpAndSettle();
     final l = AppLocalizations.of(tester.element(find.text('Show update')))!;
-    expect(find.text(l.prototypeTemporarilyUnavailable), findsOneWidget);
+    expect(
+      find.text('${l.resultFailed}\nCould not open update page'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

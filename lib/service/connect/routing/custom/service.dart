@@ -1,12 +1,12 @@
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/model/xray_json.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
+import 'package:onexray/service/shared/xray/validation.dart';
 
 /// Persists validated Custom-routing state. Applying a currently used profile
 /// remains the connection coordinator's responsibility.
@@ -26,22 +26,31 @@ class CustomRoutingService {
   }) => GeoDataService().withFiles(() async {
     final config = state.xrayJson;
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
-    config.env = XrayEnv(
-      assetLocation: VpnConstants.datDir,
-      certLocation: VpnConstants.datDir,
-    );
     config.outbounds = [
       for (final tag in tags) createFreedomOutbound(tag: tag).toJson(),
       createFreedomOutbound(tag: 'direct').toJson(),
       createBlackholeOutbound(tag: 'block').toJson(),
     ];
     (config.routing ??= XrayRouting()).balancers = [
-      XrayBalancer(tag: 'proxy', selector: tags, fallbackTag: 'direct'),
+      XrayBalancer(
+        tag: 'proxy',
+        selector: tags,
+        strategy: XrayBalancingStrategy(type: 'roundRobin'),
+        fallbackTag: 'direct',
+      ),
     ];
+    // fallbackTag requires the same Observatory dependency as runtime routing.
+    config.observatory = XrayObservatory(subjectSelector: []);
     final error = await (testXray ?? AppHostApi().testXray)(
-      JsonTool.encoder.convert(config.toJson()),
+      XrayValidation.normal(config),
     );
-    if (error.isNotEmpty) throw FormatException(error);
+    if (error.isNotEmpty) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: error,
+      );
+    }
   });
 
   Future<int> save(RoutingProfileState state) async {

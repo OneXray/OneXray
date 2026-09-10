@@ -1,3 +1,5 @@
+import 'package:onexray/core/errors/failure.dart';
+
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -77,7 +79,13 @@ void main() {
           confirmReconnect: () async =>
               throw StateError('Unexpected confirmation'),
         ),
-        throwsFormatException,
+        throwsA(
+          isA<AppFailure>().having(
+            (e) => e.cause,
+            'core reason',
+            'Core rejected port',
+          ),
+        ),
       );
       expect(calls, 1);
       expect(await db.routingProfileDao.searchRow(id), original);
@@ -389,7 +397,7 @@ Future<ConnectionCoordinator> _initialize(
   ConnectionCoordinator coordinator,
 ) async {
   addTearDown(coordinator.dispose);
-  await coordinator.initialize(poll: false, registerReferences: false);
+  await coordinator.initialize(observe: false, registerReferences: false);
   return coordinator;
 }
 
@@ -406,6 +414,7 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
+      validationJson: '{}',
       entries: [],
       finalExit: null,
       nodeTags: {},

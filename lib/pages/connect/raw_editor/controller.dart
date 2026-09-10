@@ -8,6 +8,7 @@ import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
@@ -131,7 +132,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
       if (isPageActive && revision == _textRevision) {
         emit(state.copyWith(sharingDataCount: count));
       }
-    } catch (_) {
+    } catch (error) {
       // Invalid or unresolved drafts cannot promise data links in a share.
     }
   }
@@ -157,11 +158,11 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
             ? json['name'] as String
             : '';
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+            error: appFailureMessage(AppLocalizations.of(context)!, error),
           ),
         );
       }
@@ -215,14 +216,24 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
             'limit' => l10n.prototypeRawJsonLimit,
             'name' => l10n.validationNameRequired,
             'invalid' => l10n.validationJsonInvalid,
-            _ => l10n.buttonSaveFailed,
+            _ => appFailureMessage(
+              l10n,
+              failure,
+              operation: l10n.buttonSaveFailed,
+            ),
           },
         ),
       );
-    } on FormatException {
-      emit(state.copyWith(error: l10n.validationJsonInvalid));
-    } catch (_) {
-      emit(state.copyWith(error: l10n.buttonSaveFailed));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          error: appFailureMessage(
+            l10n,
+            error,
+            operation: l10n.buttonSaveFailed,
+          ),
+        ),
+      );
     } finally {
       _saving = false;
       if (!isPageActive) await transfers.close();

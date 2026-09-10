@@ -21,18 +21,6 @@ export 'controller.dart' show ServerImportAction;
 
 export 'package:onexray/service/servers/import.dart' show ServerImportResult;
 
-Future<void> openServerImportAction(
-  BuildContext context,
-  ServerImportAction action,
-) async {
-  final controller = ServerImportController(showSuccessToast: false);
-  try {
-    await controller.open(context, action, closeParent: false);
-  } finally {
-    await controller.close();
-  }
-}
-
 class ServersImportPage extends StatefulWidget {
   final String? initialText;
   final ServerImportController? controller;
@@ -731,7 +719,7 @@ class _ImportFeedback extends StatelessWidget {
             Text(
               item.result.success
                   ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
-                  : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status)}',
+                  : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status, error: item.result.error)}',
               style: AppTypography.importHint.copyWith(
                 color: item.result.success
                     ? palette.mutedForeground

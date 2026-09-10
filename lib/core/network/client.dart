@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/model.dart';
 import 'package:onexray/core/network/user_agent.dart';
@@ -81,7 +82,11 @@ class NetClient {
     try {
       var uri = Uri.parse(url);
       if (httpsOnly && !isHttpsDownloadUri(uri)) {
-        return null;
+        throw const AppFailure(
+          FailureCategory.input,
+          'downloadUrl',
+          cause: 'A valid HTTPS download URL is required',
+        );
       }
       await asyncInit();
       final headers = requestHeaders?.toHttpHeaders();
@@ -102,24 +107,36 @@ class NetClient {
         );
         final status = res.statusCode ?? 0;
         if (status < 300) {
-          return res.data;
+          return res.data ?? '';
         }
         final location = res.headers.value(HttpHeaders.locationHeader);
         if (location == null ||
             location.isEmpty ||
             redirectCount == _maxDownloadRedirects) {
-          return null;
+          throw const AppFailure(
+            FailureCategory.network,
+            'redirect',
+            cause: 'Missing redirect location or too many redirects',
+          );
         }
         uri = uri.resolve(location);
         if (httpsOnly && !isHttpsDownloadUri(uri)) {
-          return null;
+          throw const AppFailure(
+            FailureCategory.network,
+            'redirect',
+            cause: 'Download redirected to a non-HTTPS URL',
+          );
         }
       }
-      return null;
+      throw const AppFailure(
+        FailureCategory.network,
+        'redirect',
+        cause: 'Too many download redirects',
+      );
     } catch (e) {
       // Subscription URLs can contain credentials; never log the request URI.
-      ygLogger('text download failed (${e.runtimeType})');
-      return null;
+      ygLogger('text download failed: ${failureDetails(e)}');
+      rethrow;
     }
   }
 
@@ -129,8 +146,8 @@ class NetClient {
       final res = await _downloadClient.get<Map<String, dynamic>>(url);
       return res.data;
     } catch (e) {
-      ygLogger("$e");
-      return null;
+      ygLogger('JSON download failed: ${failureDetails(e)}');
+      rethrow;
     }
   }
 }

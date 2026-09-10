@@ -49,7 +49,7 @@ class MainActivity : FlutterFragmentActivity() {
                     val running = intent.getBooleanExtra(OneVpnService.EXTRA_RUNNING, false)
                     XLog.d("MainActivity: received VPN status changed: $running")
                     // 将状态交给现有 hostApi（可触发 Flutter 通知或内部状态更新）
-                    hostApi.onVpnStatusChanged(running)
+                    hostApi.onVpnStatusChanged(running, intent.getStringExtra(OneVpnService.EXTRA_ERROR))
                 }
             }
         }

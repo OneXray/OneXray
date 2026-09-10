@@ -61,10 +61,17 @@ class ServerEditorPage extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Semantics(
                         liveRegion: true,
-                        child: Text(
-                          state.error!,
-                          style: AppTypography.subscriptionInfo.copyWith(
-                            color: p.destructive,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery.sizeOf(context).height / 4,
+                          ),
+                          child: SingleChildScrollView(
+                            child: SelectableText(
+                              state.error!,
+                              style: AppTypography.subscriptionInfo.copyWith(
+                                color: p.destructive,
+                              ),
+                            ),
                           ),
                         ),
                       ),
