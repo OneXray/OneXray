@@ -21,8 +21,8 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   Raw rows above the new-item limit and keep retired Profile/Multi-node rows
   outside product flows.
 - Current-session traffic and speed come only from Xray metrics HTTP while the
-  connection page is visible in the foreground. Do not persist traffic or maintain
-  device totals.
+  connection page and app view are visible; input focus is not required. Do not
+  persist traffic or maintain device totals.
   Keep the iOS Debug local proxy separate from normal UI and business state.
 - Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`
   for AppBar styling, `ThemeData.textTheme`/`AppTypography` for typography, and

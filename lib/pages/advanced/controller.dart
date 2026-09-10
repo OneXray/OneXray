@@ -9,6 +9,7 @@ import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/shared/app_lifecycle.dart';
 
 class AdvancedPageState {
   final PlatformPolicy? policy;
@@ -35,7 +36,7 @@ class AdvancedController extends PageCubit<AdvancedPageState>
   String _version = '—';
   bool _failed = false;
   bool _visible = false;
-  bool _foreground = true;
+  bool _appVisible = true;
   Timer? _uptimeTimer;
   final DateTime Function() _now;
 
@@ -46,9 +47,7 @@ class AdvancedController extends PageCubit<AdvancedPageState>
        _now = now ?? DateTime.now,
        super(const AdvancedPageState()) {
     WidgetsBinding.instance.addObserver(this);
-    _foreground =
-        WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _appVisible = isAppVisible(WidgetsBinding.instance.lifecycleState);
     this.coordinator.state.addListener(_publish);
     reload();
     _readVersion();
@@ -62,7 +61,9 @@ class AdvancedController extends PageCubit<AdvancedPageState>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _foreground = state == AppLifecycleState.resumed;
+    final visible = isAppVisible(state);
+    if (_appVisible == visible) return;
+    _appVisible = visible;
     _publish();
   }
 
@@ -126,7 +127,7 @@ class AdvancedController extends PageCubit<AdvancedPageState>
         failed: _failed,
       ),
     );
-    if (_visible && _foreground && uptime != '—') {
+    if (_visible && _appVisible && uptime != '—') {
       _uptimeTimer ??= Timer.periodic(
         const Duration(seconds: 1),
         (_) => _publish(),

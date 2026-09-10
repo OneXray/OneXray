@@ -14,6 +14,7 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/shared/app_lifecycle.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 
@@ -107,7 +108,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Set<int> _preparingNodeIds = {};
   bool _closed = false;
   bool _observingLifecycle = false;
-  bool _foreground = true;
+  bool _appVisible = true;
   bool _resetSpeed = true;
   bool _failureLatched = false;
 
@@ -193,10 +194,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           if (poll) {
             WidgetsBinding.instance.addObserver(this);
             _observingLifecycle = true;
-            _foreground =
-                WidgetsBinding.instance.lifecycleState == null ||
-                WidgetsBinding.instance.lifecycleState ==
-                    AppLifecycleState.resumed;
+            _appVisible = isAppVisible(WidgetsBinding.instance.lifecycleState);
             _syncPolling();
             _drainNativeStatus();
           }
@@ -224,12 +222,17 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final wasForeground = _foreground;
-    _foreground = state == AppLifecycleState.resumed;
-    _resetSpeed = true;
-    _trafficGeneration++;
-    _syncPolling();
-    if (_foreground && !wasForeground && _ready && _observingLifecycle) {
+    final wasVisible = _appVisible;
+    _appVisible = isAppVisible(state);
+    if (_appVisible != wasVisible) {
+      _resetSpeed = true;
+      _trafficGeneration++;
+      _syncPolling();
+    }
+    if (_appVisible &&
+        (!wasVisible || state == AppLifecycleState.resumed) &&
+        _ready &&
+        _observingLifecycle) {
       unawaited(refresh());
     }
   }
@@ -247,7 +250,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   bool get _trafficWanted =>
       _ready &&
       !_closed &&
-      _foreground &&
+      _appVisible &&
       _trafficVisible &&
       !_commandActive &&
       _lastNativeStatus == VpnStatus.connected &&
@@ -258,7 +261,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     final watchStatus =
         _ready &&
         !_closed &&
-        _foreground &&
+        _appVisible &&
         _observingLifecycle &&
         _needsStatusPolling();
     if (!watchStatus) {
@@ -341,7 +344,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }
 
   Future<void> refresh({VpnStatus? observedStatus}) async {
-    if (_closed || (!_foreground && observedStatus == null)) return;
+    if (_closed || (!_appVisible && observedStatus == null)) return;
     if (_commandActive || _polling) {
       if (observedStatus != null) _pendingStatus = observedStatus;
       return;

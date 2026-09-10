@@ -168,6 +168,137 @@ void main() {
   );
 
   test(
+    'focus changes preserve in-flight traffic and the speed baseline',
+    () async {
+      final runtime = _runtime('a');
+      var reads = 0;
+      Completer<ConnectionTraffic>? pending;
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => runtime,
+          inspect: (_) async =>
+              HostConnection(VpnStatus.connected, runtime: runtime),
+          readTraffic: (_) async {
+            reads++;
+            return pending == null
+                ? ConnectionTraffic(
+                    uplink: reads * 100,
+                    downlink: reads * 200,
+                    sampledAtMs: reads * 1000,
+                  )
+                : await pending.future;
+          },
+        ),
+      );
+      coordinator.setTrafficVisible(true);
+      await Future<void>.delayed(Duration.zero);
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.downloadSpeed, 200);
+
+      pending = Completer<ConnectionTraffic>();
+      final reading = coordinator.refreshTraffic();
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.inactive);
+      pending.complete(
+        const ConnectionTraffic(uplink: 300, downlink: 600, sampledAtMs: 3000),
+      );
+      await reading;
+      pending = null;
+      expect(coordinator.state.value.traffic!.downlink, 600);
+      expect(coordinator.state.value.downloadSpeed, 200);
+
+      await coordinator.refreshTraffic();
+      expect(reads, 4);
+      expect(coordinator.state.value.downloadSpeed, 200);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        reads,
+        4,
+        reason: 'Focus changes must not restart the sampling timer.',
+      );
+      await coordinator.refreshTraffic();
+      expect(reads, 5);
+      expect(coordinator.state.value.downloadSpeed, 200);
+    },
+  );
+
+  testWidgets(
+    'visible inactive windows start and retain traffic and desktop status polling',
+    (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      final runtime = _runtime('a');
+      var statusReads = 0;
+      var trafficReads = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => runtime,
+        inspect: (_) async {
+          statusReads++;
+          return HostConnection(VpnStatus.connected, runtime: runtime);
+        },
+        readTraffic: (_) async {
+          trafficReads++;
+          return ConnectionTraffic(
+            uplink: trafficReads * 100,
+            downlink: trafficReads * 200,
+            sampledAtMs: trafficReads * 1000,
+          );
+        },
+        needsStatusPolling: () => true,
+        statusEvents: const Stream.empty(),
+      );
+      try {
+        await coordinator.initialize(registerReferences: false);
+        coordinator.setTrafficVisible(true);
+        await tester.pump();
+        expect(trafficReads, 1);
+        final initialStatusReads = statusReads;
+        await tester.pump(const Duration(seconds: 5));
+        expect(statusReads, greaterThan(initialStatusReads));
+        expect(trafficReads, greaterThan(1));
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        final hiddenStatusReads = statusReads;
+        final hiddenTrafficReads = trafficReads;
+        await tester.pump(const Duration(seconds: 5));
+        await coordinator.refresh();
+        await coordinator.refreshTraffic();
+        expect(statusReads, hiddenStatusReads);
+        expect(trafficReads, hiddenTrafficReads);
+
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump();
+        expect(statusReads, greaterThan(hiddenStatusReads));
+        expect(trafficReads, greaterThan(hiddenTrafficReads));
+        expect(coordinator.state.value.downloadSpeed, 0);
+        final restoredStatusReads = statusReads;
+        final restoredTrafficReads = trafficReads;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        expect(
+          statusReads,
+          restoredStatusReads + 1,
+          reason:
+              'Reactivation still reconciles native status and permissions.',
+        );
+        expect(trafficReads, restoredTrafficReads);
+        await tester.pump(const Duration(seconds: 1));
+        expect(coordinator.state.value.downloadSpeed, 200);
+      } finally {
+        coordinator.dispose();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+      }
+    },
+  );
+
+  test(
     'read-only status and metrics do not enter the paused command queue',
     () async {
       final runtime = _runtime('a');
