@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
+import 'package:onexray/core/errors/failure.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -20,10 +21,15 @@ import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 
 final class SubscriptionLoadResult {
-  const SubscriptionLoadResult({required this.status, this.rows = const []});
+  const SubscriptionLoadResult({
+    required this.status,
+    this.rows = const [],
+    this.error,
+  });
 
   final SubscriptionUpdateResult status;
   final List<CoreConfigCompanion> rows;
+  final Object? error;
 
   bool get hasUsableRows =>
       status == SubscriptionUpdateResult.success &&
@@ -152,6 +158,7 @@ class SubscriptionService {
       final loaded = await _loadRows(input);
       if (!loaded.hasUsableRows) {
         return SubscriptionInsertResult(
+          error: loaded.error,
           status: loaded.status == SubscriptionUpdateResult.success
               ? SubscriptionUpdateResult.invalidContent
               : loaded.status,
@@ -189,8 +196,9 @@ class SubscriptionService {
       ygLogger(
         'insert subscription failed (${error.runtimeType})\n$stackTrace',
       );
-      return const SubscriptionInsertResult(
+      return SubscriptionInsertResult(
         status: SubscriptionUpdateResult.writeFailed,
+        error: error,
       );
     }
   }
@@ -235,8 +243,12 @@ class SubscriptionService {
             ? SubscriptionUpdateResult.success
             : SubscriptionUpdateResult.writeFailed;
       });
-    } catch (_) {
-      return SubscriptionUpdateResult.writeFailed;
+    } on _SupersededSubscriptionUpdate {
+      throw const AppFailure(
+        FailureCategory.conflict,
+        'changed',
+        cause: 'The subscription changed during this operation. Reopen it and try again.',
+      );
     } finally {
       _finishUpdate(id, generation);
     }
@@ -335,6 +347,7 @@ class SubscriptionService {
       _ensureCurrent(id, generation);
       if (!loaded.hasUsableRows) {
         return SubscriptionRefreshResult(
+          error: loaded.error,
           status: loaded.status == SubscriptionUpdateResult.success
               ? SubscriptionUpdateResult.invalidContent
               : loaded.status,
@@ -358,8 +371,9 @@ class SubscriptionService {
       ygLogger(
         'refresh subscription failed (${error.runtimeType})\n$stackTrace',
       );
-      return const SubscriptionRefreshResult(
+      return SubscriptionRefreshResult(
         status: SubscriptionUpdateResult.writeFailed,
+        error: error,
       );
     }
   }
@@ -433,13 +447,21 @@ class SubscriptionService {
     }
     final ageContext = input.normalizedAgeContext;
 
-    final text = await NetClient().getText(
-      input.url,
-      httpsOnly: true,
-      requestHeaders: DownloadRequestHeaders(
-        agePublicKey: ageContext?.publicKey,
-      ),
-    );
+    final String? text;
+    try {
+      text = await NetClient().getText(
+        input.url,
+        httpsOnly: true,
+        requestHeaders: DownloadRequestHeaders(
+          agePublicKey: ageContext?.publicKey,
+        ),
+      );
+    } catch (error) {
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.downloadFailed,
+        error: error,
+      );
+    }
     if (text == null) {
       return const SubscriptionLoadResult(
         status: SubscriptionUpdateResult.downloadFailed,
@@ -458,11 +480,15 @@ class SubscriptionService {
         rows: rows,
       );
     } on LibXrayInvokeException catch (error) {
-      return SubscriptionLoadResult(status: _ageErrorStatus(error.message));
+      return SubscriptionLoadResult(
+        status: _ageErrorStatus(error.message),
+        error: error,
+      );
     } catch (error, stackTrace) {
       ygLogger('parse subscription failed (${error.runtimeType})\n$stackTrace');
-      return const SubscriptionLoadResult(
+      return SubscriptionLoadResult(
         status: SubscriptionUpdateResult.invalidContent,
+        error: error,
       );
     }
   }

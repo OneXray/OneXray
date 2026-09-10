@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/advanced/xray/runtime_files.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:onexray/pages/shared/page_cubit.dart';
@@ -17,6 +18,7 @@ class LogFileViewerPageState {
   final bool followTail;
   final bool truncated;
   final bool exporting;
+  final Object? failure;
 
   const LogFileViewerPageState({
     this.title = "",
@@ -25,6 +27,7 @@ class LogFileViewerPageState {
     this.followTail = true,
     this.truncated = false,
     this.exporting = false,
+    this.failure,
   });
 
   LogFileViewerPageState copyWith({
@@ -34,6 +37,8 @@ class LogFileViewerPageState {
     bool? followTail,
     bool? truncated,
     bool? exporting,
+    Object? failure,
+    bool clearFailure = false,
   }) {
     return LogFileViewerPageState(
       title: title ?? this.title,
@@ -42,6 +47,7 @@ class LogFileViewerPageState {
       followTail: followTail ?? this.followTail,
       truncated: truncated ?? this.truncated,
       exporting: exporting ?? this.exporting,
+      failure: clearFailure ? null : failure ?? this.failure,
     );
   }
 }
@@ -96,9 +102,10 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
         fileExists: true,
         truncated: replace ? _droppedContent : state.truncated,
       );
-    } catch (_) {
+    } catch (error) {
       // An unavailable file must not leave a stale successful view.
       _resetMissingFile();
+      emit(state.copyWith(failure: error));
     } finally {
       _reading = false;
     }
@@ -136,6 +143,7 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
         lines: lines,
         fileExists: fileExists,
         truncated: truncated || _droppedContent,
+        clearFailure: true,
       ),
     );
   }
@@ -171,10 +179,18 @@ class LogFileViewerController extends PageCubit<LogFileViewerPageState> {
         params.path,
         p.basename(params.path),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l.prototypeTemporarilyUnavailable)),
+          SnackBar(
+            content: Text(
+              appFailureMessage(
+                l,
+                error,
+                operation: l.actionResult(l.prototypeExport, l.resultFailed),
+              ),
+            ),
+          ),
         );
       }
     } finally {

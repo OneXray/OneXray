@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
@@ -54,8 +55,10 @@ class DataUpdateService {
       if (shouldUpdateGeoData && !_paused && isVpnConnected()) {
         await _refreshOutdatedGeoData(autoUpdateState, isVpnConnected);
       }
-    } catch (_) {
-      if (!_paused) ygLogger('Data update check failed');
+    } catch (error) {
+      if (!_paused) {
+        ygLogger('Data update check failed: ${failureDetails(error)}');
+      }
     } finally {
       _running = null;
       finished.complete();
@@ -73,9 +76,9 @@ class DataUpdateService {
     if (_expired(systemGeoData, now, interval)) {
       try {
         await GeoDataService().updateDefaults();
-      } catch (_) {
+      } catch (error) {
         // Keep the default pair due, but do not starve independent custom data.
-        ygLogger('Default Geodata update failed');
+        ygLogger('Default Geodata update failed: ${failureDetails(error)}');
       }
     }
 
@@ -86,8 +89,8 @@ class DataUpdateService {
       if (now.difference(geoData.timestamp).inHours >= interval) {
         try {
           await GeoDataService().updateCustom(geoData);
-        } catch (_) {
-          ygLogger('Custom Geodata update failed');
+        } catch (error) {
+          ygLogger('Custom Geodata update failed: ${failureDetails(error)}');
         }
       }
     }

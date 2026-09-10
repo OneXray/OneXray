@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -184,7 +185,11 @@ class ConnectionPreparation {
     );
     final validation = await AppHostApi().testXray(compiled.xrayJson);
     if (validation.isNotEmpty) {
-      throw const FormatException('Xray configuration validation failed');
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: validation,
+      );
     }
     for (final server in [...entries, ?finalExit]) {
       final row = await db.coreConfigDao.searchRow(server.id);

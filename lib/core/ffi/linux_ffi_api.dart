@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
@@ -62,8 +64,9 @@ class LinuxFfiApi extends BaseFfiApi {
 
     var res = await startCore(coreRequest, request.tun);
     if (!res) {
+      final error = _lastCoreError;
       await stopVpn();
-      return commandFailed();
+      return commandFailed(error);
     }
     await updateVpnStatus(VpnStatus.connected);
     return commandSuccess();
@@ -75,7 +78,7 @@ class LinuxFfiApi extends BaseFfiApi {
     final stopped = await stopCore();
     if (!stopped) {
       await updateVpnStatus(VpnStatus.connected);
-      return commandFailed();
+      return commandFailed('Unable to stop the current Core process.');
     }
     await Future.delayed(Duration(seconds: 1));
     await updateVpnStatus(VpnStatus.disconnected);
@@ -93,6 +96,7 @@ class LinuxFfiApi extends BaseFfiApi {
   Process? _coreProcess;
   DesktopCoreProcessRecord? _currentRecord;
   bool _stopping = false;
+  String? _lastCoreError;
 
   // App-owned processes already report exitCode; restored PIDs cannot do so.
   bool get needsVpnStatusPolling =>
@@ -103,15 +107,16 @@ class LinuxFfiApi extends BaseFfiApi {
       _filesDirectory ?? await super.getTunFilesDir();
 
   Future<bool> startCore(LibXrayRunConfig request, TunJson? tun) async {
+    _lastCoreError = null;
     try {
       if (!await _stopCoreProcess()) {
-        ygLogger("start core failed: previous core is still running");
+        _lastCoreError = 'The previous Core process is still running.';
         return false;
       }
 
       final inputs = await materializeRunXrayConfig(request);
       if (inputs == null) {
-        ygLogger("start core failed: xrayJson is empty");
+        _lastCoreError = 'The Xray configuration is empty.';
         return false;
       }
 
@@ -144,14 +149,17 @@ class LinuxFfiApi extends BaseFfiApi {
       }
       await _processStore.write(record);
     } catch (e) {
-      ygLogger('start core failed (${e.runtimeType})');
+      _lastCoreError = failureDetails(e);
+      ygLogger('start core failed: $_lastCoreError');
       await _stopCoreProcess();
       return false;
     }
 
     await Future.delayed(Duration(seconds: 1));
 
-    return await queryCoreRunning() ?? false;
+    final running = await queryCoreRunning() ?? false;
+    if (!running) _lastCoreError = 'The Core process exited during startup.';
+    return running;
   }
 
   Future<bool> cleanupStaleCore() async {

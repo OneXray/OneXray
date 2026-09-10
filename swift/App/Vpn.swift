@@ -4,10 +4,18 @@ import NetworkExtension
 
 typealias VPNStatusCallback = @MainActor () async throws -> Void
 
-enum VPNError: Error {
+enum VPNError: LocalizedError {
     case sessionNotReady
     case noGroupContainer
     case routingDataSyncFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .sessionNotReady: return "The VPN session is not ready."
+        case .noGroupContainer: return "The App Group data directory is unavailable."
+        case .routingDataSyncFailed: return "Unable to transfer routing data to the VPN extension."
+        }
+    }
 }
 
 @MainActor
@@ -15,6 +23,9 @@ class VPNManager {
     static let shared = VPNManager()
 
     var vpn: NETunnelProviderManager?
+    private(set) var lastCommandError: String?
+    private var awaitingStart = false
+    private var observedConnecting = false
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
     private var systemExtensionActivationTask: Task<RefreshVpnResult, Never>?
@@ -249,17 +260,38 @@ class VPNManager {
         #if targetEnvironment(simulator)
         return try await SimulatorProxy.isRunning() ? .connected : .disconnected
         #else
-        return VPNManager.shared.vpn?.connection.status
+        let status = vpn?.connection.status
+        if status == .connected {
+            awaitingStart = false
+            lastCommandError = nil
+        } else if status == .connecting || status == .reasserting {
+            observedConnecting = true
+        } else if status == .disconnected, awaitingStart, observedConnecting {
+            awaitingStart = false
+            if #available(iOS 16.0, macOS 13.0, *), let connection = vpn?.connection {
+                lastCommandError = await withCheckedContinuation { continuation in
+                    connection.fetchLastDisconnectError { error in
+                        continuation.resume(returning: error?.localizedDescription)
+                    }
+                }
+            }
+        }
+        return status
         #endif
     }
 
     func startVpn() async -> RefreshVpnResult {
+        lastCommandError = nil
+        awaitingStart = true
+        observedConnecting = false
         guard let request = StartVpnRequest.startModel else {
+            lastCommandError = "Unable to read run/start.json."
             return .notInstalled
         }
         #if targetEnvironment(simulator)
         defer { runStatusObserver() }
         guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
+            lastCommandError = VPNError.noGroupContainer.localizedDescription
             return .notInstalled
         }
         do {
@@ -267,6 +299,7 @@ class VPNManager {
             return .installed
         } catch {
             YGLog("Simulator proxy start failed: \(error)")
+            lastCommandError = error.localizedDescription
             return .notInstalled
         }
         #else
@@ -290,19 +323,24 @@ class VPNManager {
                     }
                     return .installed
                 } else {
+                    lastCommandError = VPNError.sessionNotReady.localizedDescription
                     return .notInstalled
                 }
             } else {
+                lastCommandError = VPNError.sessionNotReady.localizedDescription
                 return .notInstalled
             }
         } catch {
             YGLog(error.localizedDescription)
+            lastCommandError = error.localizedDescription
             return .notInstalled
         }
         #endif
     }
 
     func stopVpn() async -> RefreshVpnResult {
+        lastCommandError = nil
+        awaitingStart = false
         #if targetEnvironment(simulator)
         defer { runStatusObserver() }
         do {
@@ -310,6 +348,7 @@ class VPNManager {
             return .installed
         } catch {
             YGLog("Simulator proxy stop failed: \(error)")
+            lastCommandError = error.localizedDescription
             return .notInstalled
         }
         #else
@@ -327,16 +366,19 @@ class VPNManager {
                 vpn = try await findVpn()
             } catch {
                 YGLog(error.localizedDescription)
+                lastCommandError = error.localizedDescription
                 return .notInstalled
             }
         }
         guard let vpn = vpn else {
+            lastCommandError = VPNError.sessionNotReady.localizedDescription
             return .notInstalled
         }
         do {
             try await saveVpn(vpn: vpn, tun: TunJson())
         } catch {
             YGLog(error.localizedDescription)
+            lastCommandError = error.localizedDescription
             return .notInstalled
         }
         switch vpn.connection.status {

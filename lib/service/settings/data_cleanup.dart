@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -14,6 +16,7 @@ import 'package:onexray/service/advanced/xray/data_update/service.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:path_provider/path_provider.dart';
 
 final class AppDataCleanupService {
@@ -55,6 +58,7 @@ final class AppDataCleanupService {
   Future<bool> clearFromSettings() async {
     if (_clearing) return false;
     _clearing = true;
+    var deleting = false;
     try {
       // Pause every producer before awaiting any one of them. In-flight imports
       // may finish their current write, but cannot start another source/probe.
@@ -68,12 +72,17 @@ final class AppDataCleanupService {
       ]);
       await _geodata.withFiles(() async {
         await _coordinator.stopForMaintenance();
+        deleting = true;
         await (_clearOverride ?? _clear)();
       });
       return true;
     } catch (e, stackTrace) {
       ygLogger("clear app data error: $e\n$stackTrace");
-      return false;
+      throw AppFailure(
+        failureCategory(e),
+        deleting ? 'cleanup' : 'cleanupBeforeDelete',
+        cause: e,
+      );
     } finally {
       _geodata.resumeAfterDataClear();
       _coordinator.resumeAfterDataClear();
@@ -92,6 +101,7 @@ final class AppDataCleanupService {
     await _clearDatabase();
     await _clearRuntimeFiles();
     _coordinator.clearTrafficView();
+    AppEventBus.instance.clearPingFailures();
     await _geodata.resetAfterDataClear();
     await _clearCache();
   }

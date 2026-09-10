@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
@@ -13,9 +15,17 @@ import 'package:onexray/service/advanced/tunnel/interface.dart';
 
 enum SetupStep { welcome, configuration, complete }
 
-class SetupFailure implements Exception {
+class SetupFailure extends AppFailure {
   final String component;
-  const SetupFailure(this.component);
+  const SetupFailure(this.component, {super.cause})
+    : super(
+        component == 'privacy'
+            ? FailureCategory.permission
+            : component == 'region' || component == 'interface'
+            ? FailureCategory.input
+            : FailureCategory.storage,
+        component,
+      );
 }
 
 /// Setup saves initial preferences. Permissions and connection readiness belong
@@ -88,7 +98,10 @@ class SetupService {
     if (regions != null) {
       final available = await regionCodes();
       if (regions.length > 1 || !regions.every(available.contains)) {
-        throw const SetupFailure('region');
+        throw const SetupFailure(
+          'region',
+          cause: 'Select one region from the installed routing data.',
+        );
       }
     }
     final previous = await configuration();

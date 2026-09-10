@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -119,8 +121,20 @@ class ServerImportService {
     Future<bool> Function(OneXrayGeoDataLink)? writeGeoData,
   }) : _database = database,
        _transfer = transfer ?? ConfigurationTransferService(),
-       _validateRaw = ((text) async =>
-           (await XrayRawValidator.validate(text, testXray: validate)).isValid),
+       _validateRaw = ((text) async {
+         final result = await XrayRawValidator.validate(
+           text,
+           testXray: validate,
+         );
+         if (!result.isValid) {
+           throw AppFailure(
+             FailureCategory.configuration,
+             'xrayValidation',
+             cause: result.error,
+           );
+         }
+         return true;
+       }),
        _parse = parse ?? XrayShareReader().parseShareText,
        _validate = validate ?? AppHostApi().testXray,
        _write =
@@ -311,7 +325,11 @@ class ServerImportService {
             );
             final error = await _validate(encodeSingleOutbound(outbound));
             if (error.isNotEmpty) {
-              throw const FormatException('Invalid outbound');
+              throw AppFailure(
+                FailureCategory.configuration,
+                'xrayValidation',
+                cause: error,
+              );
             }
             rows.add(outboundCompanion(outbound));
           } else if (link is OneXrayConfigLink &&
@@ -394,8 +412,11 @@ class ServerImportService {
     }
     final error = await _validate(jsonEncode({'outbounds': json['outbounds']}));
     if (error.isNotEmpty) {
-      // Do not display native errors containing imported credentials.
-      throw const FormatException('Invalid Xray node JSON');
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: error,
+      );
     }
     return ServerImportPreview([
       for (final outbound in json['outbounds'] as List)

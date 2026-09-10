@@ -4,6 +4,7 @@ import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:onexray/service/shared/event_bus/enum.dart';
 import 'package:onexray/service/shared/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/shared/ping/batch.dart';
 
 class AppEventBus extends Cubit<AppEventBusState> {
   static late AppEventBus instance;
@@ -34,6 +35,21 @@ class AppEventBus extends Cubit<AppEventBusState> {
   void updatePinging(bool value) {
     emit(state.copyWith(pinging: value));
   }
+
+  void updatePingResults(Map<int, PingBatchResult> results) {
+    final failures = {...state.pingFailures};
+    for (final entry in results.entries) {
+      if (!entry.value.success ||
+          entry.value.locationError?.isNotEmpty == true) {
+        failures[entry.key] = entry.value;
+      } else {
+        failures.remove(entry.key);
+      }
+    }
+    emit(state.copyWith(pingFailures: Map.unmodifiable(failures)));
+  }
+
+  void clearPingFailures() => emit(state.copyWith(pingFailures: const {}));
 
   Future<T> trackDownload<T>(Future<T> Function() action) async {
     if (_downloads++ == 0) emit(state.copyWith(downloading: true));

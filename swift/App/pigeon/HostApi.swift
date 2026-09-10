@@ -39,14 +39,15 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
                     completion(.success(NativeVpnCommandResult(
                         state: .success,
                         status: status,
-                        permission: permission
+                        permission: permission,
+                        message: status == .disconnected ? VPNManager.shared.lastCommandError : nil
                     )))
                 }
             } catch {
                 completion(.success(NativeVpnCommandResult(
                     state: .failed,
                     permission: permission,
-                    message: "VPN status is unavailable."
+                    message: error.localizedDescription
                 )))
             }
         }
@@ -176,7 +177,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         UIApplication.shared.setAlternateIconName(iconName) { error in
             if let error = error {
                 YGLog(error.localizedDescription)
-                completion(.success(false))
+                completion(.failure(error))
             } else {
                 completion(.success(true))
             }
@@ -226,7 +227,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             return NativeVpnCommandResult(
                 state: .failed,
                 permission: permission,
-                message: nil
+                message: VPNManager.shared.lastCommandError ?? permission.message
             )
         }
     }

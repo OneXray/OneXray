@@ -5,6 +5,7 @@ import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum AppUpdateDialogAction { skip }
@@ -27,11 +28,15 @@ class AppUpdateDialogController extends PageCubit<AppUpdateDialogAction?> {
       if (context.mounted) {
         Navigator.pop(context);
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.buttonSaveFailed,
+          appFailureMessage(
+            AppLocalizations.of(context)!,
+            error,
+            operation: AppLocalizations.of(context)!.buttonSaveFailed,
+          ),
         );
       }
     } finally {
@@ -49,10 +54,7 @@ class AppUpdateDialogController extends PageCubit<AppUpdateDialogAction?> {
     } catch (error) {
       ygLogger("openUpdate error: $error");
       if (feedbackContext.mounted) {
-        ContextAlert.showToast(
-          feedbackContext,
-          l.prototypeTemporarilyUnavailable,
-        );
+        ContextAlert.showToast(feedbackContext, appFailureMessage(l, error));
       }
     }
   }
@@ -79,7 +81,7 @@ class AppUpdateDialogController extends PageCubit<AppUpdateDialogAction?> {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+          appFailureMessage(AppLocalizations.of(context)!, error),
         );
       }
     }

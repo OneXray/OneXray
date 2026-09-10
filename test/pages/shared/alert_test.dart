@@ -67,7 +67,12 @@ void main() {
     await tester.tap(find.text('Open system settings'));
     await tester.pumpAndSettle();
     final l = AppLocalizations.of(tester.element(find.text('Show')))!;
-    expect(find.text(l.prototypeTemporarilyUnavailable), findsOneWidget);
+    expect(
+      find.text(
+        '${l.resultFailed}\nThe system settings page could not be opened.',
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

@@ -82,9 +82,16 @@ class PolicyActions extends StatelessWidget {
         if (controller.error != null)
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text(
-              controller.error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height / 4,
+              ),
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  controller.error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             ),
           ),
         PageActionBar(

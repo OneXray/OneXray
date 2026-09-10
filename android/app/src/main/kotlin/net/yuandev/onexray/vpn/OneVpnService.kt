@@ -53,6 +53,7 @@ class OneVpnService : VpnService() {
         const val IPV6_ADDRESS = "fc00::1"
         const val ACTION_VPN_STATUS: String = "net.yuandev.onexray.VPN_STATUS"
         const val EXTRA_RUNNING: String = "running"
+        const val EXTRA_ERROR: String = "error"
         const val NOTIFICATION_OPEN_REQUEST_CODE = 1
         const val NOTIFICATION_STOP_REQUEST_CODE = 2
     }
@@ -66,10 +67,11 @@ class OneVpnService : VpnService() {
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
 
-    private fun sendStatusBroadcast(running: Boolean) {
+    private fun sendStatusBroadcast(running: Boolean, error: String? = null) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
             setPackage(packageName) // 限定仅本包接收
             putExtra(EXTRA_RUNNING, running)
+            putExtra(EXTRA_ERROR, error)
         }
         sendBroadcast(intent)
         VpnController.requestTileRefresh(this)
@@ -225,6 +227,7 @@ class OneVpnService : VpnService() {
         }
         XLog.e(message, error)
         releaseTun()
+        sendStatusBroadcast(false, error.message ?: error.toString())
         stopSelf()
     }
 

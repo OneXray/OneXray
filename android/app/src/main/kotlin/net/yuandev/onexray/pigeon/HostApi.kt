@@ -44,14 +44,15 @@ class AppHostApi(
             }
         }
 
-    fun onVpnStatusChanged(running: Boolean) {
+    fun onVpnStatusChanged(running: Boolean, error: String? = null) {
+        if (running || error != null) VpnController.lastError = error
         XLog.d("AppHostApi: onVpnStatusChanged running=$running")
         val generation = vpnStatusGeneration.incrementAndGet()
         scope.launch {
             if (running) {
                 flutterApi?.vpnStatusChanged(VpnStatus.CONNECTED)
             } else {
-                delay(2.seconds)
+                if (error == null) delay(2.seconds)
                 if (generation == vpnStatusGeneration.get()) {
                     flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
                 }
@@ -94,7 +95,8 @@ class AppHostApi(
             callback(Result.success(NativeVpnCommandResult(
                 state = NativeVpnCommandState.SUCCESS,
                 permission = queryPermissionNow(),
-                status = status
+                status = status,
+                message = if (status == VpnStatus.DISCONNECTED) VpnController.lastError else null
             )))
         }
     }
@@ -131,6 +133,8 @@ class AppHostApi(
                     flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTING)
                     if (!VpnController.stopVpn(context)) {
                         flutterApi?.refreshVpnStatus()
+                        callback(Result.success(commandFailed(queryPermissionNow())))
+                        return@launch
                     }
                 }
             }
@@ -328,6 +332,7 @@ class AppHostApi(
         NativeVpnCommandResult(
             state = NativeVpnCommandState.FAILED,
             permission = permission,
+            message = VpnController.lastError,
         )
 
     private fun androidPermissionGranted() = PlatformPermissionResult(

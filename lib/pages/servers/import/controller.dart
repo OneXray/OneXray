@@ -10,6 +10,8 @@ import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/service/servers/import.dart';
+import 'package:onexray/service/shared/failure.dart';
+import 'package:onexray/service/servers/subscription/failure.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
@@ -256,12 +258,17 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
           fields[index].text = loadedValues[index];
         }
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
             loadFailed: true,
-            error: AppLocalizations.of(context)!.buttonSaveFailed,
+            error: appFailureMessage(
+              AppLocalizations.of(context)!,
+              error,
+              operation: AppLocalizations.of(context)!
+                  .prototypeCannotReadContent,
+            ),
           ),
         );
       }
@@ -289,11 +296,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         if (input != null && isPageActive && context.mounted) {
           result = await _importText(context, input);
         }
-      } catch (_) {
+      } catch (error) {
         if (context.mounted) {
           emit(
             state.copyWith(
-              error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+              error: appFailureMessage(
+                AppLocalizations.of(context)!,
+                error,
+                operation: AppLocalizations.of(context)!
+                    .prototypeCannotReadContent,
+              ),
             ),
           );
         }
@@ -343,11 +355,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     final ServerImportDetection detection;
     try {
       detection = service.detect(input);
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+            error: appFailureMessage(
+              AppLocalizations.of(context)!,
+              error,
+              operation: AppLocalizations.of(context)!
+                  .prototypeCannotReadContent,
+            ),
           ),
         );
       }
@@ -476,11 +493,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   Future<String?> pickQrImage(BuildContext context) async {
     try {
       return await ServerImportService.pickQrImage();
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         ContextAlert.showToast(
           context,
-          AppLocalizations.of(context)!.prototypeCannotReadContent,
+          appFailureMessage(
+            AppLocalizations.of(context)!,
+            error,
+            operation: AppLocalizations.of(context)!.prototypeCannotReadContent,
+          ),
         );
       }
       return null;
@@ -494,11 +515,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       if (input == null) throw const FormatException('Empty clipboard');
       text.text = input;
       emit(state.copyWith(error: null));
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+            error: appFailureMessage(
+              AppLocalizations.of(context)!,
+              error,
+              operation: AppLocalizations.of(context)!
+                  .prototypeCannotReadContent,
+            ),
           ),
         );
       }
@@ -544,14 +570,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
           await preview.dispose();
         }
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         final l10n = AppLocalizations.of(context)!;
         emit(
           state.copyWith(
-            error: manual
-                ? l10n.validationJsonInvalid
-                : l10n.prototypeNoSupportedLinks,
+            error: appFailureMessage(
+              l10n,
+              error,
+              operation: l10n.buttonAddFailed,
+            ),
           ),
         );
       }
@@ -632,10 +660,18 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         );
       }
       return result;
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
-          state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
+          state.copyWith(
+            error: appFailureMessage(
+              AppLocalizations.of(context)!,
+              error,
+              operation: subscriptionId == null
+                  ? AppLocalizations.of(context)!.buttonAddFailed
+                  : AppLocalizations.of(context)!.buttonSaveFailed,
+            ),
+          ),
         );
       }
     }
@@ -702,17 +738,33 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (!result.success) {
-        emit(state.copyWith(error: subscriptionError(l10n, result.status)));
+        emit(
+          state.copyWith(
+            error: subscriptionFailureMessage(
+              l10n,
+              result.status,
+              error: result.error,
+            ),
+          ),
+        );
         return;
       }
       ContextAlert.showToast(context, l10n.prototypeUsableNodes(result.count));
       Navigator.of(context).pop(
         ServerImportResult(count: result.count, subscriptionId: result.subId),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
-          state.copyWith(error: AppLocalizations.of(context)!.buttonAddFailed),
+          state.copyWith(
+            error: appFailureMessage(
+              AppLocalizations.of(context)!,
+              error,
+              operation: subscriptionId == null
+                  ? AppLocalizations.of(context)!.buttonAddFailed
+                  : AppLocalizations.of(context)!.buttonSaveFailed,
+            ),
+          ),
         );
       }
     } finally {
@@ -723,19 +775,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   static String subscriptionError(
     AppLocalizations l10n,
     SubscriptionUpdateResult status,
-  ) => switch (status) {
-    SubscriptionUpdateResult.downloadFailed => l10n.subscriptionDownloadFailed,
-    SubscriptionUpdateResult.invalidAgeSecretKey =>
-      l10n.subscriptionInvalidAgeSecretKey,
-    SubscriptionUpdateResult.missingAgeSecretKey =>
-      l10n.subscriptionMissingAgeSecretKey,
-    SubscriptionUpdateResult.decryptFailed => l10n.subscriptionDecryptFailed,
-    SubscriptionUpdateResult.contentTooLarge =>
-      l10n.subscriptionDecryptedTooLarge,
-    SubscriptionUpdateResult.invalidContent =>
-      l10n.prototypeSubscriptionNotAdded,
-    _ => l10n.buttonSaveFailed,
-  };
+  ) => subscriptionFailureMessage(l10n, status);
 
   void toggleSecret() {
     emit(state.copyWith(obscureSecret: !state.obscureSecret));
@@ -773,8 +813,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         secretKey.text = pair.secretKey ?? '';
         publicKey.text = pair.publicKey ?? '';
       }
-    } catch (_) {
-      emit(state.copyWith(error: l10n.subscriptionGenerateAgeKeyFailed));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          error: appFailureMessage(
+            l10n,
+            error,
+            operation: l10n.subscriptionGenerateAgeKeyFailed,
+          ),
+        ),
+      );
     } finally {
       emit(state.copyWith(generatingAgeKeyType: null));
     }

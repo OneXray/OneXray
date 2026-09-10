@@ -15,6 +15,7 @@ import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/event_bus/state.dart';
 import 'package:onexray/service/manager.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/shared/menu/short_cut/service.dart';
 import 'package:onexray/service/shared/share/service.dart';
 
@@ -80,10 +81,25 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: FilledButton(
-                key: const ValueKey('service-initialization-retry'),
-                onPressed: _retry,
-                child: Text(AppLocalizations.of(context)!.buttonRetry),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SelectableText(
+                      appFailureMessage(
+                        AppLocalizations.of(context)!,
+                        snapshot.error,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      key: const ValueKey('service-initialization-retry'),
+                      onPressed: _retry,
+                      child: Text(AppLocalizations.of(context)!.buttonRetry),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

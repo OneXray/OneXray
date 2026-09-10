@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -141,7 +143,7 @@ class PingService {
     unawaited(
       next.catchError((Object error, StackTrace stackTrace) {
         if (!_pingQueue.isPaused) {
-          ygLogger('Queued ping failed (${error.runtimeType})\n$stackTrace');
+          ygLogger('Queued ping failed: ${failureDetails(error)}\n$stackTrace');
         }
       }),
     );
@@ -212,6 +214,10 @@ class PingService {
               : PingDelayConstants.error;
           await _updateRow(db, batchRows[index], delay, result.countryCode);
         }
+      });
+      AppEventBus.instance.updatePingResults({
+        for (var index = 0; index < results.length; index++)
+          batchRows[index].id: results[index],
       });
     }
   }

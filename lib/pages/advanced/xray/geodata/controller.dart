@@ -12,6 +12,7 @@ import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/advanced/xray/geodata/validator.dart';
 
 @immutable
@@ -23,6 +24,7 @@ class GeoDataPageState {
     this.type = GeoDataType.ip,
     this.loading = true,
     this.failed = false,
+    this.failure,
     this.formBusy = false,
     this.updatingAll = false,
     Set<int> updating = const {},
@@ -39,6 +41,7 @@ class GeoDataPageState {
   final GeoDataType type;
   final bool loading;
   final bool failed;
+  final Object? failure;
   final bool formBusy;
   final bool updatingAll;
   final Set<int> updating;
@@ -61,6 +64,7 @@ class GeoDataPageState {
     GeoDataType? type,
     bool? loading,
     bool? failed,
+    Object? failure,
     bool? formBusy,
     bool? updatingAll,
     Set<int>? updating,
@@ -73,6 +77,7 @@ class GeoDataPageState {
     type: type ?? this.type,
     loading: loading ?? this.loading,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     formBusy: formBusy ?? this.formBusy,
     updatingAll: updatingAll ?? this.updatingAll,
     updating: updating ?? this.updating,
@@ -101,10 +106,11 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
       _subscription = service.watchPublished().listen(
         (files) =>
             emit(state.copyWith(files: files, loading: false, failed: false)),
-        onError: (_) => emit(state.copyWith(loading: false, failed: true)),
+        onError: (Object error) =>
+            emit(state.copyWith(loading: false, failed: true, failure: error)),
       );
-    } catch (_) {
-      emit(state.copyWith(loading: false, failed: true));
+    } catch (error) {
+      emit(state.copyWith(loading: false, failed: true, failure: error));
     }
   }
 
@@ -148,8 +154,8 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
       url.clear();
       emit(state.copyWith(adding: false));
       if (context.mounted) _message(context, l.prototypeGeodataAdded);
-    } catch (_) {
-      emit(state.copyWith(formError: l.prototypeCheckNetwork));
+    } catch (error) {
+      emit(state.copyWith(formError: appFailureMessage(l, error)));
     } finally {
       emit(state.copyWith(formBusy: false));
     }
@@ -168,9 +174,11 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
         await service.updateCustom(file.row);
       }
       if (context.mounted) _message(context, l.prototypeGeodataUpdated);
-    } catch (_) {
+    } catch (error) {
       emit(
-        state.copyWith(errors: {...state.errors, key: l.prototypeCheckNetwork}),
+        state.copyWith(
+          errors: {...state.errors, key: appFailureMessage(l, error)},
+        ),
       );
     } finally {
       final updating = {...state.updating}..remove(key);
@@ -187,14 +195,14 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
     try {
       try {
         await service.updateDefaults();
-      } catch (_) {
-        errors[-1] = l.prototypeCheckNetwork;
+      } catch (error) {
+        errors[-1] = appFailureMessage(l, error);
       }
       for (final file in targets) {
         try {
           await service.updateCustom(file.row);
-        } catch (_) {
-          errors[file.row.id] = l.prototypeCheckNetwork;
+        } catch (error) {
+          errors[file.row.id] = appFailureMessage(l, error);
         }
       }
       if (errors.isEmpty && context.mounted) {
@@ -240,10 +248,10 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
       final errors = {...state.errors}..remove(file.row.id);
       emit(state.copyWith(errors: errors));
       await service.deleteGeoDat(file.row);
-    } catch (_) {
+    } catch (error) {
       emit(
         state.copyWith(
-          errors: {...state.errors, file.row.id: l.prototypeCheckNetwork},
+          errors: {...state.errors, file.row.id: appFailureMessage(l, error)},
         ),
       );
     } finally {
@@ -331,7 +339,7 @@ class GeoDataFileController extends PageCubit<GeoDataFilePageState> {
     try {
       await Clipboard.setData(ClipboardData(text: value));
       if (context.mounted) GeoDataController._message(context, success);
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         GeoDataController._message(context, l.prototypeCopyFailed);
       }

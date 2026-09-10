@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -170,7 +171,7 @@ class AutoUpdatePage extends StatelessWidget {
                           ),
                           if (state.failed)
                             Text(
-                              l.prototypeTemporarilyUnavailable,
+                              appFailureMessage(l, state.failure),
                               style: AppTypography.settingsDetailNote.copyWith(
                                 color: Theme.of(context).colorScheme.error,
                               ),

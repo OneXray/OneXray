@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
@@ -52,7 +53,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(l.prototypeRoutingFileUnavailable),
+                          SelectableText(appFailureMessage(l, state.failure)),
                           TextButton(
                             onPressed: controller.initialize,
                             child: Text(l.prototypeRetry),
@@ -284,7 +285,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
 
   Widget _error(BuildContext context, String text) => Padding(
     padding: const EdgeInsets.only(top: 12),
-    child: Text(
+    child: SelectableText(
       text,
       style: Theme.of(context).textTheme.bodySmall
           ?.copyWith(color: Theme.of(context).colorScheme.error),

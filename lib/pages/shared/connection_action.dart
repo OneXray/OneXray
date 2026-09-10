@@ -6,6 +6,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 Future<bool> runConnectionAction(
   BuildContext context,
@@ -16,7 +17,8 @@ Future<bool> runConnectionAction(
     await action();
     return true;
   } catch (error) {
-    if (connectionFailureReason(error) != 'cancelled' &&
+    if (!failureCancelled(error) &&
+        connectionFailureReason(error) != 'cancelled' &&
         coordinator.state.value.issue != 'cancelled' &&
         context.mounted) {
       final l = AppLocalizations.of(context)!;

@@ -38,6 +38,46 @@ void main() {
     expect(await Directory(p.join(directory.path, 'plans')).exists(), false);
   });
 
+  test(
+    'native start and stop failures retain their original messages',
+    () async {
+      final host = ConnectionRuntimeHost(
+        startVpn: (_) async => NativeVpnCommandResult(
+          state: NativeVpnCommandState.failed,
+          message: 'TUN device could not be opened',
+        ),
+        stopVpn: () async => NativeVpnCommandResult(
+          state: NativeVpnCommandState.failed,
+          message: 'Access denied while stopping Core',
+        ),
+      );
+      await expectLater(
+        host.start(_runtime()),
+        throwsA(
+          isA<ConnectionHostException>()
+              .having((e) => e.reason, 'reason', 'startFailed')
+              .having(
+                (e) => e.cause,
+                'cause',
+                'TUN device could not be opened',
+              ),
+        ),
+      );
+      await expectLater(
+        host.stop(),
+        throwsA(
+          isA<ConnectionHostException>()
+              .having((e) => e.reason, 'reason', 'stopFailed')
+              .having(
+                (e) => e.cause,
+                'cause',
+                'Access denied while stopping Core',
+              ),
+        ),
+      );
+    },
+  );
+
   test('invalid start metadata is ignored', () async {
     await File(p.join(directory.path, 'start.json')).writeAsString(
       jsonEncode(StartVpnRequest(null, null, null, '{}').toJson()),

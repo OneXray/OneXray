@@ -11,6 +11,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/responsive_content.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 @immutable
@@ -19,6 +20,7 @@ class AndroidAppsPageState {
   final List<AndroidAppInfo> apps;
   final bool loading;
   final bool failed;
+  final Object? failure;
   final String query;
 
   AndroidAppsPageState({
@@ -26,6 +28,7 @@ class AndroidAppsPageState {
     List<AndroidAppInfo> apps = const [],
     this.loading = true,
     this.failed = false,
+    this.failure,
     this.query = '',
   }) : selected = Set<String>.unmodifiable(selected),
        apps = List<AndroidAppInfo>.unmodifiable(apps);
@@ -35,12 +38,14 @@ class AndroidAppsPageState {
     List<AndroidAppInfo>? apps,
     bool? loading,
     bool? failed,
+    Object? failure,
     String? query,
   }) => AndroidAppsPageState(
     selected: selected ?? this.selected,
     apps: apps ?? this.apps,
     loading: loading ?? this.loading,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     query: query ?? this.query,
   );
 }
@@ -64,8 +69,8 @@ class AndroidAppsController extends PageCubit<AndroidAppsPageState> {
     try {
       final result = await loadApps();
       emit(state.copyWith(apps: result));
-    } catch (_) {
-      emit(state.copyWith(failed: true));
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
     } finally {
       emit(state.copyWith(loading: false));
     }
@@ -198,9 +203,16 @@ class AndroidAppsPage extends StatelessWidget {
                               child: Center(
                                 child: controller.loading
                                     ? const CircularProgressIndicator()
-                                    : TextButton(
-                                        onPressed: controller.load,
-                                        child: Text(l.prototypeRetry),
+                                    : Column(
+                                        children: [
+                                          SelectableText(
+                                            appFailureMessage(l, state.failure),
+                                          ),
+                                          TextButton(
+                                            onPressed: controller.load,
+                                            child: Text(l.prototypeRetry),
+                                          ),
+                                        ],
                                       ),
                               ),
                             ),

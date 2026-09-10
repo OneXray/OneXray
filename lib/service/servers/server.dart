@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:onexray/core/errors/failure.dart';
+
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
 import 'package:onexray/core/db/database/constants.dart';
@@ -122,8 +124,13 @@ class ServerAssetService {
     if (outbound is! Map<String, dynamic>) {
       throw const FormatException('An outbound object is required');
     }
-    if ((await _validate(encodeSingleOutbound(outbound))).isNotEmpty) {
-      throw const FormatException('Invalid server configuration');
+    final validation = await _validate(encodeSingleOutbound(outbound));
+    if (validation.isNotEmpty) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: validation,
+      );
     }
     final configuration = await coordinator.readForEditing();
     final original = draft.original;

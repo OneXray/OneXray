@@ -92,15 +92,15 @@ void main() {
   );
 
   test(
-    'unknown failures use safe UI copy without exposing exception contents',
+    'unknown failures retain a reason without guessing a network failure',
     () {
       final l = lookupAppLocalizations(const Locale('en'));
       expect(
         connectionFailureMessage(
           l,
-          error: const FormatException('Invalid config: private node data'),
+          error: const FormatException('Invalid config'),
         ),
-        l.prototypeCheckNetwork,
+        '${l.resultFailed}\nInvalid config',
       );
       expect(
         connectionFailureMessage(

@@ -1,4 +1,5 @@
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -41,7 +42,13 @@ class CustomRoutingService {
     final error = await (testXray ?? AppHostApi().testXray)(
       JsonTool.encoder.convert(config.toJson()),
     );
-    if (error.isNotEmpty) throw FormatException(error);
+    if (error.isNotEmpty) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: error,
+      );
+    }
   });
 
   Future<int> save(RoutingProfileState state) async {

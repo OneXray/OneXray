@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/servers/server.dart';
 import 'package:re_editor/re_editor.dart';
 
@@ -34,7 +35,7 @@ class ServerEditorPageState {
           (value['tag'] as String).trim().isNotEmpty &&
           value['protocol'] is String &&
           (value['protocol'] as String).trim().isNotEmpty;
-    } catch (_) {
+    } catch (error) {
       return false;
     }
   }
@@ -79,11 +80,11 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
       if (!isPageActive) return;
       emit(state.copyWith(draft: draft));
       if (text.text == initialText) text.text = draft.text;
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeCannotReadContent,
+            error: appFailureMessage(AppLocalizations.of(context)!, error),
           ),
         );
       }
@@ -112,10 +113,12 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
         ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(serverId);
       }
-    } on FormatException {
-      emit(state.copyWith(error: l.validationJsonInvalid));
-    } catch (_) {
-      emit(state.copyWith(error: l.buttonSaveFailed));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          error: appFailureMessage(l, error, operation: l.buttonSaveFailed),
+        ),
+      );
     } finally {
       emit(state.copyWith(busy: false));
     }

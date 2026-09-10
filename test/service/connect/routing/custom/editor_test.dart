@@ -1,3 +1,5 @@
+import 'package:onexray/core/errors/failure.dart';
+
 import 'dart:convert';
 
 import 'package:drift/native.dart';
@@ -77,7 +79,13 @@ void main() {
           confirmReconnect: () async =>
               throw StateError('Unexpected confirmation'),
         ),
-        throwsFormatException,
+        throwsA(
+          isA<AppFailure>().having(
+            (e) => e.cause,
+            'core reason',
+            'Core rejected port',
+          ),
+        ),
       );
       expect(calls, 1);
       expect(await db.routingProfileDao.searchRow(id), original);

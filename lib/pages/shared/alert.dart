@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -47,15 +48,16 @@ class ContextAlert {
       ),
     );
     if (openSettings == true) {
+      Object failure = 'The system settings page could not be opened.';
       try {
         if (await openAppSettings()) return;
-      } catch (_) {
-        // Report native failures through the same feedback as a false result.
+      } catch (error) {
+        failure = error;
       }
       if (context.mounted) {
         showToast(
           context,
-          AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+          appFailureMessage(AppLocalizations.of(context)!, failure),
         );
       }
     }

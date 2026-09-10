@@ -5,6 +5,7 @@ import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 
 import 'package:onexray/service/connect/compiler.dart';
@@ -76,7 +77,7 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
           busy: false,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
@@ -187,7 +188,7 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
           error: null,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
@@ -228,7 +229,7 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
           error: null,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
@@ -261,8 +262,12 @@ class SmartRoutingEditorController extends PageCubit<SmartRoutingEditorState> {
         ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(true);
       }
-    } catch (_) {
-      emit(state.copyWith(error: l.buttonSaveFailed));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          error: appFailureMessage(l, error, operation: l.buttonSaveFailed),
+        ),
+      );
     } finally {
       emit(state.copyWith(busy: false));
     }

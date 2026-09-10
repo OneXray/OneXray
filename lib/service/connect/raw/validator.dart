@@ -1,4 +1,5 @@
 import 'package:onexray/core/pigeon/constants.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -42,10 +43,8 @@ class XrayRawValidator {
       if (overrideName) {
         jsonMap['name'] = normalizedNameOverride;
       }
-    } catch (_) {
-      return XrayRawValidationResult.invalid(
-        appLocalizationsNoContext().validationJsonInvalid,
-      );
+    } catch (error) {
+      return XrayRawValidationResult.invalid(failureDetails(error));
     }
     final name = jsonMap['name'];
     if (name is! String || !EmptyTool.checkString(name)) {

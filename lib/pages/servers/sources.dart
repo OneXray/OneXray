@@ -153,9 +153,16 @@ class _HelpRow extends StatelessWidget {
 }
 
 class SourceUpdateErrorDialog extends StatelessWidget {
-  const SourceUpdateErrorDialog({super.key, required this.sourceName});
+  const SourceUpdateErrorDialog({
+    super.key,
+    required this.sourceName,
+    this.reason,
+    this.existingNodesKept = true,
+  });
 
   final String sourceName;
+  final String? reason;
+  final bool existingNodesKept;
 
   @override
   Widget build(BuildContext context) {
@@ -186,8 +193,12 @@ class SourceUpdateErrorDialog extends StatelessWidget {
                   ),
                   const SizedBox(width: 11),
                   Expanded(
-                    child: Text(
-                      l.prototypeSubscriptionExistingNodesKept,
+                    child: SelectableText(
+                      [
+                        ?reason,
+                        if (existingNodesKept)
+                          l.prototypeSubscriptionExistingNodesKept,
+                      ].join('\n\n'),
                       style: AppTypography.dialogCallout.copyWith(
                         color: palette.destructive,
                       ),

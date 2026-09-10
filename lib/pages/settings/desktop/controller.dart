@@ -1,3 +1,5 @@
+import 'package:onexray/service/shared/failure.dart';
+
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -202,7 +204,7 @@ class DesktopSettingsController extends PageCubit<DesktopSettingsPageState>
     if (context != null && context.mounted) {
       ContextAlert.showToast(
         context,
-        AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
+        appFailureMessage(AppLocalizations.of(context)!, error),
       );
     }
   }

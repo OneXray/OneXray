@@ -7,6 +7,7 @@ import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/launch/setup.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 enum SetupAction {
   acceptPrivacy,
@@ -166,8 +167,7 @@ class SetupController extends PageCubit<SetupPageState> {
   String failureText(AppLocalizations l10n) =>
       switch (state.failure?.component) {
         'interface' => l10n.prototypeChooseInterfaceNotice,
-        'region' => l10n.prototypeCheckNetwork,
-        _ => l10n.prototypeTemporarilyUnavailable,
+        _ => appFailureMessage(l10n, state.failure),
       };
 
   Future<void> _perform(
@@ -181,7 +181,9 @@ class SetupController extends PageCubit<SetupPageState> {
     } catch (error) {
       emit(
         state.copyWith(
-          failure: error is SetupFailure ? error : const SetupFailure('local'),
+          failure: error is SetupFailure
+              ? error
+              : SetupFailure('local', cause: error),
         ),
       );
     } finally {

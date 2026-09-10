@@ -1,6 +1,7 @@
 import 'dart:isolate';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
@@ -111,7 +112,7 @@ class ShareController extends PageCubit<SharePageState> {
       }
     } catch (error) {
       ygLogger('generate share link failed (${error.runtimeType})');
-      _finishLinkError();
+      _finishLinkError(error);
     } finally {
       emit(state.copyWith(loading: false));
     }
@@ -164,9 +165,17 @@ class ShareController extends PageCubit<SharePageState> {
     );
   }
 
-  void _finishLinkError() {
+  void _finishLinkError([Object? error]) {
     final l = appLocalizationsNoContext();
-    emit(state.copyWith(linkError: '${l.sharePageLink}: ${l.resultFailed}'));
+    emit(
+      state.copyWith(
+        linkError: appFailureMessage(
+          l,
+          error,
+          operation: '${l.sharePageLink}: ${l.resultFailed}',
+        ),
+      ),
+    );
   }
 
   void selectFormat(ShareLinkFormat format) {
@@ -189,10 +198,12 @@ class ShareController extends PageCubit<SharePageState> {
     if (link.isEmpty) return;
     final generation = ++_qrGeneration;
     Uint8List? image;
+    Object? failure;
     try {
       image = await _qrEncoder(link);
-    } catch (_) {
+    } catch (error) {
       // Generation failure is shown only for the currently selected format.
+      failure = error;
     }
     if (!isPageActive ||
         generation != _qrGeneration ||
@@ -205,7 +216,13 @@ class ShareController extends PageCubit<SharePageState> {
       state.copyWith(
         qrCode: image,
         clearQr: image == null,
-        qrError: image == null ? '${l.sharePageQRCode}: ${l.resultFailed}' : '',
+        qrError: image == null
+            ? appFailureMessage(
+                l,
+                failure,
+                operation: '${l.sharePageQRCode}: ${l.resultFailed}',
+              )
+            : '',
       ),
     );
   }
@@ -240,12 +257,13 @@ class ShareController extends PageCubit<SharePageState> {
           AppLocalizations.of(context)!.sharePageShareLink,
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         _showActionResult(
           context,
           false,
           AppLocalizations.of(context)!.sharePageShareLink,
+          error: error,
         );
       }
     } finally {
@@ -263,7 +281,7 @@ class ShareController extends PageCubit<SharePageState> {
         '${state.name}.png',
         '.png',
       );
-      if (context.mounted) {
+      if (context.mounted && success) {
         _showActionResult(
           context,
           success,
@@ -271,12 +289,13 @@ class ShareController extends PageCubit<SharePageState> {
           closeOnSuccess: false,
         );
       }
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         _showActionResult(
           context,
           false,
           AppLocalizations.of(context)!.sharePageSaveQRCode,
+          error: error,
           closeOnSuccess: false,
         );
       }
@@ -290,11 +309,18 @@ class ShareController extends PageCubit<SharePageState> {
     bool success,
     String action, {
     bool closeOnSuccess = true,
+    Object? error,
   }) {
     final l = AppLocalizations.of(context)!;
     ContextAlert.showToast(
       context,
-      l.actionResult(action, success ? l.resultSuccess : l.resultFailed),
+      success
+          ? l.actionResult(action, l.resultSuccess)
+          : appFailureMessage(
+              l,
+              error,
+              operation: l.actionResult(action, l.resultFailed),
+            ),
     );
     if (success &&
         closeOnSuccess &&
@@ -304,14 +330,24 @@ class ShareController extends PageCubit<SharePageState> {
   }
 
   Future<void> _copyUrl(BuildContext context, String url) async {
-    await Clipboard.setData(ClipboardData(text: url));
-    if (context.mounted) {
-      final l = AppLocalizations.of(context)!;
-      ContextAlert.showToast(
-        context,
-        l.actionResult(l.sharePageCopyLink, l.resultSuccess),
-      );
-      if (ModalRoute.of(context)?.isCurrent == true) context.pop();
+    try {
+      await Clipboard.setData(ClipboardData(text: url));
+      if (context.mounted) {
+        _showActionResult(
+          context,
+          true,
+          AppLocalizations.of(context)!.sharePageCopyLink,
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        _showActionResult(
+          context,
+          false,
+          AppLocalizations.of(context)!.sharePageCopyLink,
+          error: error,
+        );
+      }
     }
   }
 }
@@ -347,7 +383,7 @@ Uint8List? _drawQrcode(String shareLink) {
       }
     }
     return img.encodePng(image);
-  } catch (_) {
-    return null;
+  } catch (error) {
+    throw AppFailure(FailureCategory.input, 'qrEncoding', cause: error);
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -15,9 +16,15 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/db.dart';
 import 'package:onexray/service/connect/raw/validator.dart';
 
-class RawEditorException implements Exception {
+class RawEditorException extends AppFailure {
   final String reason;
-  const RawEditorException(this.reason);
+  const RawEditorException(this.reason)
+    : super(
+        reason == 'changed' || reason == 'missing'
+            ? FailureCategory.conflict
+            : FailureCategory.input,
+        reason,
+      );
 }
 
 class RawEditorDraft {
@@ -227,7 +234,15 @@ class RawEditorService {
 
   Future<bool> validate(String text) async {
     if (_validate != null) return _validate(text);
-    return (await XrayRawValidator.validate(text)).isValid;
+    final result = await XrayRawValidator.validate(text);
+    if (!result.isValid) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: result.error,
+      );
+    }
+    return true;
   }
 
   RuntimeOptions _comparisonOptions(

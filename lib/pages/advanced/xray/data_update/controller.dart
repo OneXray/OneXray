@@ -14,12 +14,14 @@ class AutoUpdatePageState {
   final bool loaded;
   final bool saving;
   final bool failed;
+  final Object? failure;
   AutoUpdatePageState({
     AutoUpdateState? autoUpdateState,
     this.userAgent = DownloadUserAgentMode.oneXray,
     this.loading = true,
     this.saving = false,
     this.failed = false,
+    this.failure,
     this.loaded = false,
   }) : autoUpdateState = autoUpdateState ?? AutoUpdateState();
 
@@ -29,12 +31,14 @@ class AutoUpdatePageState {
     bool? loaded,
     bool? saving,
     bool? failed,
+    Object? failure,
   }) => AutoUpdatePageState(
     autoUpdateState: autoUpdateState,
     userAgent: userAgent ?? this.userAgent,
     loading: loading ?? this.loading,
     saving: saving ?? this.saving,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
     loaded: loaded ?? this.loaded,
   );
 }
@@ -58,8 +62,8 @@ class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
           loaded: true,
         ),
       );
-    } catch (_) {
-      emit(state.copyWith(loading: false, failed: true));
+    } catch (error) {
+      emit(state.copyWith(loading: false, failed: true, failure: error));
     }
   }
 
@@ -99,8 +103,8 @@ class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
       await PreferencesKey().saveDownloadUserAgentMode(state.userAgent);
       await NetClient().updateUserAgentMode(state.userAgent);
       if (context.mounted) ContextAlert.settingsSaved(context, closePage: true);
-    } catch (_) {
-      emit(state.copyWith(failed: true));
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
     } finally {
       emit(state.copyWith(saving: false));
     }

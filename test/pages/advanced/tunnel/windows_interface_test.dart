@@ -256,6 +256,7 @@ void main() {
         await controller.readInterfaces();
         await tester.pumpAndSettle();
         expect(save().onPressed, isNull);
+        expect(find.text('interface read failed'), findsOneWidget);
         await tester.tap(find.text(l.prototypeRetry));
         await tester.pumpAndSettle();
         expect(retries, 1);

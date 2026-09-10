@@ -12,6 +12,7 @@ import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/service/servers/import.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -121,12 +122,14 @@ class ConfigurationTransferController
           assets: _draft?.content.assets ?? const [],
         ),
       );
-    } catch (_) {
+    } catch (error) {
       emit(
         state.copyWith(
-          notice: kind == ConfigurationKind.raw
-              ? l10n.prototypeCannotReadContent
-              : l10n.prototypeCannotReadCustomRoute,
+          notice: appFailureMessage(
+            l10n,
+            error,
+            operation: l10n.buttonAddFailed,
+          ),
         ),
       );
     } finally {
@@ -228,8 +231,16 @@ class ConfigurationTransferController
           );
         }
       }
-    } catch (_) {
-      emit(state.copyWith(notice: l10n.prototypeCannotShareConfiguration));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          notice: appFailureMessage(
+            l10n,
+            error,
+            operation: l10n.prototypeCannotShareConfiguration,
+          ),
+        ),
+      );
     } finally {
       if (!isPageActive) await _disposeDraft();
       emit(state.copyWith(busy: false, clearAction: true));

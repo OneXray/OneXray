@@ -3,6 +3,29 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/pages/advanced/tunnel/android/apps.dart';
 
 void main() {
+  test(
+    'failed app lookup keeps the native reason and clears it after retry',
+    () async {
+      final error = StateError('Package manager unavailable');
+      var fail = true;
+      final controller = AndroidAppsController(
+        [],
+        loadApps: () async {
+          if (fail) throw error;
+          return [];
+        },
+      );
+      addTearDown(controller.close);
+      await controller.load();
+      expect(controller.state.failed, isTrue);
+      expect(controller.state.failure, same(error));
+      fail = false;
+      await controller.load();
+      expect(controller.state.failed, isFalse);
+      expect(controller.state.failure, isNull);
+    },
+  );
+
   test('app picker searches names and package IDs without losing missing selections', () async {
     final controller = AndroidAppsController(
       ['com.example.uninstalled'],

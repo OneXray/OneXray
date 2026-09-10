@@ -4,11 +4,13 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/advanced/tunnel/interface.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 enum TunnelDestination { apple, android, windows, interface }
 
@@ -123,16 +125,20 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
       state.androidAppNames[packageName] ?? packageName;
 
   Future<void> loadAndroidAppNames() async {
-    final apps = await AppHostApi().getInstalledApps();
-    if (!isPageActive) return;
-    emit(
-      state.copyWith(
-        androidAppNames: {
-          for (final app in apps)
-            if (app.name.isNotEmpty) app.packageName: app.name,
-        },
-      ),
-    );
+    try {
+      final apps = await AppHostApi().getInstalledApps();
+      if (!isPageActive) return;
+      emit(
+        state.copyWith(
+          androidAppNames: {
+            for (final app in apps)
+              if (app.name.isNotEmpty) app.packageName: app.name,
+          },
+        ),
+      );
+    } catch (error) {
+      emit(state.copyWith(error: failureDetails(error)));
+    }
   }
 
   Future<void> load(BuildContext context) async {
@@ -140,12 +146,11 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
     try {
       final loaded = await service.load();
       emit(state.copyWith(draft: loaded));
-    } catch (_) {
+    } catch (error) {
       if (context.mounted) {
         emit(
           state.copyWith(
-            error: AppLocalizations.of(context)!
-                .prototypeTemporarilyUnavailable,
+            error: appFailureMessage(AppLocalizations.of(context)!, error),
           ),
         );
       }
@@ -263,8 +268,16 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
         }
       }
       return saved;
-    } catch (_) {
-      emit(state.copyWith(error: l.buttonSaveFailed));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          error: connectionFailureMessage(
+            l,
+            error: error,
+            operation: l.buttonSaveFailed,
+          ),
+        ),
+      );
       return false;
     } finally {
       emit(state.copyWith(busy: false));

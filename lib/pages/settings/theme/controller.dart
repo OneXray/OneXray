@@ -1,3 +1,4 @@
+import 'package:onexray/service/shared/failure.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
@@ -40,8 +41,13 @@ class ThemeController extends PageCubit<ThemePageState> {
         ContextAlert.showToast(context, l.prototypeSettingsSaved);
         if (ModalRoute.of(context)?.isCurrent == true) context.pop();
       }
-    } catch (_) {
-      if (context.mounted) ContextAlert.showToast(context, l.buttonSaveFailed);
+    } catch (error) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          appFailureMessage(l, error, operation: l.buttonSaveFailed),
+        );
+      }
     }
   }
 }

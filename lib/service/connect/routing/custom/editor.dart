@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/asset_edit.dart';
@@ -9,9 +10,15 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
-class CustomRoutingEditorException implements Exception {
+class CustomRoutingEditorException extends AppFailure {
   final String reason;
-  const CustomRoutingEditorException(this.reason);
+  const CustomRoutingEditorException(this.reason)
+    : super(
+        reason == 'changed' || reason == 'missing'
+            ? FailureCategory.conflict
+            : FailureCategory.input,
+        reason,
+      );
 }
 
 class CustomRoutingEditorDraft {

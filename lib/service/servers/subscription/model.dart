@@ -49,11 +49,13 @@ final class SubscriptionInsertResult {
     required this.status,
     this.subId = 0,
     this.count = 0,
+    this.error,
   });
 
   final SubscriptionUpdateResult status;
   final int subId;
   final int count;
+  final Object? error;
 
   bool get success => status == SubscriptionUpdateResult.success && count > 0;
 }
@@ -81,11 +83,13 @@ final class SubscriptionRefreshResult {
     required this.status,
     this.count = 0,
     this.superseded = false,
+    this.error,
   });
 
   final SubscriptionUpdateResult status;
   final int count;
   final bool superseded;
+  final Object? error;
 
   bool get success =>
       !superseded && status == SubscriptionUpdateResult.success && count > 0;

@@ -1,3 +1,5 @@
+import 'package:onexray/core/errors/failure.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -93,7 +95,13 @@ void main() {
     ]) {
       await expectLater(
         service.preview(source, manual: true),
-        throwsFormatException,
+        throwsA(
+          isA<AppFailure>().having(
+            (e) => e.cause,
+            'core reason',
+            'Invalid node',
+          ),
+        ),
       );
     }
     expect(validations, 2);
@@ -147,7 +155,10 @@ void main() {
       'file:///tmp/sub',
     ]) {
       expect(NetClient.isHttpsDownloadUri(origin.resolve(target)), false);
-      expect(await NetClient().getText(target, httpsOnly: true), isNull);
+      await expectLater(
+        NetClient().getText(target, httpsOnly: true),
+        throwsA(isA<AppFailure>().having((e) => e.code, 'code', 'downloadUrl')),
+      );
     }
   });
 

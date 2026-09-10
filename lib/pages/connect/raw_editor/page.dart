@@ -155,10 +155,18 @@ class _RawEditorPageState extends State<RawEditorPage> {
                           padding: const EdgeInsets.only(top: 12),
                           child: Semantics(
                             liveRegion: true,
-                            child: Text(
-                              state.error!,
-                              style: AppTypography.rawNote.copyWith(
-                                color: palette.destructive,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxHeight:
+                                    MediaQuery.sizeOf(context).height / 4,
+                              ),
+                              child: SingleChildScrollView(
+                                child: SelectableText(
+                                  state.error!,
+                                  style: AppTypography.rawNote.copyWith(
+                                    color: palette.destructive,
+                                  ),
+                                ),
                               ),
                             ),
                           ),

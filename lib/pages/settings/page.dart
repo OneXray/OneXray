@@ -17,6 +17,7 @@ import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:onexray/service/shared/event_bus/enum.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/event_bus/state.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -211,6 +212,19 @@ class SettingsPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (state.failure case final failure?)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Semantics(
+                              liveRegion: true,
+                              child: SelectableText(
+                                appFailureMessage(l10n, failure),
+                                style: AppTypography.supporting.copyWith(
+                                  color: palette.destructive,
+                                ),
+                              ),
+                            ),
+                          ),
                         Builder(
                           builder: (context) =>
                               MediaQuery.sizeOf(context).width >

@@ -3,6 +3,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/connect/platform_requirements.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 String connectionFailureReason(
   Object error, {
@@ -11,6 +12,7 @@ String connectionFailureReason(
   ConnectionResolutionException() => error.reason.name,
   ConnectionHostException() => error.reason,
   ConnectionPlatformRequirementException() => error.reason,
+  AppFailure() => error.code,
   _ => fallback,
 };
 
@@ -21,10 +23,11 @@ String connectionFailureMessage(
   Object? error,
   String? issue,
   PlatformPermissionResult? permission,
+  String? operation,
 }) {
   issue ??= error == null ? null : connectionFailureReason(error);
   if (error is ConnectionHostException) permission ??= error.permission;
-  return switch (issue) {
+  final message = switch (issue) {
     'selectionUnavailable' =>
       '${l.prototypeNoAvailableEntries} · ${l.prototypeAddServers}',
     'insufficientCandidates' || 'insufficientHealthyServers' =>
@@ -47,8 +50,18 @@ String connectionFailureMessage(
     'readFailed' ||
     'runtimeUnavailable' ||
     'nativeStatusFailed' => l.prototypeTemporarilyUnavailable,
-    _ => l.prototypeCheckNetwork,
+    'startFailed' => l.prototypeConnectionFailed,
+    'stopFailed' => l.actionResult(l.prototypeDisconnect, l.resultFailed),
+    'startTimeout' => '${l.prototypeConnect} · ${l.prototypeTimeout}',
+    'stopTimeout' => '${l.prototypeDisconnect} · ${l.prototypeTimeout}',
+    _ => null,
   };
+  if (message == null) return appFailureMessage(l, error, operation: operation);
+  return appFailureMessage(
+    l,
+    error is AppFailure ? error.cause : permission?.message,
+    operation: message,
+  );
 }
 
 /// Expected selection failures can be handled later; do not steal desktop focus.

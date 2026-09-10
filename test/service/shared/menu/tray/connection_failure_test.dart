@@ -128,7 +128,7 @@ void main() {
             : error is ConnectionHostException &&
                   error.reason == 'permissionRequired'
             ? l.prototypeVpnPermissionRequired
-            : l.prototypeCheckNetwork;
+            : l.prototypeConnectionFailed;
         expect(notifications, [message]);
         expect(shown, 1);
       },
