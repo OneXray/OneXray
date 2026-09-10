@@ -203,12 +203,13 @@ class ServerImportService {
           : link.name.trim();
       try {
         results.add(ServerSubscriptionImport(name, await _subscribe(link)));
-      } catch (_) {
+      } catch (error) {
         results.add(
           ServerSubscriptionImport(
             name,
-            const SubscriptionInsertResult(
+            SubscriptionInsertResult(
               status: SubscriptionUpdateResult.writeFailed,
+              error: error,
             ),
           ),
         );
@@ -233,6 +234,7 @@ class ServerImportService {
         status: result.status,
         subId: row.id,
         count: result.count,
+        error: result.error,
       );
     }
     String? secretKey;

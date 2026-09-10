@@ -22,17 +22,19 @@ String appFailureMessage(
   return detail.isEmpty || detail == title ? title : '$title\n$detail';
 }
 
+String? nativeOperationFailureTitle(AppLocalizations l, String? code) =>
+    switch (code) {
+      'startFailed' => l.prototypeConnectionFailed,
+      'stopFailed' => l.actionResult(l.prototypeDisconnect, l.resultFailed),
+      'startTimeout' => '${l.prototypeConnect} · ${l.prototypeTimeout}',
+      'stopTimeout' => '${l.prototypeDisconnect} · ${l.prototypeTimeout}',
+      _ => null,
+    };
+
 String? _nativeOperationFailure(AppLocalizations l, Object? error) =>
     switch (error) {
-      AppFailure(code: 'startFailed') => l.prototypeConnectionFailed,
-      AppFailure(code: 'stopFailed') => l.actionResult(
-        l.prototypeDisconnect,
-        l.resultFailed,
-      ),
-      AppFailure(code: 'startTimeout') =>
-        '${l.prototypeConnect} · ${l.prototypeTimeout}',
-      AppFailure(code: 'stopTimeout') =>
-        '${l.prototypeDisconnect} · ${l.prototypeTimeout}',
-      AppFailure() => _nativeOperationFailure(l, error.cause),
+      AppFailure() =>
+        nativeOperationFailureTitle(l, error.code) ??
+            _nativeOperationFailure(l, error.cause),
       _ => null,
     };

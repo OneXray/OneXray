@@ -50,11 +50,7 @@ String connectionFailureMessage(
     'readFailed' ||
     'runtimeUnavailable' ||
     'nativeStatusFailed' => l.prototypeTemporarilyUnavailable,
-    'startFailed' => l.prototypeConnectionFailed,
-    'stopFailed' => l.actionResult(l.prototypeDisconnect, l.resultFailed),
-    'startTimeout' => '${l.prototypeConnect} · ${l.prototypeTimeout}',
-    'stopTimeout' => '${l.prototypeDisconnect} · ${l.prototypeTimeout}',
-    _ => null,
+    _ => nativeOperationFailureTitle(l, issue),
   };
   if (message == null) return appFailureMessage(l, error, operation: operation);
   return appFailureMessage(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
@@ -49,6 +51,59 @@ final class _RecordingUpdates implements DataUpdateService {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  for (final connected in [false, true]) {
+    test(
+      'status errors are handled without changing connected=$connected',
+      () async {
+        final error = StateError('Native status read failed');
+        final handled = <Object>[];
+        final escaped = <Object>[];
+        final updates = _RecordingUpdates();
+        final service = BackgroundTaskService.forTesting(updates);
+        bool? connectedAfterError;
+
+        await runZonedGuarded<Future<void>>(() async {
+          final status = AppFlutterApi().vpnStatusController;
+          // A broadcast error must be handled by each listener independently.
+          final otherListener = status.stream.listen(
+            (_) {},
+            onError: (Object error) => handled.add(error),
+          );
+          try {
+            service.init(vpnConnected: connected);
+            status.addError(error);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+            connectedAfterError = updates.checks.last.isVpnConnected();
+
+            status.add(VpnStatus.disconnected);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+
+            status.add(VpnStatus.connected);
+            await Future<void>.delayed(Duration.zero);
+            await service.checkDataUpdate();
+          } finally {
+            service.dispose();
+            await otherListener.cancel();
+          }
+        }, (error, stackTrace) => escaped.add(error));
+
+        expect(handled, [same(error)]);
+        expect(escaped, isEmpty);
+        expect(connectedAfterError, connected);
+        expect(updates.checks.map((check) => check.geodata), [
+          connected,
+          connected,
+          false,
+          true,
+        ]);
+      },
+    );
+  }
+
   testWidgets('only new connected edges retry; resume and hourly checks remain', (
     tester,
   ) async {

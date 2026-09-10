@@ -33,7 +33,12 @@ class BackgroundTaskService with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _observingLifecycle = true;
     _vpnStatusSubscription ??= AppFlutterApi().vpnStatusController.stream
-        .listen(_vpnStatusChanged);
+        .listen(
+          _vpnStatusChanged,
+          onError: (Object _) {
+            // The coordinator reports status errors; they are not connection changes.
+          },
+        );
     final interval = const Duration(hours: 1);
     _timer = Timer.periodic(interval, (_) => checkDataUpdate());
 

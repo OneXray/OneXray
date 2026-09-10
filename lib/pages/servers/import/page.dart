@@ -719,7 +719,7 @@ class _ImportFeedback extends StatelessWidget {
             Text(
               item.result.success
                   ? '${item.name}: ${l10n.prototypeUsableNodes(item.result.count)}'
-                  : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status)}',
+                  : '${item.name}: ${ServerImportController.subscriptionError(l10n, item.result.status, error: item.result.error)}',
               style: AppTypography.importHint.copyWith(
                 color: item.result.success
                     ? palette.mutedForeground

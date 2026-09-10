@@ -90,6 +90,7 @@ void main() {
         release.complete(
           const SubscriptionInsertResult(
             status: SubscriptionUpdateResult.downloadFailed,
+            error: HttpException('HTTP 403'),
           ),
         );
         await Future<void>.delayed(Duration.zero);
@@ -97,6 +98,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(urls.length, 3);
+    expect(find.textContaining('HTTP 403'), findsNWidgets(3));
     expect(find.byType(ButtonProgressIndicator), findsNothing);
     expect(
       tester

@@ -2,6 +2,7 @@ import 'package:onexray/core/errors/failure.dart';
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,6 +63,41 @@ void main() {
     ]);
     expect(saved.every((row) => row.delay == PingDelayConstants.unknown), true);
   });
+
+  test(
+    'batch subscription import retains errors and continues with later sources',
+    () async {
+      const downloadError = HttpException('HTTP 403');
+      const writeError = FileSystemException(
+        'Permission denied',
+        'subscriptions',
+      );
+      final service = ServerImportService(
+        subscribe: (link) async => switch (link.name) {
+          'download' => const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.downloadFailed,
+            error: downloadError,
+          ),
+          'write' => throw writeError,
+          _ => const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.success,
+            subId: 3,
+            count: 1,
+          ),
+        },
+      );
+      final results = await service.importSubscriptions([
+        for (final name in ['download', 'write', 'success'])
+          OneXraySubscriptionLink(name: name, url: 'https://example.com/$name'),
+      ]);
+
+      expect(results[0].result.error, same(downloadError));
+      expect(results[1].result.status, SubscriptionUpdateResult.writeFailed);
+      expect(results[1].result.error, same(writeError));
+      expect(results[2].result.success, isTrue);
+      expect(results[2].result.subId, 3);
+    },
+  );
 
   test(
     'manual import delegates node values and duplicate tags to libXray',

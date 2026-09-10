@@ -774,8 +774,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   static String subscriptionError(
     AppLocalizations l10n,
-    SubscriptionUpdateResult status,
-  ) => subscriptionFailureMessage(l10n, status);
+    SubscriptionUpdateResult status, {
+    Object? error,
+  }) => subscriptionFailureMessage(l10n, status, error: error);
 
   void toggleSecret() {
     emit(state.copyWith(obscureSecret: !state.obscureSecret));

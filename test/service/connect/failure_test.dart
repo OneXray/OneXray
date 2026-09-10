@@ -6,6 +6,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
+import 'package:onexray/service/shared/failure.dart';
 
 void main() {
   for (final locale in [
@@ -16,6 +17,34 @@ void main() {
     const Locale('fa'),
   ]) {
     final l = lookupAppLocalizations(locale);
+    test(
+      'native operation titles stay consistent across entry points in $locale',
+      () {
+        for (final (code, title) in [
+          ('startFailed', l.prototypeConnectionFailed),
+          ('stopFailed', l.actionResult(l.prototypeDisconnect, l.resultFailed)),
+          ('startTimeout', '${l.prototypeConnect} · ${l.prototypeTimeout}'),
+          ('stopTimeout', '${l.prototypeDisconnect} · ${l.prototypeTimeout}'),
+        ]) {
+          final error = ConnectionHostException(code, cause: 'Native detail');
+          expect(connectionFailureMessage(l, issue: code), title);
+          expect(
+            connectionFailureMessage(l, error: error),
+            '$title\nNative detail',
+          );
+          expect(appFailureMessage(l, error), '$title\nNative detail');
+          expect(
+            appFailureMessage(
+              l,
+              AppFailure(FailureCategory.runtime, 'saveFailed', cause: error),
+              operation: l.buttonSaveFailed,
+            ),
+            '$title\nNative detail',
+          );
+        }
+      },
+    );
+
     test('connection failures reuse approved copy in $locale', () {
       expect(
         connectionFailureMessage(
