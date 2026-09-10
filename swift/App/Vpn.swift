@@ -8,12 +8,14 @@ enum VPNError: LocalizedError {
     case sessionNotReady
     case noGroupContainer
     case routingDataSyncFailed
+    case statusTimeout
 
     var errorDescription: String? {
         switch self {
         case .sessionNotReady: return "The VPN session is not ready."
         case .noGroupContainer: return "The App Group data directory is unavailable."
         case .routingDataSyncFailed: return "Unable to transfer routing data to the VPN extension."
+        case .statusTimeout: return "Timed out waiting for the system VPN to finish the operation."
         }
     }
 }
@@ -29,6 +31,14 @@ class VPNManager {
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
     private var systemExtensionActivationTask: Task<RefreshVpnResult, Never>?
+    private struct StatusWait {
+        let session: NETunnelProviderSession
+        let accepted: [NEVPNStatus]
+        let continuation: CheckedContinuation<Void, Error>
+        let timeout: Task<Void, Never>
+        var observedTransition: Bool
+    }
+    private var statusWaits: [UUID: StatusWait] = [:]
 
     init() {
         YGLog("VPNManager init")
@@ -36,12 +46,68 @@ class VPNManager {
         cancellable = NotificationCenter.default.publisher(for: .NEVPNStatusDidChange)
             .sink(receiveValue: { noti in
                 if let session = noti.object as? NETunnelProviderSession {
-                    if session == self.vpn?.connection {
+                    if session == self.vpn?.connection || self.statusWaits.values.contains(where: { $0.session == session }) {
+                        self.checkStatusWaits()
                         self.runStatusObserver()
                     }
                 }
             })
         #endif
+    }
+
+    // Register before issuing a command; notifications, not a timer loop,
+    // confirm its completion. The timer only bounds a missing system reply.
+    private func waitForStatus(
+        session: NETunnelProviderSession,
+        accepted: [NEVPNStatus],
+        timeout: UInt64,
+        action: (() throws -> Void)? = nil
+    ) async throws {
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            try await withCheckedThrowingContinuation { continuation in
+                let timer = Task { @MainActor in
+                    do { try await Task.sleep(nanoseconds: timeout * 1_000_000_000) }
+                    catch { return }
+                    self.finishStatusWait(id, result: .failure(VPNError.statusTimeout))
+                }
+                statusWaits[id] = StatusWait(
+                    session: session, accepted: accepted, continuation: continuation, timeout: timer,
+                    observedTransition: action == nil || [.connecting, .connected, .reasserting, .disconnecting].contains(session.status)
+                )
+                do {
+                    try action?()
+                    checkStatusWaits(initial: action != nil)
+                } catch {
+                    finishStatusWait(id, result: .failure(error))
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                self.finishStatusWait(id, result: .failure(CancellationError()))
+            }
+        }
+    }
+
+    private func checkStatusWaits(initial: Bool = false) {
+        for (id, wait) in statusWaits {
+            let status = wait.session.status
+            if wait.accepted.contains(status) {
+                finishStatusWait(id, result: .success(()))
+            } else if [.connecting, .connected, .reasserting, .disconnecting].contains(status) {
+                statusWaits[id]?.observedTransition = true
+            } else if !initial && wait.observedTransition &&
+                        (status == .disconnected || status == .invalid) {
+                finishStatusWait(id, result: .failure(VPNError.sessionNotReady))
+            }
+        }
+    }
+
+    private func finishStatusWait(_ id: UUID, result: Result<Void, Error>) {
+        guard let wait = statusWaits.removeValue(forKey: id) else { return }
+        wait.timeout.cancel()
+        wait.continuation.resume(with: result)
     }
 
     private func runStatusObserver() {
@@ -316,10 +382,17 @@ class VPNManager {
                 }
                 if let session = vpn.connection as? NETunnelProviderSession {
                     if Constants.useSystemExtension {
-                        try session.startTunnel(options: ["source": "app" as NSString])
+                        try await waitForStatus(
+                            session: session, accepted: [.connecting, .connected, .reasserting], timeout: 10
+                        ) {
+                            try session.startTunnel(options: ["source": "app" as NSString])
+                        }
                         try await syncDatAndStart(session: session)
+                        try await waitForStatus(session: session, accepted: [.connected], timeout: 30)
                     } else {
-                        try session.startTunnel()
+                        try await waitForStatus(session: session, accepted: [.connected], timeout: 30) {
+                            try session.startTunnel()
+                        }
                     }
                     return .installed
                 } else {
@@ -332,7 +405,8 @@ class VPNManager {
             }
         } catch {
             YGLog(error.localizedDescription)
-            lastCommandError = error.localizedDescription
+            _ = try? await readStatus()
+            if lastCommandError == nil { lastCommandError = error.localizedDescription }
             return .notInstalled
         }
         #endif
@@ -381,17 +455,19 @@ class VPNManager {
             lastCommandError = error.localizedDescription
             return .notInstalled
         }
-        switch vpn.connection.status {
-        case .connected, .connecting, .reasserting:
-            if let session = vpn.connection as? NETunnelProviderSession {
+        do {
+            guard let session = vpn.connection as? NETunnelProviderSession else {
+                throw VPNError.sessionNotReady
+            }
+            try await waitForStatus(session: session, accepted: [.disconnected, .invalid], timeout: 15) {
                 session.stopTunnel()
             }
-        case .disconnected:
             runStatusObserver()
-        default:
-            break
+            return .installed
+        } catch {
+            lastCommandError = error.localizedDescription
+            return .notInstalled
         }
-        return .installed
         #endif
     }
 
@@ -550,7 +626,6 @@ class VPNManager {
         }
         let directory = userGroup.adaptedAppendPath(path: "dat")
         let local = try buildLocalDatManifest(directory: directory)
-        try await waitSessionMessageable(session: session)
 
         let remote: [String: Int64]
         let listResp = try await sendTunnelRequest(session: session, .listDat, timeoutSeconds: 10)
@@ -581,20 +656,6 @@ class VPNManager {
         guard case .ok = try await sendTunnelRequest(session: session, .startXray, timeoutSeconds: 10) else {
             throw VPNError.routingDataSyncFailed
         }
-    }
-
-    private func waitSessionMessageable(session: NETunnelProviderSession, timeout: TimeInterval = 10) async throws {
-        let start = Date()
-        while Date().timeIntervalSince(start) < timeout {
-            switch session.status {
-            case .connecting, .connected, .reasserting:
-                return
-            default:
-                break
-            }
-            try await Task.sleep(nanoseconds: 100000000)
-        }
-        throw VPNError.sessionNotReady
     }
 
     private func sendTunnelRequest(

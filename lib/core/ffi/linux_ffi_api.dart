@@ -7,6 +7,8 @@ import 'package:onexray/core/errors/failure.dart';
 import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/ffi/desktop_core_exit.dart';
+import 'package:onexray/core/ffi/linux_core_exit.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
@@ -26,6 +28,9 @@ class LinuxFfiApi extends BaseFfiApi {
       _executablePath = null,
       _procDirectory = '/proc',
       _signalProcess = Process.killPid,
+      _watchExit = watchLinuxCoreExit,
+      _notify = AppFlutterApi().vpnStatusChanged,
+      _notifyError = AppFlutterApi().vpnStatusController.addError,
       _processStore = DesktopCoreProcessStore();
 
   @visibleForTesting
@@ -34,55 +39,65 @@ class LinuxFfiApi extends BaseFfiApi {
     required String this._executablePath,
     required this._procDirectory,
     required this._signalProcess,
+    required this._watchExit,
+    Future<void> Function(VpnStatus)? notify,
+    void Function(Object)? notifyError,
   }) : _filesDirectory = filesDirectory,
+       _notify = notify ?? AppFlutterApi().vpnStatusChanged,
+       _notifyError =
+           notifyError ?? AppFlutterApi().vpnStatusController.addError,
        _processStore = DesktopCoreProcessStore(directory: filesDirectory);
 
-  var _vpnStatus = VpnStatus.disconnected;
+  VpnStatus? _transition;
 
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
     final running = await queryCoreRunning();
-    if (running != null &&
-        _vpnStatus != VpnStatus.connecting &&
-        _vpnStatus != VpnStatus.disconnecting) {
-      _vpnStatus = running ? VpnStatus.connected : VpnStatus.disconnected;
+    if (running == null) {
+      return commandFailed(
+        'Unable to verify the current Core process identity.',
+      );
     }
-    return commandSuccess(status: _vpnStatus);
-  }
-
-  Future<void> updateVpnStatus(VpnStatus status) async {
-    _vpnStatus = status;
-    await AppFlutterApi().vpnStatusChanged(_vpnStatus);
+    return commandSuccess(
+      status:
+          _transition ??
+          (running ? VpnStatus.connected : VpnStatus.disconnected),
+    );
   }
 
   @override
   Future<NativeVpnCommandResult> startVpn() async {
-    await updateVpnStatus(VpnStatus.connecting);
-
-    final request = await StartVpnRequestReader.readFromStartFile();
-    final coreRequest = readRunXrayRequest(request);
-
-    var res = await startCore(coreRequest, request.tun);
-    if (!res) {
-      final error = _lastCoreError;
-      await stopVpn();
-      return commandFailed(error);
+    _transition = VpnStatus.connecting;
+    try {
+      await _notify(VpnStatus.connecting);
+      final request = await StartVpnRequestReader.readFromStartFile();
+      if (!await startCore(readRunXrayRequest(request), request.tun)) {
+        final error = _lastCoreError;
+        await stopVpn();
+        return commandFailed(error);
+      }
+      await _notify(VpnStatus.connected);
+      return commandSuccess(status: VpnStatus.connected);
+    } catch (error) {
+      return commandFailed(failureDetails(error));
+    } finally {
+      _transition = null;
     }
-    await updateVpnStatus(VpnStatus.connected);
-    return commandSuccess();
   }
 
   @override
   Future<NativeVpnCommandResult> stopVpn() async {
-    await updateVpnStatus(VpnStatus.disconnecting);
-    final stopped = await stopCore();
-    if (!stopped) {
-      await updateVpnStatus(VpnStatus.connected);
-      return commandFailed('Unable to stop the current Core process.');
+    _transition = VpnStatus.disconnecting;
+    try {
+      await _notify(VpnStatus.disconnecting);
+      if (!await stopCore()) {
+        return commandFailed('Unable to stop the current Core process.');
+      }
+      await _notify(VpnStatus.disconnected);
+      return commandSuccess(status: VpnStatus.disconnected);
+    } finally {
+      _transition = null;
     }
-    await Future.delayed(Duration(seconds: 1));
-    await updateVpnStatus(VpnStatus.disconnected);
-    return commandSuccess();
   }
 
   //===================================
@@ -93,14 +108,66 @@ class LinuxFfiApi extends BaseFfiApi {
   final String? _executablePath;
   final String _procDirectory;
   final bool Function(int, ProcessSignal) _signalProcess;
+  final DesktopCoreExitWatch Function(int) _watchExit;
+  final Future<void> Function(VpnStatus) _notify;
+  final void Function(Object) _notifyError;
+  DesktopCoreExitWatch? _exitWatch;
+  DesktopCoreProcessRecord? _watchedRecord;
   Process? _coreProcess;
   DesktopCoreProcessRecord? _currentRecord;
   bool _stopping = false;
   String? _lastCoreError;
 
-  // App-owned processes already report exitCode; restored PIDs cannot do so.
-  bool get needsVpnStatusPolling =>
-      _coreProcess == null && _currentRecord != null;
+  @override
+  Future<void> observeVpnStatus() async {
+    final running = await queryCoreRunning();
+    if (running == null) {
+      throw StateError('Could not identify the current Linux Core');
+    }
+    if (running && _coreProcess == null) {
+      await _observeRestored(_currentRecord!);
+    }
+  }
+
+  @override
+  void disposeVpnStatus() {
+    _exitWatch?.cancel();
+    _exitWatch = null;
+    _watchedRecord = null;
+  }
+
+  Future<DesktopCoreExitWatch> _observeRestored(
+    DesktopCoreProcessRecord record, {
+    bool v2684 = false,
+  }) async {
+    if (identical(_watchedRecord, record) && _exitWatch != null) {
+      return _exitWatch!;
+    }
+    disposeVpnStatus();
+    final watch = _watchExit(record.pid);
+    _exitWatch = watch;
+    _watchedRecord = record;
+    unawaited(
+      watch.exited
+          .then((exited) async {
+            if (!exited || !identical(_exitWatch, watch)) return;
+            _exitWatch = null;
+            _watchedRecord = null;
+            if (identical(_currentRecord, record)) _currentRecord = null;
+            if (!_stopping) await _notify(VpnStatus.disconnected);
+          })
+          .catchError((Object error) {
+            if (identical(_exitWatch, watch)) _notifyError(error);
+          }),
+    );
+    // A pidfd pins a process, not a PID. Verify again after opening it so PID
+    // reuse between the initial /proc check and pidfd_open cannot be adopted.
+    if (await _coreProcessIsRunning(record, v2684: v2684) == null) {
+      disposeVpnStatus();
+      throw StateError('Linux Core identity changed while subscribing');
+    }
+    return watch;
+  }
 
   @override
   Future<String> getTunFilesDir() async =>
@@ -219,12 +286,17 @@ class LinuxFfiApi extends BaseFfiApi {
     }
     _stopping = true;
     try {
+      final ownedProcess = _coreProcess;
+      final exited = ownedProcess?.pid == record.pid
+          ? ownedProcess!.exitCode.then((_) => true)
+          : (await _observeRestored(record, v2684: v2684)).exited;
       if (!_signalProcess(record.pid, ProcessSignal.sigterm) &&
           await running() != false) {
         return false;
       }
       if (!await _waitForCoreExit(
         record,
+        exited,
         const Duration(seconds: 3),
         v2684: v2684,
       )) {
@@ -237,6 +309,7 @@ class LinuxFfiApi extends BaseFfiApi {
         }
         if (!await _waitForCoreExit(
           record,
+          exited,
           const Duration(seconds: 2),
           v2684: v2684,
         )) {
@@ -246,6 +319,7 @@ class LinuxFfiApi extends BaseFfiApi {
       if (_coreProcess?.pid == record.pid) _coreProcess = null;
       if (_currentRecord?.pid == record.pid) _currentRecord = null;
       await _processStore.clear(pid: record.pid);
+      disposeVpnStatus();
       return true;
     } finally {
       _stopping = false;
@@ -424,16 +498,13 @@ class LinuxFfiApi extends BaseFfiApi {
 
   Future<bool> _waitForCoreExit(
     DesktopCoreProcessRecord record,
+    Future<bool> exited,
     Duration timeout, {
     bool v2684 = false,
   }) async {
-    final deadline = DateTime.now().add(timeout);
-    while (true) {
-      final running = await _coreProcessIsRunning(record, v2684: v2684);
-      if (running == false) return true;
-      if (running == null || DateTime.now().isAfter(deadline)) return false;
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
+    if (await _coreProcessIsRunning(record, v2684: v2684) == false) return true;
+    await exited.timeout(timeout, onTimeout: () => false);
+    return await _coreProcessIsRunning(record, v2684: v2684) == false;
   }
 
   String get corePath {
@@ -472,7 +543,7 @@ class LinuxFfiApi extends BaseFfiApi {
         // Leave the exited identity until the next verified stop/start. An async
         // exit callback must not erase a newer process record after PID reuse.
         if (!_stopping) {
-          unawaited(updateVpnStatus(VpnStatus.disconnected));
+          unawaited(_notify(VpnStatus.disconnected));
         }
       }
     });

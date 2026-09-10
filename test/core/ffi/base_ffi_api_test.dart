@@ -125,28 +125,33 @@ void main() {
     expect(api.statuses, [VpnStatus.disconnecting, VpnStatus.disconnected]);
   });
 
-  test('restores connected state when Core stop fails', () async {
+  test('a stop failure never invents a connected state', () async {
     final api = _TestFfiApi(stopResult: false);
     addTearDown(api.stopSharedIsolate);
 
     final result = await api.stopVpn();
 
     expect(result.state, NativeVpnCommandState.failed);
-    expect(api.statuses, [VpnStatus.disconnecting, VpnStatus.connected]);
+    expect(api.statuses, [VpnStatus.disconnecting]);
   });
 }
 
 final class _TestFfiApi extends LinuxFfiApi {
   final bool stopResult;
   final String? directory;
-  final List<VpnStatus> statuses = [];
+  final List<VpnStatus> statuses;
 
-  _TestFfiApi({required this.stopResult, this.directory})
+  factory _TestFfiApi({required bool stopResult, String? directory}) =>
+      _TestFfiApi._(stopResult, directory, []);
+
+  _TestFfiApi._(this.stopResult, this.directory, this.statuses)
     : super.forTesting(
         filesDirectory: directory ?? '',
         executablePath: '',
         procDirectory: '',
         signalProcess: (_, _) => false,
+        watchExit: (_) => throw UnimplementedError(),
+        notify: (status) async => statuses.add(status),
       );
 
   @override
@@ -155,11 +160,6 @@ final class _TestFfiApi extends LinuxFfiApi {
 
   @override
   Future<bool> stopCore() async => stopResult;
-
-  @override
-  Future<void> updateVpnStatus(VpnStatus status) async {
-    statuses.add(status);
-  }
 }
 
 LibXrayRunConfig _request(String json) => LibXrayRunConfig(

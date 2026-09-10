@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:onexray/core/ffi/windows/core_process.dart';
 import 'package:onexray/core/ffi/windows/exe_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
@@ -162,6 +163,29 @@ void main() {
     );
   });
 
+  test('restored EXE exits notify without another read; disposing cancels the wait', () async {
+    final api = create();
+    await api.startVpn();
+    final restored = create();
+    addTearDown(restored.disposeVpnStatus);
+    await restored.observeVpnStatus();
+    expect(process.watches, 1);
+    events.clear();
+    process.running = false;
+    process.exited.complete(true);
+    await Future<void>.delayed(Duration.zero);
+    expect(events, [VpnStatus.disconnected]);
+
+    process.running = true;
+    process.exited = Completer<bool>();
+    await restored.observeVpnStatus();
+    events.clear();
+    restored.disposeVpnStatus();
+    await Future<void>.delayed(Duration.zero);
+    expect(await process.exited.future, isFalse);
+    expect(events, isEmpty);
+  });
+
   test('Windows arguments preserve spaces, quotes and trailing slashes', () {
     expect(quoteWindowsArgument('Ethernet 2'), '"Ethernet 2"');
     expect(quoteWindowsArgument(''), '""');
@@ -178,6 +202,20 @@ class _Process extends WindowsCoreProcess {
   int stops = 0;
   List<String>? arguments;
   final launched = Completer<void>();
+  var exited = Completer<bool>();
+  int watches = 0;
+
+  @override
+  DesktopCoreExitWatch watchExit(
+    DesktopCoreProcessRecord record,
+    String executable,
+  ) {
+    watches++;
+    final completion = exited;
+    return DesktopCoreExitWatch(completion.future, () {
+      if (!completion.isCompleted) completion.complete(false);
+    });
+  }
 
   @override
   Future<DesktopCoreProcessRecord> start(

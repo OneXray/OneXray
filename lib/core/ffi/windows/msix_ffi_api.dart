@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:onexray/core/ffi/base_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
@@ -10,14 +12,33 @@ import 'package:onexray/core/pigeon/model_writer.dart';
 import 'package:onexray/core/tools/logger.dart';
 
 class WindowsMsixFfiApi extends WindowsFfiApi {
-  WindowsMsixFfiApi({WindowsNativeApi? native})
-    : _native = native ?? WindowsNativeApi(),
-      super.base();
+  WindowsMsixFfiApi({
+    WindowsNativeApi? native,
+    Future<StartVpnRequest> Function()? readRequest,
+    Future<void> Function(VpnStatus)? notify,
+    void Function(Object)? notifyError,
+    this.monitorInterval = const Duration(seconds: 5),
+    this.confirmInterval = const Duration(milliseconds: 200),
+    this.startTimeout = const Duration(seconds: 30),
+    this.stopTimeout = const Duration(seconds: 15),
+  }) : _native = native ?? WindowsNativeApi(),
+       _readRequest = readRequest ?? StartVpnRequestReader.readFromStartFile,
+       _notify = notify ?? AppFlutterApi().vpnStatusChanged,
+       _notifyError =
+           notifyError ?? AppFlutterApi().vpnStatusController.addError,
+       super.base();
 
   static const _coreRelativePath = 'OneXrayCore.exe';
 
   final WindowsNativeApi _native;
-  bool _starting = false;
+  final Future<StartVpnRequest> Function() _readRequest;
+  final Future<void> Function(VpnStatus) _notify;
+  final void Function(Object) _notifyError;
+  final Duration monitorInterval, confirmInterval, startTimeout, stopTimeout;
+  Timer? _monitor;
+  Future<void>? _checking;
+  bool _commandActive = false;
+  VpnStatus? _lastNotified;
   String? _packageLocalDataDir;
 
   @override
@@ -38,20 +59,80 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
 
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
-    if (_starting) {
-      return commandSuccess(status: VpnStatus.connecting);
-    }
     try {
-      var state = await _native.getVpnStatus();
-      if ((state.status == WindowsVpnStatus.connected ||
-              state.status == WindowsVpnStatus.connecting) &&
-          !await _hasValidSession(state.snapshotToken)) {
-        state = await _native.stopVpn();
-      }
+      final state = await _native.getVpnStatus();
       return commandSuccess(status: _status(state.status));
     } catch (error) {
       ygLogger('read Windows VPN status failed: $error');
       return commandFailed(error.toString());
+    }
+  }
+
+  @override
+  Future<void> observeVpnStatus() async {
+    _monitor ??= Timer.periodic(monitorInterval, (_) => unawaited(_check()));
+    await _check();
+  }
+
+  @override
+  void disposeVpnStatus() {
+    _monitor?.cancel();
+    _monitor = null;
+    _lastNotified = null;
+  }
+
+  Future<void> _check() =>
+      _checking ??= _reconcile().whenComplete(() => _checking = null);
+
+  Future<void> _reconcile() async {
+    if (_commandActive || _monitor == null) return;
+    try {
+      final state = await _native.getVpnStatus();
+      if (_commandActive || _monitor == null) return;
+      final active =
+          state.status == WindowsVpnStatus.connected ||
+          state.status == WindowsVpnStatus.connecting;
+      final stale = active && !await _hasValidSession(state.snapshotToken);
+      if (_commandActive || _monitor == null) return;
+      if (stale) {
+        // Reconcile a restored provider session here, never inside a read.
+        final result = await stopVpn();
+        if (result.state != NativeVpnCommandState.success) {
+          throw StateError(
+            result.message ?? 'Could not stop stale Windows VPN',
+          );
+        }
+      } else {
+        await _emitWindowsStatus(state.status);
+      }
+    } catch (error) {
+      if (_monitor != null) {
+        _lastNotified = null;
+        _notifyError(error);
+      }
+    }
+  }
+
+  Future<void> _confirm(
+    WindowsVpnStatus wanted,
+    WindowsVpnStatus initial,
+  ) async {
+    var status = initial;
+    final deadline = DateTime.now().add(
+      wanted == WindowsVpnStatus.connected ? startTimeout : stopTimeout,
+    );
+    while (true) {
+      await _emitWindowsStatus(status);
+      if (status == wanted) return;
+      if (wanted == WindowsVpnStatus.connected &&
+          status == WindowsVpnStatus.disconnected) {
+        throw StateError('Windows VPN disconnected during start');
+      }
+      if (!DateTime.now().isBefore(deadline)) {
+        throw TimeoutException('Windows VPN did not reach ${wanted.name}');
+      }
+      await Future<void>.delayed(confirmInterval);
+      status = (await _native.getVpnStatus()).status;
     }
   }
 
@@ -69,10 +150,10 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
       return commandFailed('Windows VPN settings are missing');
     }
 
-    _starting = true;
+    _commandActive = true;
     var providerStartInvoked = false;
     try {
-      final request = await StartVpnRequestReader.readFromStartFile();
+      final request = await _readRequest();
       final coreConfig = await _publishCoreConfig(readRunXrayRequest(request));
       final backend = WindowsSessionBackend(
         processes: [
@@ -87,7 +168,7 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
         ],
       );
 
-      await AppFlutterApi().vpnStatusChanged(VpnStatus.connecting);
+      await _emitWindowsStatus(WindowsVpnStatus.connecting);
       providerStartInvoked = true;
       final state = await _native.startVpn(
         configYaml,
@@ -101,37 +182,41 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
       }
       request.snapshotToken = token;
       await request.writeToStartFile();
-      await _emitWindowsStatus(state.status);
-      return commandSuccess();
+      await _confirm(WindowsVpnStatus.connected, state.status);
+      return commandSuccess(status: VpnStatus.connected);
     } catch (error, stackTrace) {
       ygLogger('start Windows VPN failed: $error\n$stackTrace');
       await _cleanupFailedStart(providerStartInvoked);
       return commandFailed(error.toString());
     } finally {
-      _starting = false;
+      _commandActive = false;
     }
   }
 
   @override
   Future<NativeVpnCommandResult> stopVpn() async {
+    _commandActive = true;
     try {
+      await _emitWindowsStatus(WindowsVpnStatus.disconnecting);
       final state = await _native.stopVpn();
-      await _emitWindowsStatus(state.status);
-      return commandSuccess();
+      await _confirm(WindowsVpnStatus.disconnected, state.status);
+      return commandSuccess(status: VpnStatus.disconnected);
     } catch (error, stackTrace) {
       ygLogger('stop Windows VPN failed: $error\n$stackTrace');
       return commandFailed(error.toString());
+    } finally {
+      _commandActive = false;
     }
   }
 
   Future<void> _cleanupFailedStart(bool providerStartInvoked) async {
     if (!providerStartInvoked) {
-      await AppFlutterApi().vpnStatusChanged(VpnStatus.disconnected);
+      await _emitWindowsStatus(WindowsVpnStatus.disconnected);
       return;
     }
     try {
       final state = await _native.stopVpn();
-      await _emitWindowsStatus(state.status);
+      await _confirm(WindowsVpnStatus.disconnected, state.status);
     } catch (error) {
       ygLogger('failed to clean up Windows VPN start: $error');
     }
@@ -142,7 +227,7 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
       return false;
     }
     try {
-      final request = await StartVpnRequestReader.readFromStartFile();
+      final request = await _readRequest();
       return request.snapshotToken == snapshotToken;
     } catch (_) {
       return false;
@@ -155,8 +240,12 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
     return paths;
   }
 
-  Future<void> _emitWindowsStatus(WindowsVpnStatus status) =>
-      AppFlutterApi().vpnStatusChanged(_status(status));
+  Future<void> _emitWindowsStatus(WindowsVpnStatus status) async {
+    final value = _status(status);
+    if (value == _lastNotified) return;
+    _lastNotified = value;
+    await _notify(value);
+  }
 
   static VpnStatus _status(WindowsVpnStatus status) => switch (status) {
     WindowsVpnStatus.disconnecting => VpnStatus.disconnecting,

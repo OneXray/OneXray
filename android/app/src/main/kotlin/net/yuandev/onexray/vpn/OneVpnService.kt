@@ -13,6 +13,9 @@ import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
 import android.net.VpnService
 import android.os.Build
+import android.os.Binder
+import android.os.IBinder
+import android.os.Parcel
 import android.os.ParcelFileDescriptor
 import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
@@ -38,6 +41,7 @@ import net.yuandev.onexray.pigeon.PerAppVPNMode
 import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import net.yuandev.onexray.pigeon.XrayEnv
+import net.yuandev.onexray.pigeon.VpnStatus
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -87,6 +91,29 @@ class OneVpnService : VpnService() {
         }
     }
     private var stopRequestReceiverRegistered = false
+
+    private val statusBinder = object : Binder() {
+        override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+            if (code != VpnStatusConnection.READ_STATUS) return super.onTransact(code, data, reply, flags)
+            data.enforceInterface(VpnStatusConnection.DESCRIPTOR)
+            val status = when {
+                running && !released.get() -> VpnStatus.CONNECTED
+                released.get() && tunnel != null -> VpnStatus.DISCONNECTING
+                !released.get() -> VpnStatus.CONNECTING
+                else -> VpnStatus.DISCONNECTED
+            }
+            reply?.writeNoException()
+            reply?.writeInt(status.ordinal)
+            return true
+        }
+    }
+
+    override fun onBind(intent: Intent?): IBinder? =
+        if (intent?.action == VpnStatusConnection.ACTION_BIND) statusBinder else super.onBind(intent)
+
+    override fun onRevoke() {
+        stopTun()
+    }
 
     class VPNController : DialerController {
         var vpn: OneVpnService? = null
@@ -187,7 +214,7 @@ class OneVpnService : VpnService() {
         stopSelf()
     }
 
-    private fun releaseTun(): Boolean {
+    private fun releaseTun(error: String? = null): Boolean {
         if (!released.compareAndSet(false, true)) {
             return false
         }
@@ -215,7 +242,7 @@ class OneVpnService : VpnService() {
         tunnel = null
         controller.vpn = null
         running = false
-        sendStatusBroadcast(false)
+        sendStatusBroadcast(false, error)
         return true
     }
 
@@ -226,8 +253,8 @@ class OneVpnService : VpnService() {
             return
         }
         XLog.e(message, error)
-        releaseTun()
-        sendStatusBroadcast(false, error.message ?: error.toString())
+        val reason = error.message ?: error.toString()
+        if (!releaseTun(reason)) sendStatusBroadcast(false, reason)
         stopSelf()
     }
 

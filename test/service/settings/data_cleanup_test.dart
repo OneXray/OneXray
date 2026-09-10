@@ -52,7 +52,7 @@ void main() {
         return const HostConnection(VpnStatus.disconnected);
       },
     );
-    await coordinator.initialize(poll: false, registerReferences: false);
+    await coordinator.initialize(observe: false, registerReferences: false);
     addTearDown(coordinator.dispose);
     // This test exercises the real file queue, but never accesses the filesystem.
     geodata = GeoDataService.forTesting(

@@ -28,9 +28,22 @@ class AppHostApi {
 
   // ===============
   var _tunFilesDir = "";
-  bool get needsVpnStatusPolling =>
-      AppPlatform.isWindows ||
-      (AppPlatform.isLinux && LinuxFfiApi().needsVpnStatusPolling);
+  // Mobile and Apple notifications are registered by the native bridge.
+  Future<void> observeVpnStatus() async {
+    if (AppPlatform.isWindows) {
+      await WindowsFfiApi().observeVpnStatus();
+    } else if (AppPlatform.isLinux) {
+      await LinuxFfiApi().observeVpnStatus();
+    }
+  }
+
+  void disposeVpnStatus() {
+    if (AppPlatform.isWindows) {
+      WindowsFfiApi().disposeVpnStatus();
+    } else if (AppPlatform.isLinux) {
+      LinuxFfiApi().disposeVpnStatus();
+    }
+  }
 
   Future<void> initTunFilesDir() async {
     if (AppPlatform.isLinux) {

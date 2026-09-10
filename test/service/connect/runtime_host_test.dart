@@ -164,7 +164,7 @@ void main() {
     'start and stop depend on native state, not metrics availability',
     () async {
       final runtime = _runtime();
-      var status = VpnStatus.disconnected;
+      var statusReads = 0;
       var metricReads = 0;
       final host = ConnectionRuntimeHost(
         runDirectory: directory.path,
@@ -172,21 +172,66 @@ void main() {
           metricReads++;
           throw const FormatException();
         },
-        readStatus: () async => status,
+        readStatus: () async {
+          statusReads++;
+          return VpnStatus.disconnected;
+        },
         startVpn: (_) async {
-          status = VpnStatus.connected;
-          return NativeVpnCommandResult(state: NativeVpnCommandState.success);
+          return NativeVpnCommandResult(
+            state: NativeVpnCommandState.success,
+            status: VpnStatus.connected,
+          );
         },
         stopVpn: () async {
-          status = VpnStatus.disconnected;
-          return NativeVpnCommandResult(state: NativeVpnCommandState.success);
+          return NativeVpnCommandResult(
+            state: NativeVpnCommandState.success,
+            status: VpnStatus.disconnected,
+          );
         },
       );
 
       expect((await host.start(runtime)).runtime?.identity, runtime.identity);
       expect((await host.stop()).status, VpnStatus.disconnected);
       expect(metricReads, 0);
+      expect(
+        statusReads,
+        0,
+        reason: 'Platforms confirm commands; the host must not poll again.',
+      );
       expect(await directory.list().toList(), isEmpty);
+    },
+  );
+
+  test(
+    'accepting a command without a confirmed status is not success',
+    () async {
+      final host = ConnectionRuntimeHost(
+        startVpn: (_) async =>
+            NativeVpnCommandResult(state: NativeVpnCommandState.success),
+        stopVpn: () async =>
+            NativeVpnCommandResult(state: NativeVpnCommandState.success),
+        readStatus: () async => throw StateError('must not poll'),
+      );
+      await expectLater(
+        host.start(_runtime()),
+        throwsA(
+          isA<ConnectionHostException>().having(
+            (e) => e.reason,
+            'reason',
+            'startNotConfirmed',
+          ),
+        ),
+      );
+      await expectLater(
+        host.stop(),
+        throwsA(
+          isA<ConnectionHostException>().having(
+            (e) => e.reason,
+            'reason',
+            'stopNotConfirmed',
+          ),
+        ),
+      );
     },
   );
 }

@@ -3,11 +3,30 @@ import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 
 /// Win32 work (including the UAC prompt) never blocks the Flutter isolate.
 class WindowsCoreProcess {
+  DesktopCoreExitWatch watchExit(
+    DesktopCoreProcessRecord record,
+    String executable,
+  ) {
+    final created = CreateEvent(null, true, false, null);
+    if (!created.value.isValid) _failed('CreateEvent', created.error);
+    final cancelEvent = created.value;
+    var closed = false;
+    final exited = _waitForExit(record, executable, cancelEvent.address)
+        .whenComplete(() {
+          closed = true;
+          CloseHandle(cancelEvent);
+        });
+    return DesktopCoreExitWatch(exited, () {
+      if (!closed) SetEvent(cancelEvent);
+    });
+  }
+
   Future<DesktopCoreProcessRecord> start(
     String executable,
     List<String> arguments,
@@ -49,6 +68,28 @@ class WindowsCoreProcess {
         }
       });
 }
+
+Future<bool> _waitForExit(
+  DesktopCoreProcessRecord record,
+  String executable,
+  int cancelAddress,
+) => Isolate.run(() {
+  final process = _openOwned(record, executable);
+  if (process == null) return true;
+  try {
+    return using((arena) {
+      final handles = arena<Pointer>(2);
+      handles[0] = process;
+      handles[1] = Pointer.fromAddress(cancelAddress);
+      final result = WaitForMultipleObjects(2, handles, false, INFINITE);
+      if (result.value == WAIT_OBJECT_0) return true;
+      if (result.value == WAIT_EVENT(WAIT_OBJECT_0 + 1)) return false;
+      _failed('WaitForMultipleObjects', result.error);
+    });
+  } finally {
+    CloseHandle(process);
+  }
+});
 
 /// ShellExecuteEx takes a command-line string, not an argv array.
 String quoteWindowsArgument(String value) {

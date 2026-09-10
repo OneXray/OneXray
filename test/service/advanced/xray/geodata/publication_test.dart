@@ -133,7 +133,7 @@ void main() {
         stop: () async => throw StateError('Must not stop'),
       );
       addTearDown(coordinator.dispose);
-      await coordinator.initialize(poll: false, registerReferences: false);
+      await coordinator.initialize(observe: false, registerReferences: false);
       final editor = PolicyEditorService(
         coordinator: coordinator,
         platform: ConnectionPlatform.ios,

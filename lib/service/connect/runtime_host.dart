@@ -53,9 +53,6 @@ class ConnectionRuntimeHost {
   final Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
   _startVpn;
   final Future<NativeVpnCommandResult> Function()? _stopVpn;
-  final Duration startTimeout;
-  final Duration stopTimeout;
-  final Duration pollInterval;
 
   ConnectionRuntimeHost({
     String? runDirectory,
@@ -64,9 +61,6 @@ class ConnectionRuntimeHost {
     Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
     startVpn,
     Future<NativeVpnCommandResult> Function()? stopVpn,
-    this.startTimeout = const Duration(seconds: 30),
-    this.stopTimeout = const Duration(seconds: 15),
-    this.pollInterval = const Duration(milliseconds: 200),
   }) : _runDirectory = runDirectory,
        _readStatus = readStatus,
        _startVpn = startVpn,
@@ -257,23 +251,14 @@ class ConnectionRuntimeHost {
         cause: result.message ?? result.permission?.message,
       );
     }
-    final deadline = DateTime.now().add(startTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final platform = await _status();
-      if (platform.status == VpnStatus.disconnected &&
-          platform.message?.isNotEmpty == true) {
-        throw ConnectionHostException('startFailed', cause: platform.message);
-      }
-      if (platform.status == VpnStatus.connected) {
-        return HostConnection(
-          platform.status,
-          runtime: runtime,
-          permission: platform.permission,
-        );
-      }
-      await Future<void>.delayed(pollInterval);
+    if (result.status != VpnStatus.connected) {
+      throw ConnectionHostException('startNotConfirmed', cause: result.message);
     }
-    throw const ConnectionHostException('startTimeout');
+    return HostConnection(
+      result.status!,
+      runtime: runtime,
+      permission: result.permission,
+    );
   }
 
   Future<HostConnection> stop() async {
@@ -281,14 +266,9 @@ class ConnectionRuntimeHost {
     if (result.state != NativeVpnCommandState.success) {
       throw ConnectionHostException('stopFailed', cause: result.message);
     }
-    final deadline = DateTime.now().add(stopTimeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final platform = await _status();
-      if (platform.status == VpnStatus.disconnected) {
-        return HostConnection(platform.status, permission: platform.permission);
-      }
-      await Future<void>.delayed(pollInterval);
+    if (result.status != VpnStatus.disconnected) {
+      throw ConnectionHostException('stopNotConfirmed', cause: result.message);
     }
-    throw const ConnectionHostException('stopTimeout');
+    return HostConnection(result.status!, permission: result.permission);
   }
 }

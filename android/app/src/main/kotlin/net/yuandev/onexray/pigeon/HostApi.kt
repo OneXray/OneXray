@@ -17,20 +17,20 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
+import net.yuandev.onexray.vpn.VpnStatusConnection
 import java.io.ByteArrayOutputStream
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.time.Duration.Companion.seconds
 
 class AppHostApi(
     private val context: Context,
 ) : BridgeHostApi {
-    private val vpnStatusGeneration = AtomicInteger(0)
+    private val vpnStatus = VpnStatusConnection(context) { status ->
+        scope.launch { flutterApi?.vpnStatusChanged(status) }
+    }
     private val activity = context as FragmentActivity
     private val prepareResult =
         activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -45,17 +45,11 @@ class AppHostApi(
         }
 
     fun onVpnStatusChanged(running: Boolean, error: String? = null) {
-        if (running || error != null) VpnController.lastError = error
         XLog.d("AppHostApi: onVpnStatusChanged running=$running")
-        val generation = vpnStatusGeneration.incrementAndGet()
-        scope.launch {
-            if (running) {
-                flutterApi?.vpnStatusChanged(VpnStatus.CONNECTED)
-            } else {
-                if (error == null) delay(2.seconds)
-                if (generation == vpnStatusGeneration.get()) {
-                    flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
-                }
+        scope.launch(Dispatchers.Main.immediate) {
+            try { vpnStatus.changed(running, error) }
+            catch (failure: Exception) {
+                XLog.e("VPN status notification failed", failure)
             }
         }
     }
@@ -65,10 +59,14 @@ class AppHostApi(
     fun onInit(api: AppFlutterApi) {
         XLog.init()
         flutterApi = api
-        onVpnStatusChanged(VpnController.readVpnRunning(context))
+        scope.launch {
+            try { api.vpnStatusChanged(vpnStatus.read()) }
+            catch (error: Exception) { XLog.e("Initial VPN status failed", error) }
+        }
     }
 
     fun onDestroy() {
+        vpnStatus.close()
         scope.cancel()
     }
 
@@ -84,20 +82,18 @@ class AppHostApi(
 
     override fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         scope.launch {
-            val cached = flutterApi?.readVpnStatus()
-            val status = if (cached == VpnStatus.CONNECTING || cached == VpnStatus.DISCONNECTING) {
-                cached
-            } else {
-                // Reconcile the service without broadcasting a query back as an event.
-                if (VpnController.readVpnRunning(context)) VpnStatus.CONNECTED else VpnStatus.DISCONNECTED
+            try {
+                val status = vpnStatus.read()
+                callback(Result.success(NativeVpnCommandResult(
+                    state = NativeVpnCommandState.SUCCESS,
+                    permission = queryPermissionNow(),
+                    status = status,
+                    message = if (status == VpnStatus.DISCONNECTED) VpnController.lastError else null
+                )))
+            } catch (error: Exception) {
+                VpnController.lastError = error.message ?: error.toString()
+                callback(Result.success(commandFailed(queryPermissionNow())))
             }
-            flutterApi?.setVpnStatus(status)
-            callback(Result.success(NativeVpnCommandResult(
-                state = NativeVpnCommandState.SUCCESS,
-                permission = queryPermissionNow(),
-                status = status,
-                message = if (status == VpnStatus.DISCONNECTED) VpnController.lastError else null
-            )))
         }
     }
 
@@ -109,11 +105,11 @@ class AppHostApi(
                 callback(Result.success(waitingForPermission(permission)))
                 return@launch
             }
-            flutterApi?.vpnStatusChanged(VpnStatus.CONNECTING)
-            if (VpnController.startVpn(context)) {
-                callback(Result.success(commandSuccess(permission)))
-            } else {
-                flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTED)
+            try {
+                val status = vpnStatus.command(VpnStatus.CONNECTED) { VpnController.startVpn(context) }
+                callback(Result.success(commandSuccess(permission, status)))
+            } catch (error: Exception) {
+                VpnController.lastError = error.message ?: error.toString()
                 callback(Result.success(commandFailed(permission)))
             }
         }
@@ -122,24 +118,13 @@ class AppHostApi(
     override fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit) {
         XLog.d("AppHostApi: stopVpn called")
         scope.launch {
-            val vpnStatus = flutterApi?.readVpnStatus()
-            if (vpnStatus == null) {
-                callback(Result.success(commandSuccess(queryPermissionNow())))
-                return@launch
+            try {
+                val status = vpnStatus.command(VpnStatus.DISCONNECTED) { VpnController.stopVpn(context) }
+                callback(Result.success(commandSuccess(queryPermissionNow(), status)))
+            } catch (error: Exception) {
+                VpnController.lastError = error.message ?: error.toString()
+                callback(Result.success(commandFailed(queryPermissionNow())))
             }
-            when (vpnStatus) {
-                VpnStatus.DISCONNECTED -> flutterApi?.refreshVpnStatus()
-                VpnStatus.CONNECTING, VpnStatus.CONNECTED, VpnStatus.DISCONNECTING -> {
-                    flutterApi?.vpnStatusChanged(VpnStatus.DISCONNECTING)
-                    if (!VpnController.stopVpn(context)) {
-                        flutterApi?.refreshVpnStatus()
-                        callback(Result.success(commandFailed(queryPermissionNow())))
-                        return@launch
-                    }
-                }
-            }
-
-            callback(Result.success(commandSuccess(queryPermissionNow())))
         }
     }
 
@@ -347,8 +332,9 @@ class AppHostApi(
         null,
     )
 
-    private fun commandSuccess(permission: PlatformPermissionResult) = NativeVpnCommandResult(
+    private fun commandSuccess(permission: PlatformPermissionResult, status: VpnStatus) = NativeVpnCommandResult(
         state = NativeVpnCommandState.SUCCESS,
+        status = status,
         permission = permission,
     )
 

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:onexray/core/ffi/desktop_core_exit.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:path/path.dart' as p;
 
@@ -21,16 +24,13 @@ void main() {
         return true;
       });
 
-      expect(api.needsVpnStatusPolling, isFalse);
       expect(
         await api.queryCoreRunning(),
         isTrue,
       ); // No in-memory Process exists.
-      expect(api.needsVpnStatusPolling, isTrue);
       expect(await api.cleanupStaleCore(), isTrue);
       expect(fixture.signals, isEmpty);
       expect(await api.stopCore(), isTrue);
-      expect(api.needsVpnStatusPolling, isFalse);
       expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
       expect(await Directory(p.join(fixture.proc.path, '43')).exists(), isTrue);
       expect(await fixture.store.read(), isNull);
@@ -38,17 +38,23 @@ void main() {
     },
   );
 
-  test('stops polling a restored process after its verified exit', () async {
-    final fixture = await _Fixture.create();
-    await fixture.writeRecord();
-    await fixture.writeProcess(42);
-    final api = fixture.api((_, _) => false);
-    expect(await api.queryCoreRunning(), isTrue);
-    expect(api.needsVpnStatusPolling, isTrue);
-    await Directory(p.join(fixture.proc.path, '42')).delete(recursive: true);
-    expect(await api.queryCoreRunning(), isFalse);
-    expect(api.needsVpnStatusPolling, isFalse);
-  });
+  test(
+    'a restored process emits its exit without another status read',
+    () async {
+      final fixture = await _Fixture.create();
+      await fixture.writeRecord();
+      await fixture.writeProcess(42);
+      final api = fixture.api((_, _) => false);
+      expect(await api.queryCoreRunning(), isTrue);
+      await api.observeVpnStatus();
+      expect(fixture.watchedPids, [42]);
+      await Directory(p.join(fixture.proc.path, '42')).delete(recursive: true);
+      fixture.exited.complete(true);
+      await Future<void>.delayed(Duration.zero);
+      expect(fixture.events, [VpnStatus.disconnected]);
+      expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+    },
+  );
 
   test('rejects PID reuse, another executable, config changes', () async {
     for (final mismatch in ['ticks', 'exe', 'config']) {
@@ -72,7 +78,11 @@ void main() {
         return true;
       });
       expect(await api.queryCoreRunning(), isNull, reason: mismatch);
-      expect(api.needsVpnStatusPolling, isFalse, reason: mismatch);
+      expect(
+        (await api.readVpnStatus()).state,
+        NativeVpnCommandState.failed,
+        reason: mismatch,
+      );
       expect(await api.cleanupStaleCore(), isFalse, reason: mismatch);
       expect(await api.stopCore(), isFalse, reason: mismatch);
       expect(fixture.signals, isEmpty, reason: mismatch);
@@ -225,6 +235,9 @@ class _Fixture {
   final File config;
   final DesktopCoreProcessStore store;
   final signals = <({int pid, ProcessSignal signal})>[];
+  final watchedPids = <int>[];
+  final events = <VpnStatus>[];
+  final exited = Completer<bool>();
 
   _Fixture(
     this.directory,
@@ -271,7 +284,16 @@ class _Fixture {
       executablePath: executable.path,
       procDirectory: proc.path,
       signalProcess: signal,
+      watchExit: (pid) {
+        watchedPids.add(pid);
+        return DesktopCoreExitWatch(exited.future, () {
+          if (!exited.isCompleted) exited.complete(false);
+        });
+      },
+      notify: (status) async => events.add(status),
+      notifyError: (error) => fail('Unexpected watch error: $error'),
     );
+    addTearDown(api.disposeVpnStatus);
     addTearDown(api.stopSharedIsolate);
     return api;
   }

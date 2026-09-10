@@ -224,7 +224,7 @@ void main() {
   );
 
   testWidgets(
-    'visible inactive windows start and retain traffic and desktop status polling',
+    'visible inactive windows retain traffic sampling without common status polling',
     (tester) async {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       final runtime = _runtime('a');
@@ -245,7 +245,7 @@ void main() {
             sampledAtMs: trafficReads * 1000,
           );
         },
-        needsStatusPolling: () => true,
+        observeStatus: () async {},
         statusEvents: const Stream.empty(),
       );
       try {
@@ -255,7 +255,7 @@ void main() {
         expect(trafficReads, 1);
         final initialStatusReads = statusReads;
         await tester.pump(const Duration(seconds: 5));
-        expect(statusReads, greaterThan(initialStatusReads));
+        expect(statusReads, initialStatusReads);
         expect(trafficReads, greaterThan(1));
 
         tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
@@ -297,6 +297,110 @@ void main() {
       }
     },
   );
+
+  testWidgets('native notifications remain active when the window is hidden', (
+    tester,
+  ) async {
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final runtime = _runtime('observed');
+    var reads = 0;
+    var subscriptions = 0;
+    var disposals = 0;
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      readRuntime: () async => runtime,
+      inspect: (_) async {
+        reads++;
+        return HostConnection(VpnStatus.connected, runtime: runtime);
+      },
+      statusEvents: events.stream,
+      observeStatus: () async {
+        subscriptions++;
+        expect(events.hasListener, isTrue);
+      },
+      disposeStatus: () => disposals++,
+    );
+    try {
+      await coordinator.initialize(registerReferences: false);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.hidden);
+      events.add(VpnStatus.disconnected);
+      await tester.pump();
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.runtime, isNull);
+      await tester.pump(const Duration(seconds: 15));
+      expect(
+        reads,
+        1,
+        reason: 'A native event requires no extra platform query.',
+      );
+      expect(subscriptions, 1);
+    } finally {
+      coordinator.dispose();
+      await events.close();
+    }
+    expect(disposals, 1);
+  });
+
+  test('connect does not trust the displayed connected state', () async {
+    var current = const HostConnection(VpnStatus.disconnected);
+    final runtime = _runtime('fresh');
+    var starts = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => current.runtime,
+        inspect: (_) async => current,
+        prepare: (_, _) async => runtime,
+        start: (runtime) async {
+          starts++;
+          return current = HostConnection(
+            VpnStatus.connected,
+            runtime: runtime,
+          );
+        },
+      ),
+    );
+    coordinator.state.value = ConnectionView(
+      phase: ConnectionPhase.connected,
+      runtime: runtime,
+    );
+    await coordinator.connect();
+    expect(starts, 1);
+    // Conversely an idle-looking UI must not start a second running Core.
+    coordinator.state.value = const ConnectionView();
+    await coordinator.connect();
+    expect(starts, 1);
+    expect(coordinator.state.value.phase, ConnectionPhase.connected);
+  });
+
+  testWidgets('a same-state native notification clears a monitoring error', (
+    tester,
+  ) async {
+    final events = StreamController<VpnStatus>.broadcast(sync: true);
+    final runtime = _runtime('recovered');
+    final coordinator = ConnectionCoordinator(
+      database: db,
+      readRuntime: () async => runtime,
+      inspect: (_) async =>
+          HostConnection(VpnStatus.connected, runtime: runtime),
+      statusEvents: events.stream,
+      observeStatus: () async {},
+      disposeStatus: () {},
+    );
+    try {
+      await coordinator.initialize(registerReferences: false);
+      events.addError(StateError('Native monitoring failed'));
+      await tester.pump();
+      expect(coordinator.state.value.issue, 'runtimeUnavailable');
+      events.add(VpnStatus.connected);
+      await tester.pump();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+    } finally {
+      coordinator.dispose();
+      await events.close();
+    }
+  });
 
   test(
     'read-only status and metrics do not enter the paused command queue',
@@ -394,7 +498,10 @@ void main() {
           readStatus: () async => VpnStatus.disconnected,
           stopVpn: () async {
             stopCalls++;
-            return NativeVpnCommandResult(state: NativeVpnCommandState.success);
+            return NativeVpnCommandResult(
+              state: NativeVpnCommandState.success,
+              status: VpnStatus.disconnected,
+            );
           },
         ).stop,
       ),
@@ -545,12 +652,12 @@ void main() {
       }
 
       final first = coordinator.initialize(
-        poll: false,
+        observe: false,
         registerReferences: false,
         requestPermission: request,
       );
       final second = coordinator.initialize(
-        poll: false,
+        observe: false,
         registerReferences: false,
         requestPermission: request,
       );
@@ -603,7 +710,7 @@ void main() {
       }
 
       await coordinator.initialize(
-        poll: false,
+        observe: false,
         registerReferences: false,
         requestPermission: request,
       );
@@ -616,7 +723,7 @@ void main() {
       );
 
       await coordinator.initialize(
-        poll: false,
+        observe: false,
         registerReferences: false,
         requestPermission: request,
       );
@@ -658,7 +765,7 @@ void main() {
       addTearDown(coordinator.dispose);
 
       await coordinator.initialize(
-        poll: false,
+        observe: false,
         registerReferences: false,
         requestPermission: () async => fail('Permission is already satisfied'),
       );
@@ -802,7 +909,7 @@ void main() {
       addTearDown(coordinator.dispose);
 
       await expectLater(
-        coordinator.initialize(poll: false, registerReferences: false),
+        coordinator.initialize(observe: false, registerReferences: false),
         throwsA(isA<ConnectionHostException>()),
       );
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
@@ -828,13 +935,13 @@ void main() {
       addTearDown(coordinator.dispose);
 
       await expectLater(
-        coordinator.initialize(poll: false, registerReferences: false),
+        coordinator.initialize(observe: false, registerReferences: false),
         throwsA(isA<ConnectionHostException>()),
       );
       expect(coordinator.state.value.phase, ConnectionPhase.failed);
 
       fail = false;
-      await coordinator.initialize(poll: false, registerReferences: false);
+      await coordinator.initialize(observe: false, registerReferences: false);
 
       expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
       expect(coordinator.state.value.issue, isNull);
@@ -1147,7 +1254,7 @@ Future<ConnectionCoordinator> _initialize(
   ConnectionCoordinator coordinator,
 ) async {
   addTearDown(coordinator.dispose);
-  await coordinator.initialize(poll: false, registerReferences: false);
+  await coordinator.initialize(observe: false, registerReferences: false);
   return coordinator;
 }
 

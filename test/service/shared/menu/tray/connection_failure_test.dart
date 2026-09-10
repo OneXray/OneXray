@@ -42,7 +42,7 @@ void main() {
         },
       );
       addTearDown(coordinator.dispose);
-      await coordinator.initialize(poll: false, registerReferences: false);
+      await coordinator.initialize(observe: false, registerReferences: false);
       final notifications = <String>[];
       var shown = 0;
       final tray = TrayService.forTesting(
