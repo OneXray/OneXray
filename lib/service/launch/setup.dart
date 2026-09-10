@@ -80,9 +80,6 @@ class SetupService {
     required String interfaceName,
     List<String>? regions,
   }) async {
-    if (await currentStep() != SetupStep.configuration) {
-      throw const SetupFailure('setup');
-    }
     await prepareLocal();
     if (requiresInterface &&
         !(await interfaces()).any((item) => item.name == interfaceName)) {

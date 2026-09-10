@@ -156,7 +156,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _preparingNodeIds.addAll(ids);
   }
 
-  Future<void> initialize({bool poll = true, bool registerReferences = true}) {
+  Future<void> initialize({
+    bool poll = true,
+    bool registerReferences = true,
+    Future<PlatformPermissionResult> Function()? requestPermission,
+  }) {
     return _initializing ??= _commands
         .run(() async {
           if (registerReferences) {
@@ -165,7 +169,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           if (poll) {
             _statusSubscription ??= _statusEvents.listen(_onNativeStatus);
           }
-          final current = await _inspect(await _known());
+          var current = await _inspect(await _known());
+          // Only normal startup supplies this action; passive refreshes never
+          // request permission or repeat a dismissed prompt.
+          if (requestPermission != null &&
+              _permissionRequired(current.permission)) {
+            await requestPermission();
+            current = await _inspect(await _known());
+          }
           final permission = current.permission;
           final permissionRequired = _permissionRequired(permission);
           _failureLatched = false;

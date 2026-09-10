@@ -97,6 +97,51 @@ void main() {
     expect(await setup.currentStep(), SetupStep.complete);
   });
 
+  test(
+    'completed marker does not bypass privacy or configuration checks',
+    () async {
+      await preferences.saveFirstRun(false);
+      await expectLater(
+        setup.finish(interfaceName: ''),
+        throwsA(
+          isA<SetupFailure>().having(
+            (failure) => failure.component,
+            'component',
+            'privacy',
+          ),
+        ),
+      );
+      expect(writes, 0);
+
+      await setup.acceptPrivacy();
+      final windows = _InterfaceSetup(
+        database: db,
+        platform: ConnectionPlatform.windows,
+      );
+      await expectLater(
+        windows.finish(interfaceName: 'missing'),
+        throwsA(
+          isA<SetupFailure>().having(
+            (failure) => failure.component,
+            'component',
+            'interface',
+          ),
+        ),
+      );
+      await expectLater(
+        windows.finish(interfaceName: 'Ethernet', regions: ['UNKNOWN']),
+        throwsA(
+          isA<SetupFailure>().having(
+            (failure) => failure.component,
+            'component',
+            'region',
+          ),
+        ),
+      );
+      expect((await db.connectionConfigDao.read()).configurationJson, '{}');
+    },
+  );
+
   for (final regions in <List<String>?>[
     null,
     [],

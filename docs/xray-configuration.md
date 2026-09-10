@@ -183,8 +183,9 @@ EXE 的 UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutte
 `VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension
 跨容器传输边界见 [Geodata 发布](data-management.md#geodata-发布)。
 
-状态同步与实时流量读取分开：初始化先订阅原生通知，再校准一次状态；恢复前台时再校准
-一次。Apple/Android 使用原生状态通知，不常驻轮询。Windows 暂用前台 5 秒状态查询兜底；
+状态同步与实时流量读取分开：初始化先订阅原生通知，再读取状态；正常主界面按
+[启动权限流程](app-startup.md#平台前置条件与权限)完成必要授权，申请后重新校准状态。
+恢复前台只校准状态。Apple/Android 使用原生状态通知，不常驻轮询。Windows 暂用前台 5 秒状态查询兜底；
 Linux 仅在接管已有进程、没有当前 `Process` 退出通知时使用相同兜底。启停操作保留有界
 状态/就绪确认。主动查询直接返回状态与权限，不再通过回调事件回传；原生通知只处理系统
 主动变化和启停进度。每次同步只读取一次 `start.json`，运行描述缺失时仍保留已确认的

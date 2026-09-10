@@ -379,6 +379,163 @@ void main() {
     expect(coordinator.state.value.permission, permission);
   });
 
+  for (final kind in [
+    PlatformPermissionKind.appleVpn,
+    PlatformPermissionKind.macosSystemExtension,
+    PlatformPermissionKind.androidVpn,
+    PlatformPermissionKind.androidLocalNetwork,
+  ]) {
+    test('home initialization requests $kind before becoming ready', () async {
+      var permission = PlatformPermissionResult(
+        kind: kind,
+        state: PlatformPermissionState.notDetermined,
+      );
+      final calls = <String>[];
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          calls.add('read');
+          return HostConnection(VpnStatus.disconnected, permission: permission);
+        },
+        prepare: (_, _) async => fail('Authorization must not prepare nodes'),
+        start: (_) async => fail('Authorization must not start VPN'),
+        stop: () async => fail('Authorization must not stop VPN'),
+      );
+      addTearDown(coordinator.dispose);
+
+      final requested = Completer<void>();
+      final permissionReply = Completer<PlatformPermissionResult>();
+      Future<PlatformPermissionResult> request() {
+        calls.add('request');
+        requested.complete();
+        return permissionReply.future;
+      }
+
+      final first = coordinator.initialize(
+        poll: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      final second = coordinator.initialize(
+        poll: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      var ready = false;
+      final initialization = Future.wait([first, second]).then((_) {
+        ready = true;
+      });
+      await requested.future.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(Duration.zero);
+      expect(calls, ['read', 'request']);
+      expect(ready, isFalse);
+
+      permission = PlatformPermissionResult(
+        kind: kind,
+        state: PlatformPermissionState.granted,
+      );
+      permissionReply.complete(permission);
+      await initialization;
+
+      expect(calls, ['read', 'request', 'read']);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.permission, isNull);
+    });
+  }
+
+  test(
+    'home permission denial allows entry without repeated prompts',
+    () async {
+      var permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.notDetermined,
+      );
+      var requests = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.disconnected, permission: permission),
+      );
+      addTearDown(coordinator.dispose);
+
+      Future<PlatformPermissionResult> request() async {
+        requests++;
+        permission = PlatformPermissionResult(
+          kind: PlatformPermissionKind.appleVpn,
+          state: PlatformPermissionState.denied,
+        );
+        return permission;
+      }
+
+      await coordinator.initialize(
+        poll: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      expect(requests, 1);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, 'permissionRequired');
+      expect(
+        coordinator.state.value.permission?.state,
+        PlatformPermissionState.denied,
+      );
+
+      await coordinator.initialize(
+        poll: false,
+        registerReferences: false,
+        requestPermission: request,
+      );
+      await coordinator.refresh();
+      expect(requests, 1);
+      expect(coordinator.state.value.issue, 'permissionRequired');
+
+      permission = PlatformPermissionResult(
+        kind: PlatformPermissionKind.appleVpn,
+        state: PlatformPermissionState.granted,
+      );
+      await coordinator.refresh();
+      expect(requests, 1);
+      expect(coordinator.state.value.issue, isNull);
+    },
+  );
+
+  for (final permission in <PlatformPermissionResult?>[
+    null,
+    PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.granted,
+    ),
+    PlatformPermissionResult(
+      kind: PlatformPermissionKind.appleVpn,
+      state: PlatformPermissionState.notRequired,
+    ),
+  ]) {
+    test('home initialization skips permission ${permission?.state}', () async {
+      var reads = 0;
+      final coordinator = ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => null,
+        inspect: (_) async {
+          reads++;
+          return HostConnection(VpnStatus.disconnected, permission: permission);
+        },
+      );
+      addTearDown(coordinator.dispose);
+
+      await coordinator.initialize(
+        poll: false,
+        registerReferences: false,
+        requestPermission: () async => fail('Permission is already satisfied'),
+      );
+      expect(reads, 1);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect(coordinator.state.value.issue, isNull);
+    });
+  }
+
   test(
     'startup and foreground refresh track local network permission',
     () async {

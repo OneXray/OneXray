@@ -1,7 +1,10 @@
+import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/launch/setup/controller.dart';
@@ -17,6 +20,7 @@ import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/launch/setup.dart';
 import 'package:onexray/service/advanced/tunnel/interface.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 // ignore: depend_on_referenced_packages
@@ -28,6 +32,47 @@ void main() {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
   });
+  setUp(() async => SharedPreferencesAsync().clear());
+
+  for (final completedBeforePrivacy in [true, false]) {
+    test(
+      'real setup saves after firstRun becomes false '
+      '${completedBeforePrivacy ? 'before privacy' : 'on the configuration page'}',
+      () async {
+        final preferences = PreferencesKey();
+        await preferences.saveFirstRun(!completedBeforePrivacy);
+        final database = AppDatabase.forTesting(NativeDatabase.memory());
+        addTearDown(database.close);
+        final service = _LocalSetupService(database);
+        final controller = SetupController(service: service);
+        addTearDown(controller.close);
+        await _idle(controller);
+        expect(controller.state.step, SetupStep.welcome);
+
+        await controller.acceptPrivacy();
+        expect(controller.state.step, SetupStep.configuration);
+        expect(controller.state.localReady, isTrue);
+        expect(controller.state.regions, ['RU']);
+        if (!completedBeforePrivacy) await preferences.saveFirstRun(false);
+        expect(await service.currentStep(), SetupStep.complete);
+
+        await controller.finish();
+
+        final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+        expect(
+          controller.state.failure,
+          isNull,
+          reason: controller.failureText(l10n),
+        );
+        expect(controller.state.step, SetupStep.complete);
+        expect(controller.state.busy, isFalse);
+        expect((await service.configuration()).connection.smart.directRegions, [
+          'RU',
+        ]);
+        expect(await preferences.readFirstRun(), isFalse);
+      },
+    );
+  }
 
   test('privacy and configuration require explicit completion', () async {
     final service = _SetupService();
@@ -240,6 +285,21 @@ Future<void> _idle(SetupController controller) async {
   if (controller.state.busy) {
     await controller.stream.firstWhere((state) => !state.busy);
   }
+}
+
+// Only external preparation and region lookup are replaced. Step decisions,
+// completion and database persistence use the production SetupService.
+class _LocalSetupService extends SetupService {
+  _LocalSetupService(AppDatabase database)
+    : super(
+        database: database,
+        platform: ConnectionPlatform.macos,
+        prepareLocal: () async {},
+        readRegionCodes: () async => ['CN', 'RU'],
+      );
+
+  @override
+  Future<String?> suggestRegion() async => 'RU';
 }
 
 class _SetupService extends SetupService {
