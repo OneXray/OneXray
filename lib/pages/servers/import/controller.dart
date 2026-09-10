@@ -45,6 +45,7 @@ class ServerImportPageState {
     this.ageExpanded = false,
     this.hasAgeKeys = false,
     this.scannerPickingImage = false,
+    this.hwidEnabled = false,
   }) : subscriptionImports = List.unmodifiable(subscriptionImports);
 
   final String inputText;
@@ -66,6 +67,7 @@ class ServerImportPageState {
   final bool ageExpanded;
   final bool hasAgeKeys;
   final bool scannerPickingImage;
+  final bool hwidEnabled;
 
   bool get generatingAgeKey => generatingAgeKeyType != null;
   bool get submitting => busy && !loadingSubscription && openingAction == null;
@@ -98,6 +100,7 @@ class ServerImportPageState {
     bool? ageExpanded,
     bool? hasAgeKeys,
     bool? scannerPickingImage,
+    bool? hwidEnabled,
   }) => ServerImportPageState(
     inputText: inputText ?? this.inputText,
     jsonInput: jsonInput ?? this.jsonInput,
@@ -126,6 +129,7 @@ class ServerImportPageState {
     ageExpanded: ageExpanded ?? this.ageExpanded,
     hasAgeKeys: hasAgeKeys ?? this.hasAgeKeys,
     scannerPickingImage: scannerPickingImage ?? this.scannerPickingImage,
+    hwidEnabled: hwidEnabled ?? this.hwidEnabled,
   );
 }
 
@@ -136,6 +140,8 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   final Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)
   _saveSubscriptionInput;
   final Future<String?> Function(SubscriptionInput, int?) _validateSubscription;
+  final Future<SubscriptionInsertResult> Function(SubscriptionInput)
+  _insertSubscription;
   ServerImportController({
     ServerImportService? service,
     this.subscriptionId,
@@ -143,11 +149,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)?
     saveSubscriptionInput,
     Future<String?> Function(SubscriptionInput, int?)? validateSubscription,
+    Future<SubscriptionInsertResult> Function(SubscriptionInput)?
+    insertSubscription,
   }) : service = service ?? ServerImportService(),
        _loadSubscription =
            loadSubscription ?? AppDatabase().subscriptionDao.searchRow,
        _saveSubscriptionInput =
            saveSubscriptionInput ?? SubscriptionService().saveSubscriptionInput,
+       _insertSubscription =
+           insertSubscription ?? SubscriptionService().insertSubscription,
        _validateSubscription =
            validateSubscription ??
            ((input, id) async {
@@ -175,6 +185,8 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   bool _previewOpen = false;
   final _completedSubscriptions = <String, ServerSubscriptionImport>{};
   AgeKeyType? _linkAgeType;
+  String? _hwid;
+  String? _hwidUrl;
 
   bool get supportsScan => AppPlatform.isMobile;
   bool get editingSubscription => subscriptionId != null;
@@ -195,6 +207,16 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   }
 
   void _changed() {
+    var hwidEnabled = state.hwidEnabled;
+    if (_hwidUrl != null && !SubscriptionUrl.sameOrigin(_hwidUrl!, url.text)) {
+      _hwid = null;
+      _hwidUrl = null;
+      hwidEnabled = false;
+    }
+    final uri = Uri.tryParse(SubscriptionUrl.normalize(url.text));
+    if (_hwid != null && uri != null && NetClient.isHttpsDownloadUri(uri)) {
+      _hwidUrl ??= url.text;
+    }
     final hasAgeKeys =
         secretKey.text.trim().isNotEmpty || publicKey.text.trim().isNotEmpty;
     emit(
@@ -207,6 +229,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         publicKey: publicKey.text,
         hasAgeKeys: hasAgeKeys,
         ageExpanded: state.ageExpanded || (hasAgeKeys && !state.hasAgeKeys),
+        hwidEnabled: hwidEnabled,
       ),
     );
   }
@@ -258,6 +281,10 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
           fields[index].text = loadedValues[index];
         }
       }
+      final sameOrigin = SubscriptionUrl.sameOrigin(row.url, url.text);
+      _hwid = sameOrigin ? row.hwid : null;
+      _hwidUrl = sameOrigin ? row.url : null;
+      emit(state.copyWith(hwidEnabled: sameOrigin && row.hwidEnabled));
     } catch (error) {
       if (context.mounted) {
         emit(
@@ -373,7 +400,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     final link = ServerImportService.singleLink(input);
     emit(state.copyWith(committedResult: null));
     if (link is OneXraySubscriptionLink) {
-      emit(state.copyWith(subscriptionImports: const []));
+      _hwid = null;
+      _hwidUrl = null;
+      emit(state.copyWith(subscriptionImports: const [], hwidEnabled: false));
       name.text = link.name;
       url.text = link.url;
       secretKey.clear();
@@ -700,6 +729,8 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         url: SubscriptionUrl.normalize(state.url),
         ageSecretKey: state.secretKey,
         agePublicKey: state.publicKey,
+        hwidEnabled: state.hwidEnabled,
+        hwid: _hwid,
       );
       if (input.hasIncompleteAgeKeyPair) {
         if (!context.mounted) return;
@@ -734,7 +765,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         }
         return;
       }
-      final result = await SubscriptionService().insertSubscription(input);
+      final result = await _insertSubscription(input);
       if (!context.mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (!result.success) {
@@ -784,6 +815,18 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   void toggleAgeExpanded() {
     emit(state.copyWith(ageExpanded: !state.ageExpanded));
+  }
+
+  void setHwidEnabled(bool enabled) {
+    if (state.busy || state.loadFailed) return;
+    if (enabled) {
+      _hwid ??= SubscriptionService.createHwid();
+      final uri = Uri.tryParse(SubscriptionUrl.normalize(url.text));
+      if (uri != null && NetClient.isHttpsDownloadUri(uri)) {
+        _hwidUrl = url.text;
+      }
+    }
+    emit(state.copyWith(hwidEnabled: enabled));
   }
 
   void clearKeys() {

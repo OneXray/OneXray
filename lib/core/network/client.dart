@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/network/model.dart';
@@ -13,15 +14,21 @@ class NetClient {
 
   factory NetClient() => _singleton;
 
-  NetClient._internal();
+  NetClient._internal()
+    : _downloadClient = Dio(
+        BaseOptions(
+          connectTimeout: Duration(seconds: 10),
+          receiveTimeout: Duration(seconds: 60),
+        ),
+      );
+
+  @visibleForTesting
+  NetClient.forTesting(Dio client)
+    : _downloadClient = client,
+      _initFuture = Future.value();
 
   //========================
-  final _downloadClient = Dio(
-    BaseOptions(
-      connectTimeout: Duration(seconds: 10),
-      receiveTimeout: Duration(seconds: 60),
-    ),
-  );
+  final Dio _downloadClient;
 
   Future<void>? _initFuture;
 
@@ -78,6 +85,18 @@ class NetClient {
     String url, {
     DownloadRequestHeaders? requestHeaders,
     bool httpsOnly = false,
+  }) async =>
+      (await getTextResponse(
+        url,
+        requestHeaders: requestHeaders,
+        httpsOnly: httpsOnly,
+      )).data ??
+      '';
+
+  Future<Response<String>> getTextResponse(
+    String url, {
+    DownloadRequestHeaders? requestHeaders,
+    bool httpsOnly = false,
   }) async {
     try {
       var uri = Uri.parse(url);
@@ -107,7 +126,7 @@ class NetClient {
         );
         final status = res.statusCode ?? 0;
         if (status < 300) {
-          return res.data ?? '';
+          return res;
         }
         final location = res.headers.value(HttpHeaders.locationHeader);
         if (location == null ||
@@ -119,7 +138,15 @@ class NetClient {
             cause: 'Missing redirect location or too many redirects',
           );
         }
-        uri = uri.resolve(location);
+        final next = uri.resolve(location);
+        if (next.scheme != uri.scheme ||
+            next.host != uri.host ||
+            next.port != uri.port) {
+          // Consent belongs to the subscription origin, not a redirect target.
+          // Do not restore the identifier later in the redirect chain.
+          headers?.remove('x-hwid');
+        }
+        uri = next;
         if (httpsOnly && !isHttpsDownloadUri(uri)) {
           throw const AppFailure(
             FailureCategory.network,

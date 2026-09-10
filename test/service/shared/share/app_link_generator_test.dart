@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/db/database/enum.dart';
@@ -167,6 +168,15 @@ void main() {
   });
 
   group('subscription links', () {
+    test('does not export HWID or consent, including when enabled', () {
+      const hwid = 'unique-subscription-identity';
+      final uri = OneXrayAppLinkGenerator.subscription(
+        _subscription().copyWith(hwidEnabled: true, hwid: const Value(hwid)),
+      )!;
+      expect(uri.queryParameters, {'url': 'https://example.com/sub'});
+      expect(uri.toString(), isNot(contains(hwid)));
+      expect(OneXrayAppLinkParser.parse(uri), isA<OneXraySubscriptionLink>());
+    });
     test('normalizes a plain subscription URL', () {
       final uri = OneXrayAppLinkGenerator.subscription(
         _subscription(url: 'https://example.com/sub#provider-fragment'),
@@ -271,6 +281,7 @@ SubscriptionData _subscription({
 }) {
   return SubscriptionData(
     id: 2,
+    hwidEnabled: false,
     name: 'Provider',
     url: url,
     ageSecretKey: ageSecretKey,

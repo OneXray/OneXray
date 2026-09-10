@@ -4,12 +4,25 @@ final class SubscriptionInput {
     required this.url,
     this.ageSecretKey,
     this.agePublicKey,
+    this.hwidEnabled = false,
+    this.hwid,
   });
 
   final String name;
   final String url;
   final String? ageSecretKey;
   final String? agePublicKey;
+  final bool hwidEnabled;
+  final String? hwid;
+
+  SubscriptionInput withHwid(String value) => SubscriptionInput(
+    name: name,
+    url: url,
+    ageSecretKey: ageSecretKey,
+    agePublicKey: agePublicKey,
+    hwidEnabled: hwidEnabled,
+    hwid: value,
+  );
 
   String? get normalizedAgeSecretKey {
     final value = ageSecretKey?.trim();
@@ -99,6 +112,9 @@ enum SubscriptionUpdateResult {
   success,
   notFound,
   downloadFailed,
+  hwidRequired,
+  hwidLimitReached,
+  hwidRejected,
   invalidContent,
   invalidAgeSecretKey,
   missingAgeSecretKey,
@@ -108,6 +124,18 @@ enum SubscriptionUpdateResult {
 }
 
 abstract final class SubscriptionUrl {
+  static bool sameOrigin(String first, String second) {
+    final a = Uri.tryParse(normalize(first));
+    final b = Uri.tryParse(normalize(second));
+    return a != null &&
+        b != null &&
+        a.hasAuthority &&
+        b.hasAuthority &&
+        a.scheme == b.scheme &&
+        a.host == b.host &&
+        a.port == b.port;
+  }
+
   static String normalize(String value) {
     final normalized = value.replaceAll(RegExp(r"\s+"), "");
     final fragmentIndex = normalized.indexOf("#");

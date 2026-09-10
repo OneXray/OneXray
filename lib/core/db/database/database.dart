@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,29 +71,31 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA user_version = $schemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      // ponytail: reset incompatible development databases manually; add a new
-      // migration only for a later released App version, not this development cycle.
-      if ((from != 1 && from != 2) || to != 3) {
+      if (from < 1 || from > 3 || to != 4) {
         throw StateError('Unsupported database schema upgrade');
       }
 
-      if (from == 1) {
-        await migrator.addColumn(subscription, subscription.ageSecretKey);
-        await migrator.addColumn(subscription, subscription.agePublicKey);
-      }
-      await migrator.dropColumn(subscription, 'count');
-      await migrator.dropColumn(subscription, 'expanded');
-      await migrator.addColumn(coreConfig, coreConfig.countryCode);
-      await migrator.addColumn(coreConfig, coreConfig.favorite);
-      await migrator.createTable(routingProfile);
-      await migrator.createTable(connectionConfig);
+      if (from < 3) {
+        if (from == 1) {
+          await migrator.addColumn(subscription, subscription.ageSecretKey);
+          await migrator.addColumn(subscription, subscription.agePublicKey);
+        }
+        await migrator.dropColumn(subscription, 'count');
+        await migrator.dropColumn(subscription, 'expanded');
+        await migrator.addColumn(coreConfig, coreConfig.countryCode);
+        await migrator.addColumn(coreConfig, coreConfig.favorite);
+        await migrator.createTable(routingProfile);
+        await migrator.createTable(connectionConfig);
 
-      // Old delays are not a health result for the new measurement flow.
-      await (update(
-        coreConfig,
-      )..where((row) => row.type.equals('outbound'))).write(
-        const CoreConfigCompanion(delay: Value(PingDelayConstants.unknown)),
-      );
+        // Old delays are not a health result for the new measurement flow.
+        await (update(
+          coreConfig,
+        )..where((row) => row.type.equals('outbound'))).write(
+          const CoreConfigCompanion(delay: Value(PingDelayConstants.unknown)),
+        );
+      }
+      await migrator.addColumn(subscription, subscription.hwidEnabled);
+      await migrator.addColumn(subscription, subscription.hwid);
 
       // Drift writes this again after beforeOpen. Commit it with the DDL so an
       // interruption between those callbacks cannot leave the old version.

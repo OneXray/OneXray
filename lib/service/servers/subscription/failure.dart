@@ -16,6 +16,9 @@ String subscriptionFailureMessage(
           : null),
   operation: switch (status) {
     SubscriptionUpdateResult.downloadFailed => l.subscriptionDownloadFailed,
+    SubscriptionUpdateResult.hwidRequired => l.subscriptionHwidRequired,
+    SubscriptionUpdateResult.hwidLimitReached => l.subscriptionHwidLimitReached,
+    SubscriptionUpdateResult.hwidRejected => l.subscriptionHwidRejected,
     SubscriptionUpdateResult.invalidAgeSecretKey =>
       l.subscriptionInvalidAgeSecretKey,
     SubscriptionUpdateResult.missingAgeSecretKey =>

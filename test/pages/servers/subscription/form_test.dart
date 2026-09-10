@@ -41,6 +41,11 @@ void main() {
             urlController: url,
             urlHint: 'https://provider.example/subscription',
             urlHelper: 'HTTPS only',
+            hwidTitle: AppLocalizations.of(context)!.subscriptionHwidTitle,
+            hwidDescription: AppLocalizations.of(context)!
+                .subscriptionHwidDescription,
+            hwidEnabled: state.hwidEnabled,
+            onHwidChanged: controller.setHwidEnabled,
             encryptionTitle: 'Encryption',
             ageProviderSupportTitle: 'Provider support required',
             ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
@@ -166,6 +171,46 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    for (final width in [390.0, 1000.0]) {
+      testWidgets('HWID consent and full disclosure fit at $width ($locale)', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(Size(width, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        url.text = 'https://provider.example/list';
+        await tester.pumpWidget(app(form(), locale: locale));
+        await tester.pumpAndSettle();
+        final l = AppLocalizations.of(
+          tester.element(find.byType(SubscriptionFormView)),
+        )!;
+        final disclosure = tester.widget<Text>(
+          find.text(l.subscriptionHwidDescription),
+        );
+        expect(disclosure.maxLines, isNull);
+        expect(disclosure.overflow, isNull);
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isFalse,
+        );
+        await tester.ensureVisible(find.text(l.subscriptionHwidTitle));
+        await tester.tap(find.text(l.subscriptionHwidTitle));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isTrue,
+        );
+        url.text = 'https://another.example/sub';
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isFalse,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   for (final locale in const [Locale('en'), Locale('fa')]) {
     testWidgets(

@@ -234,6 +234,7 @@ void main() {
             SubscriptionData(
               id: 4,
               name: 'Source',
+              hwidEnabled: false,
               url: 'https://example.test/sub',
               timestamp: DateTime(2026),
             ),

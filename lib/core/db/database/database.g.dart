@@ -606,6 +606,30 @@ class $SubscriptionTable extends Subscription
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _hwidEnabledMeta = const VerificationMeta(
+    'hwidEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> hwidEnabled = GeneratedColumn<bool>(
+    'hwid_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hwid_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _hwidMeta = const VerificationMeta('hwid');
+  @override
+  late final GeneratedColumn<String> hwid = GeneratedColumn<String>(
+    'hwid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _timestampMeta = const VerificationMeta(
     'timestamp',
   );
@@ -624,6 +648,8 @@ class $SubscriptionTable extends Subscription
     url,
     ageSecretKey,
     agePublicKey,
+    hwidEnabled,
+    hwid,
     timestamp,
   ];
   @override
@@ -675,6 +701,21 @@ class $SubscriptionTable extends Subscription
         ),
       );
     }
+    if (data.containsKey('hwid_enabled')) {
+      context.handle(
+        _hwidEnabledMeta,
+        hwidEnabled.isAcceptableOrUnknown(
+          data['hwid_enabled']!,
+          _hwidEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hwid')) {
+      context.handle(
+        _hwidMeta,
+        hwid.isAcceptableOrUnknown(data['hwid']!, _hwidMeta),
+      );
+    }
     if (data.containsKey('timestamp')) {
       context.handle(
         _timestampMeta,
@@ -712,6 +753,14 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.string,
         data['${effectivePrefix}age_public_key'],
       ),
+      hwidEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hwid_enabled'],
+      )!,
+      hwid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}hwid'],
+      ),
       timestamp: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}timestamp'],
@@ -732,6 +781,8 @@ class SubscriptionData extends DataClass
   final String url;
   final String? ageSecretKey;
   final String? agePublicKey;
+  final bool hwidEnabled;
+  final String? hwid;
   final DateTime timestamp;
   const SubscriptionData({
     required this.id,
@@ -739,6 +790,8 @@ class SubscriptionData extends DataClass
     required this.url,
     this.ageSecretKey,
     this.agePublicKey,
+    required this.hwidEnabled,
+    this.hwid,
     required this.timestamp,
   });
   @override
@@ -752,6 +805,10 @@ class SubscriptionData extends DataClass
     }
     if (!nullToAbsent || agePublicKey != null) {
       map['age_public_key'] = Variable<String>(agePublicKey);
+    }
+    map['hwid_enabled'] = Variable<bool>(hwidEnabled);
+    if (!nullToAbsent || hwid != null) {
+      map['hwid'] = Variable<String>(hwid);
     }
     map['timestamp'] = Variable<DateTime>(timestamp);
     return map;
@@ -768,6 +825,8 @@ class SubscriptionData extends DataClass
       agePublicKey: agePublicKey == null && nullToAbsent
           ? const Value.absent()
           : Value(agePublicKey),
+      hwidEnabled: Value(hwidEnabled),
+      hwid: hwid == null && nullToAbsent ? const Value.absent() : Value(hwid),
       timestamp: Value(timestamp),
     );
   }
@@ -783,6 +842,8 @@ class SubscriptionData extends DataClass
       url: serializer.fromJson<String>(json['url']),
       ageSecretKey: serializer.fromJson<String?>(json['ageSecretKey']),
       agePublicKey: serializer.fromJson<String?>(json['agePublicKey']),
+      hwidEnabled: serializer.fromJson<bool>(json['hwidEnabled']),
+      hwid: serializer.fromJson<String?>(json['hwid']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
     );
   }
@@ -795,6 +856,8 @@ class SubscriptionData extends DataClass
       'url': serializer.toJson<String>(url),
       'ageSecretKey': serializer.toJson<String?>(ageSecretKey),
       'agePublicKey': serializer.toJson<String?>(agePublicKey),
+      'hwidEnabled': serializer.toJson<bool>(hwidEnabled),
+      'hwid': serializer.toJson<String?>(hwid),
       'timestamp': serializer.toJson<DateTime>(timestamp),
     };
   }
@@ -805,6 +868,8 @@ class SubscriptionData extends DataClass
     String? url,
     Value<String?> ageSecretKey = const Value.absent(),
     Value<String?> agePublicKey = const Value.absent(),
+    bool? hwidEnabled,
+    Value<String?> hwid = const Value.absent(),
     DateTime? timestamp,
   }) => SubscriptionData(
     id: id ?? this.id,
@@ -812,6 +877,8 @@ class SubscriptionData extends DataClass
     url: url ?? this.url,
     ageSecretKey: ageSecretKey.present ? ageSecretKey.value : this.ageSecretKey,
     agePublicKey: agePublicKey.present ? agePublicKey.value : this.agePublicKey,
+    hwidEnabled: hwidEnabled ?? this.hwidEnabled,
+    hwid: hwid.present ? hwid.value : this.hwid,
     timestamp: timestamp ?? this.timestamp,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
@@ -825,6 +892,10 @@ class SubscriptionData extends DataClass
       agePublicKey: data.agePublicKey.present
           ? data.agePublicKey.value
           : this.agePublicKey,
+      hwidEnabled: data.hwidEnabled.present
+          ? data.hwidEnabled.value
+          : this.hwidEnabled,
+      hwid: data.hwid.present ? data.hwid.value : this.hwid,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
     );
   }
@@ -837,14 +908,24 @@ class SubscriptionData extends DataClass
           ..write('url: $url, ')
           ..write('ageSecretKey: $ageSecretKey, ')
           ..write('agePublicKey: $agePublicKey, ')
+          ..write('hwidEnabled: $hwidEnabled, ')
+          ..write('hwid: $hwid, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, url, ageSecretKey, agePublicKey, timestamp);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    url,
+    ageSecretKey,
+    agePublicKey,
+    hwidEnabled,
+    hwid,
+    timestamp,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -854,6 +935,8 @@ class SubscriptionData extends DataClass
           other.url == this.url &&
           other.ageSecretKey == this.ageSecretKey &&
           other.agePublicKey == this.agePublicKey &&
+          other.hwidEnabled == this.hwidEnabled &&
+          other.hwid == this.hwid &&
           other.timestamp == this.timestamp);
 }
 
@@ -863,6 +946,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<String> url;
   final Value<String?> ageSecretKey;
   final Value<String?> agePublicKey;
+  final Value<bool> hwidEnabled;
+  final Value<String?> hwid;
   final Value<DateTime> timestamp;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
@@ -870,6 +955,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.url = const Value.absent(),
     this.ageSecretKey = const Value.absent(),
     this.agePublicKey = const Value.absent(),
+    this.hwidEnabled = const Value.absent(),
+    this.hwid = const Value.absent(),
     this.timestamp = const Value.absent(),
   });
   SubscriptionCompanion.insert({
@@ -878,6 +965,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     required String url,
     this.ageSecretKey = const Value.absent(),
     this.agePublicKey = const Value.absent(),
+    this.hwidEnabled = const Value.absent(),
+    this.hwid = const Value.absent(),
     required DateTime timestamp,
   }) : name = Value(name),
        url = Value(url),
@@ -888,6 +977,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<String>? url,
     Expression<String>? ageSecretKey,
     Expression<String>? agePublicKey,
+    Expression<bool>? hwidEnabled,
+    Expression<String>? hwid,
     Expression<DateTime>? timestamp,
   }) {
     return RawValuesInsertable({
@@ -896,6 +987,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (url != null) 'url': url,
       if (ageSecretKey != null) 'age_secret_key': ageSecretKey,
       if (agePublicKey != null) 'age_public_key': agePublicKey,
+      if (hwidEnabled != null) 'hwid_enabled': hwidEnabled,
+      if (hwid != null) 'hwid': hwid,
       if (timestamp != null) 'timestamp': timestamp,
     });
   }
@@ -906,6 +999,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<String>? url,
     Value<String?>? ageSecretKey,
     Value<String?>? agePublicKey,
+    Value<bool>? hwidEnabled,
+    Value<String?>? hwid,
     Value<DateTime>? timestamp,
   }) {
     return SubscriptionCompanion(
@@ -914,6 +1009,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       url: url ?? this.url,
       ageSecretKey: ageSecretKey ?? this.ageSecretKey,
       agePublicKey: agePublicKey ?? this.agePublicKey,
+      hwidEnabled: hwidEnabled ?? this.hwidEnabled,
+      hwid: hwid ?? this.hwid,
       timestamp: timestamp ?? this.timestamp,
     );
   }
@@ -936,6 +1033,12 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (agePublicKey.present) {
       map['age_public_key'] = Variable<String>(agePublicKey.value);
     }
+    if (hwidEnabled.present) {
+      map['hwid_enabled'] = Variable<bool>(hwidEnabled.value);
+    }
+    if (hwid.present) {
+      map['hwid'] = Variable<String>(hwid.value);
+    }
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
@@ -950,6 +1053,8 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('url: $url, ')
           ..write('ageSecretKey: $ageSecretKey, ')
           ..write('agePublicKey: $agePublicKey, ')
+          ..write('hwidEnabled: $hwidEnabled, ')
+          ..write('hwid: $hwid, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
@@ -2178,6 +2283,8 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       required String url,
       Value<String?> ageSecretKey,
       Value<String?> agePublicKey,
+      Value<bool> hwidEnabled,
+      Value<String?> hwid,
       required DateTime timestamp,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
@@ -2187,6 +2294,8 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<String> url,
       Value<String?> ageSecretKey,
       Value<String?> agePublicKey,
+      Value<bool> hwidEnabled,
+      Value<String?> hwid,
       Value<DateTime> timestamp,
     });
 
@@ -2221,6 +2330,16 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<String> get agePublicKey => $composableBuilder(
     column: $table.agePublicKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hwidEnabled => $composableBuilder(
+    column: $table.hwidEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get hwid => $composableBuilder(
+    column: $table.hwid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2264,6 +2383,16 @@ class $$SubscriptionTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get hwidEnabled => $composableBuilder(
+    column: $table.hwidEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get hwid => $composableBuilder(
+    column: $table.hwid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
@@ -2297,6 +2426,14 @@ class $$SubscriptionTableAnnotationComposer
     column: $table.agePublicKey,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get hwidEnabled => $composableBuilder(
+    column: $table.hwidEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get hwid =>
+      $composableBuilder(column: $table.hwid, builder: (column) => column);
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
@@ -2338,6 +2475,8 @@ class $$SubscriptionTableTableManager
                 Value<String> url = const Value.absent(),
                 Value<String?> ageSecretKey = const Value.absent(),
                 Value<String?> agePublicKey = const Value.absent(),
+                Value<bool> hwidEnabled = const Value.absent(),
+                Value<String?> hwid = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
@@ -2345,6 +2484,8 @@ class $$SubscriptionTableTableManager
                 url: url,
                 ageSecretKey: ageSecretKey,
                 agePublicKey: agePublicKey,
+                hwidEnabled: hwidEnabled,
+                hwid: hwid,
                 timestamp: timestamp,
               ),
           createCompanionCallback:
@@ -2354,6 +2495,8 @@ class $$SubscriptionTableTableManager
                 required String url,
                 Value<String?> ageSecretKey = const Value.absent(),
                 Value<String?> agePublicKey = const Value.absent(),
+                Value<bool> hwidEnabled = const Value.absent(),
+                Value<String?> hwid = const Value.absent(),
                 required DateTime timestamp,
               }) => SubscriptionCompanion.insert(
                 id: id,
@@ -2361,6 +2504,8 @@ class $$SubscriptionTableTableManager
                 url: url,
                 ageSecretKey: ageSecretKey,
                 agePublicKey: agePublicKey,
+                hwidEnabled: hwidEnabled,
+                hwid: hwid,
                 timestamp: timestamp,
               ),
           withReferenceMapper: (p0) => p0
