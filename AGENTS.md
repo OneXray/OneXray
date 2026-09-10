@@ -52,9 +52,23 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   Before packaging, read [build scripts](build_scripts/README.md) and, for Windows,
   [Windows builds](docs/windows-build.md). Apple/Android release scripts may
   upload to stores; they are not local validation commands.
-- GitHub work: [issue tracker](docs/agents/issue-tracker.md); triage:
-  [labels](docs/agents/triage-labels.md); domain/ADR work:
-  [domain guidance](docs/agents/domain.md).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues for `OneXray/OneXray`. Before issue or PR work, read
+[issue tracker](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Use the five canonical triage labels. Before triage, read
+[label mapping](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context layout. Before codebase exploration or domain/ADR work,
+read [domain guidance](docs/agents/domain.md).
 
 ## Verification
 
