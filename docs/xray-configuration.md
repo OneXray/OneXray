@@ -84,6 +84,13 @@ direct server 的 domains 从当前 direct 规则提取，且不作为通用 fal
 
 ## IPv6 策略
 
+Apple 的排除网段作为独立平台策略保存，只在关闭 `includeAllNetworks` 时传给原生
+`NEIPv4Settings.excludedRoutes` / `NEIPv6Settings.excludedRoutes`，不改写 Xray 路由或 DNS。
+默认列表为空，不自动加入私网；原生仍安装默认 TUN 路由。开启全流量接管时保留列表，
+但不校验、应用或因这份停用列表的变化重连。IPv6 关闭时保留 IPv6 条目，但不传入或
+配置 IPv6 排除路由。保存仅检查原生路由需要的 CIDR/网络地址格式，不沿用 Windows
+的条数、重复项或隧道 DNS 限制。这项功能不提供自动企业 Split DNS。
+
 关闭 IPv6 时，Apple、Android 不配置隧道 IPv6 地址、路由和 DNS，传给 Native 的 TUN
 参数也不携带 IPv6 地址和 DNS。Linux 由 Xray-core 创建网卡，其 `tunIn.settings` 中同样
 省略 IPv6 网卡参数。Windows EXE 使用相同的原生 TUN 参数规则；MSIX 的 tun2socks / VCore

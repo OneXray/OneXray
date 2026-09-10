@@ -4,8 +4,10 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
+import 'package:onexray/pages/advanced/tunnel/excluded_networks.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/widgets.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
@@ -88,6 +90,7 @@ class AppleVpnView extends StatelessWidget {
         builder: (context, state) {
           final l = AppLocalizations.of(context)!;
           final apple = controller.group('apple');
+          final palette = ColorManager.palette(context);
           final width = MediaQuery.sizeOf(context).width;
           final mobile = width <= AppLayout.mobileBreakpoint;
           final gutter = mobile
@@ -186,6 +189,42 @@ class AppleVpnView extends StatelessWidget {
                     ),
                   ],
                 ),
+                SizedBox(height: mobile ? 16 : 20),
+                Text(
+                  l.prototypeBypassNetworks,
+                  style: mobile
+                      ? AppTypography.appleAutoTitle
+                      : AppTypography.appleAutoTitleDesktop,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  apple['captureAllTraffic'] == true
+                      ? l.appleExcludedNetworksInactive
+                      : l.appleExcludedNetworksHint,
+                  style: AppTypography.platformDetailBody.copyWith(
+                    color: palette.mutedForeground,
+                  ),
+                ),
+                if (apple['captureAllTraffic'] == false) ...[
+                  const SizedBox(height: 16),
+                  ExcludedNetworks(
+                    rowKeyPrefix: 'apple-cidr-row',
+                    values: controller.strings('apple', 'excludedCidrs'),
+                    enabled: !controller.blocked,
+                    onChanged: (values) => controller.update(
+                      'excludedCidrs',
+                      values,
+                      section: 'apple',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    l.appleExcludedNetworksInputHint,
+                    style: AppTypography.windowsNetworkNote.copyWith(
+                      color: palette.mutedForeground,
+                    ),
+                  ),
+                ],
                 SizedBox(height: mobile ? 16 : 20),
                 Text(
                   l.prototypeAutomaticConnectionDisconnection,

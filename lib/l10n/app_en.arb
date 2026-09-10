@@ -2159,6 +2159,18 @@
   "@prototypeBypassLocalSubnetsHint": {
     "description": "Approved prototype copy: Access devices on directly connected local subnets without the VPN. When off, that traffic enters Xray routing, except for the networks listed below."
   },
+  "appleExcludedNetworksHint": "These networks use the physical network instead of the VPN. DNS servers are unchanged.",
+  "@appleExcludedNetworksHint": {
+    "description": "Apple VPN excluded networks explanation."
+  },
+  "appleExcludedNetworksInactive": "Excluded networks are not applied while Capture all traffic is on. Your saved list is kept.",
+  "@appleExcludedNetworksInactive": {
+    "description": "Apple VPN route exclusions are inactive with includeAllNetworks."
+  },
+  "appleExcludedNetworksInputHint": "One IPv4 or IPv6 network in CIDR notation per field. Use /32 or /128 for a single address. IPv6 exclusions apply only when IPv6 is enabled.",
+  "@appleExcludedNetworksInputHint": {
+    "description": "Apple VPN CIDR input format and IPv6 behavior."
+  },
   "prototypeBypassNetworks": "Networks bypassing the VPN",
   "@prototypeBypassNetworks": {
     "description": "Approved prototype copy: Networks bypassing the VPN"

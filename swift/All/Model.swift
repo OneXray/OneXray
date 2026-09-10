@@ -73,6 +73,7 @@ struct TunJson: Codable {
     var excludeCellularServices: Bool?
     var excludeAPNs: Bool?
     var excludeDeviceCommunication: Bool?
+    var excludedRoutes: [String]?
     var onDemandEnabled: Bool?
     var onDemandRules: [OnDemandRule]?
     var perAppVPNMode: String?

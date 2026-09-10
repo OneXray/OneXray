@@ -20,6 +20,7 @@ TunJson _$TunJsonFromJson(Map<String, dynamic> json) => TunJson(
   json['excludeCellularServices'] as bool?,
   json['excludeAPNs'] as bool?,
   json['excludeDeviceCommunication'] as bool?,
+  (json['excludedRoutes'] as List<dynamic>?)?.map((e) => e as String).toList(),
   json['onDemandEnabled'] as bool?,
   (json['onDemandRules'] as List<dynamic>?)
       ?.map((e) => OnDemandRule.fromJson(e as Map<String, dynamic>))
@@ -43,6 +44,7 @@ Map<String, dynamic> _$TunJsonToJson(TunJson instance) => <String, dynamic>{
   'excludeCellularServices': ?instance.excludeCellularServices,
   'excludeAPNs': ?instance.excludeAPNs,
   'excludeDeviceCommunication': ?instance.excludeDeviceCommunication,
+  'excludedRoutes': ?instance.excludedRoutes,
   'onDemandEnabled': ?instance.onDemandEnabled,
   'onDemandRules': ?instance.onDemandRules?.map((e) => e.toJson()).toList(),
   'perAppVPNMode': ?instance.perAppVPNMode,

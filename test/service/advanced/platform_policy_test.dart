@@ -24,6 +24,7 @@ void main() {
       expect(apple['disconnectWifiSsids'], isEmpty);
       expect(apple['cellularAction'], 'connect');
       expect(apple['ethernetAction'], 'connect');
+      expect(apple['excludedCidrs'], isEmpty);
       final tun = policy.toTun(ConnectionPlatform.ios);
       expect(tun.tunIPv4, '198.18.0.1');
       expect(tun.tunIPv6, 'fc00::1');
@@ -32,6 +33,7 @@ void main() {
       expect(tun.dnsServerName, 'dns.google');
       expect(tun.enableIPv6, true);
       expect(tun.includeAllNetworks, false);
+      expect(tun.excludedRoutes, isEmpty);
       expect(tun.excludeLocalNetworks, true);
       expect(tun.excludeCellularServices, true);
       expect(tun.excludeAPNs, true);
@@ -236,6 +238,95 @@ void main() {
       'disconnect',
     );
   });
+
+  test('Apple exclusions compile only for an active Apple policy', () {
+    final value = PlatformPolicy.defaults().toJson();
+    value['xrayOutboundInterfaceName'] = 'en0';
+    final cidrs = ['10.250.0.0/16', '10.250.0.5/32', '2001:db8::/64'];
+    value['apple']['excludedCidrs'] = cidrs;
+    for (final platform in [ConnectionPlatform.ios, ConnectionPlatform.macos]) {
+      final policy = PlatformPolicy.fromJson(value);
+      expect(policy.toTun(platform).excludedRoutes, cidrs);
+      expect(policy.toTun(platform).tunDnsIPv4, PlatformPolicy.dnsIpv4Address);
+      expect(policy.toJson()['apple']['excludedCidrs'], cidrs);
+    }
+    for (final platform in [
+      ConnectionPlatform.android,
+      ConnectionPlatform.windows,
+      ConnectionPlatform.linux,
+    ]) {
+      expect(
+        PlatformPolicy.fromJson(value).toTun(platform).excludedRoutes,
+        isNull,
+      );
+    }
+
+    value['apple']['captureAllTraffic'] = true;
+    var policy = PlatformPolicy.fromJson(value);
+    expect(policy.toTun(ConnectionPlatform.macos).excludedRoutes, isNull);
+    expect(policy.toJson()['apple']['excludedCidrs'], cidrs);
+    value['apple']['excludedCidrs'] = ['invalid inactive draft'];
+    policy = PlatformPolicy.fromJson(value);
+    expect(() => policy.toTun(ConnectionPlatform.ios), returnsNormally);
+  });
+
+  test('Apple IPv6 exclusions are retained but not applied with IPv6 off', () {
+    final policy = PlatformPolicy.fromJson({
+      'ipv6Enabled': false,
+      'apple': {
+        'excludedCidrs': ['10.250.0.0/16', '2001:db8::/64'],
+      },
+    });
+    for (final platform in [ConnectionPlatform.ios, ConnectionPlatform.macos]) {
+      expect(policy.toTun(platform).excludedRoutes, ['10.250.0.0/16']);
+      expect(policy.toTun(platform).tunIPv6, isNull);
+    }
+    expect(policy.toJson()['apple']['excludedCidrs'], [
+      '10.250.0.0/16',
+      '2001:db8::/64',
+    ]);
+  });
+
+  test(
+    'Apple CIDRs validate native route syntax without Windows restrictions',
+    () {
+      for (final cidr in [
+        'example.com/24',
+        '10.250.0.0',
+        '10.250.0.0/-1',
+        '10.250.0.0/33',
+        '10.250.0.5/16',
+        '2001:db8::/129',
+        '2001:db8::5/64',
+        '[2001:db8::]/64',
+        'fe80::%en0/64',
+        '10.250.0.0/16\n',
+      ]) {
+        expect(
+          () => PlatformPolicy.fromJson({
+            'apple': {
+              'excludedCidrs': [cidr],
+            },
+          }).toTun(ConnectionPlatform.macos),
+          throwsFormatException,
+          reason: cidr,
+        );
+      }
+      final routes = [
+        '0.0.0.0/0',
+        '::/0',
+        '8.8.8.8/32',
+        '2001:db8::1/128',
+        ...List.generate(65, (i) => '192.0.2.$i/32'),
+      ];
+      expect(
+        PlatformPolicy.fromJson({
+          'apple': {'excludedCidrs': routes},
+        }).toTun(ConnectionPlatform.ios).excludedRoutes,
+        routes,
+      );
+    },
+  );
 
   test(
     'desktop interface selection and Windows policy are explicit and isolated',

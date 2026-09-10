@@ -24,6 +24,7 @@ class TunJson {
   bool? excludeCellularServices;
   bool? excludeAPNs;
   bool? excludeDeviceCommunication;
+  List<String>? excludedRoutes;
   bool? onDemandEnabled;
   List<OnDemandRule>? onDemandRules;
   // android
@@ -45,6 +46,7 @@ class TunJson {
     this.excludeCellularServices,
     this.excludeAPNs,
     this.excludeDeviceCommunication,
+    this.excludedRoutes,
     this.onDemandEnabled,
     this.onDemandRules,
     this.perAppVPNMode,
