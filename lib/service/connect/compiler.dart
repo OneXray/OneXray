@@ -13,6 +13,7 @@ import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
+import 'package:onexray/service/shared/xray/validation.dart';
 
 class ResolvedServer {
   final int id;
@@ -92,12 +93,14 @@ class RuntimeOptions {
 
 class CompiledConnection {
   final String xrayJson;
+  final String validationJson;
   final List<ResolvedServer> entries;
   final ResolvedServer? finalExit;
   final Map<String, int> nodeTags;
 
   CompiledConnection({
     required this.xrayJson,
+    required this.validationJson,
     required Iterable<ResolvedServer> entries,
     required this.finalExit,
     required Map<String, int> nodeTags,
@@ -181,6 +184,7 @@ class ConnectionCompiler {
   }) {
     final nodeTags = <String, int>{};
     late final Map<String, dynamic> config;
+    late final String validationJson;
     if (settings.expert) {
       if (raw == null || entries.isNotEmpty || finalExit != null) {
         throw const FormatException(
@@ -188,6 +192,7 @@ class ConnectionCompiler {
         );
       }
       config = _rawRuntimeMap(raw, options);
+      validationJson = XrayValidation.raw(config);
     } else {
       final required = settings.requiredEntries(
         customEntryCount: custom?.entryCount,
@@ -265,7 +270,7 @@ class ConnectionCompiler {
         }
       }
       final queryStrategy = options.ipv6 ? 'UseIP' : 'UseIPv4';
-      config = XrayJson(
+      final normal = XrayJson(
         env: XrayEnv(
           assetLocation: VpnConstants.datDir,
           certLocation: VpnConstants.datDir,
@@ -331,10 +336,13 @@ class ConnectionCompiler {
             ...rules,
           ],
         ),
-      ).toJson();
+      );
+      validationJson = XrayValidation.normal(normal);
+      config = normal.toJson();
     }
     return CompiledConnection(
       xrayJson: jsonEncode(config),
+      validationJson: validationJson,
       entries: entries,
       finalExit: finalExit,
       nodeTags: nodeTags,

@@ -398,6 +398,7 @@ ConnectionRuntime _runtime(
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: text,
+      validationJson: '{}',
       entries: [],
       finalExit: null,
       nodeTags: {},

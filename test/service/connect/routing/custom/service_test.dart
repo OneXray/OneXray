@@ -34,8 +34,10 @@ void main() {
       expect(config['routing']['balancers'].single, {
         'tag': 'proxy',
         'selector': ['app-entry-0', 'app-entry-1', 'app-entry-2'],
+        'strategy': {'type': 'roundRobin'},
         'fallbackTag': 'direct',
       });
+      expect(config['observatory'], {'subjectSelector': []});
       return calls == 1 ? '' : 'Core rejected rule';
     }
 

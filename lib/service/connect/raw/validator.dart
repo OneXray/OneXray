@@ -1,10 +1,10 @@
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/shared/xray/validation.dart';
 
 class XrayRawValidationResult {
   final bool isValid;
@@ -73,36 +73,13 @@ class XrayRawValidator {
     final jsonMap = JsonTool.decoder.convert(
       normalized.normalizedText!,
     ) as Map<String, dynamic>;
-    final res = await _test(jsonMap, testXray ?? AppHostApi().testXray);
+    final res = await (testXray ?? AppHostApi().testXray)(
+      XrayValidation.raw(jsonMap),
+    );
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);
     }
 
     return normalized;
   });
-
-  static Future<String> _test(
-    Map<String, dynamic> jsonMap,
-    Future<String> Function(String) testXray,
-  ) async {
-    // Parse the configuration without creating or starting a core instance.
-    // Only this disposable copy gets App-owned resource paths and logging.
-    final env = jsonMap['env'];
-    if (env != null && env is! Map<String, dynamic>) {
-      return testXray(JsonTool.encoder.convert(jsonMap));
-    }
-    jsonMap['env'] = <String, dynamic>{
-      if (env is Map<String, dynamic>) ...env,
-      'xray.location.asset': VpnConstants.datDir,
-      'xray.location.cert': VpnConstants.datDir,
-    };
-    jsonMap['log'] = <String, dynamic>{
-      'access': 'none',
-      'error': 'none',
-      'loglevel': 'none',
-      'dnsLog': false,
-    };
-    final rawText = JsonTool.encoder.convert(jsonMap);
-    return testXray(rawText);
-  }
 }

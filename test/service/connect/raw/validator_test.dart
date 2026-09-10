@@ -45,7 +45,7 @@ void main() {
   });
 
   test(
-    'full-core validation gets a safe copy and returns the original source',
+    'instance validation projects App fields and returns the original source',
     () async {
       var calls = 0;
       final result = await XrayRawValidator.validate(
@@ -65,10 +65,9 @@ void main() {
             'loglevel': 'none',
             'dnsLog': false,
           };
-          expect(
-            actual,
-            expected,
-          ); // Includes the original inbounds/policy/metrics/rules.
+          expected.remove('metrics');
+          expected['policy']['system'] = {};
+          expect(actual, expected);
           return '';
         },
       );
@@ -79,7 +78,7 @@ void main() {
   );
 
   test(
-    'full-core build errors reject save without returning a patched copy',
+    'core construction errors reject save without returning a patched copy',
     () async {
       final result = await XrayRawValidator.validate(
         source,

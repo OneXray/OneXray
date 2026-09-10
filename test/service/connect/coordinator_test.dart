@@ -1051,6 +1051,7 @@ ConnectionRuntime _runtime(
   });
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
+    validationJson: '{}',
     entries: entries,
     finalExit: finalExit,
     nodeTags: const {},

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/shared/db/config_writer.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
@@ -33,7 +34,21 @@ void main() {
     const source =
         '{"outbounds":[{"tag":"one","protocol":"freedom"},{"tag":"two","protocol":"freedom"}]}';
     final preview = await service.preview(source, manual: true);
-    expect(validated, [jsonDecode(source)]);
+    expect(validated, [
+      {
+        ...jsonDecode(source) as Map<String, dynamic>,
+        'env': {
+          'xray.location.asset': VpnConstants.datDir,
+          'xray.location.cert': VpnConstants.datDir,
+        },
+        'log': {
+          'access': 'none',
+          'error': 'none',
+          'loglevel': 'none',
+          'dnsLog': false,
+        },
+      },
+    ]);
     expect(preview.count, 2);
     expect(await db.coreConfigDao.allOutboundRowsWithDataBySubId(0), isEmpty);
     expect(queued, isEmpty);

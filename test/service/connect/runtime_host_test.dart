@@ -201,6 +201,7 @@ ConnectionRuntime _runtime() {
   const xrayJson = '{"outbounds":[]}';
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
+    validationJson: '{}',
     entries: [server],
     finalExit: null,
     nodeTags: const {},

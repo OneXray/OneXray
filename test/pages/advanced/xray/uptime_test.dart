@@ -120,6 +120,7 @@ ConnectionRuntime _runtime(DateTime startedAt) => ConnectionRuntime.create(
   configuration: ConnectionConfiguration(),
   compiled: CompiledConnection(
     xrayJson: '{}',
+    validationJson: '{}',
     entries: const [],
     finalExit: null,
     nodeTags: const {},

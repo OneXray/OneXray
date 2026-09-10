@@ -15,6 +15,7 @@ import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/ping/service.dart';
+import 'package:onexray/service/shared/xray/validation.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
@@ -124,7 +125,7 @@ class ServerAssetService {
     if (outbound is! Map<String, dynamic>) {
       throw const FormatException('An outbound object is required');
     }
-    final validation = await _validate(encodeSingleOutbound(outbound));
+    final validation = await _validate(XrayValidation.nodes([outbound]));
     if (validation.isNotEmpty) {
       throw AppFailure(
         FailureCategory.configuration,

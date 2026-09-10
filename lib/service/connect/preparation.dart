@@ -183,7 +183,7 @@ class ConnectionPreparation {
         maskAddress: policy.maskAddress,
       ),
     );
-    final validation = await AppHostApi().testXray(compiled.xrayJson);
+    final validation = await AppHostApi().testXray(compiled.validationJson);
     if (validation.isNotEmpty) {
       throw AppFailure(
         FailureCategory.configuration,
