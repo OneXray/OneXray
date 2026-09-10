@@ -2,6 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:quick_actions/quick_actions.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/failure.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/shared/notification/service.dart';
 import 'package:collection/collection.dart';
 import 'package:onexray/core/tools/platform.dart';
@@ -58,20 +60,25 @@ final class ShortCutService {
     try {
       switch (key) {
         case _ShortCutKey.startVpn:
-          try {
-            await ConnectionCoordinator.instance.connect();
-          } catch (_) {
-            await NotificationService().pushNotification(
-              appLocalizationsNoContext().prototypeConnectionFailed,
-            );
-            rethrow;
-          }
+          await ConnectionCoordinator.instance.connect();
           break;
         case _ShortCutKey.stopVpn:
           await ConnectionCoordinator.instance.disconnect();
           break;
       }
-    } catch (_) {
+    } catch (error) {
+      if (connectionFailureReason(error) == 'cancelled') return;
+      if (key == _ShortCutKey.startVpn) {
+        try {
+          await NotificationService().pushNotification(
+            connectionFailureMessage(appLocalizationsNoContext(), error: error),
+          );
+        } catch (notificationError) {
+          ygLogger(
+            'Shortcut connection notification failed: $notificationError',
+          );
+        }
+      }
       // The shortcut already opened the App; let its UI show the failed action.
       onConnectionFailure?.call();
     }

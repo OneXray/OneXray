@@ -48,6 +48,6 @@ void main() {
         'await ServicesBinding.instance.exitApplication(',
       ),
     );
-    expect(action, contains('await AppStartupService().showMainWindow();'));
+    expect(action, contains('await _showMainWindow();'));
   });
 }

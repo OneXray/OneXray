@@ -9,6 +9,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -864,6 +865,44 @@ void main() {
 
     expect(starts, 0);
   });
+
+  test(
+    'resolver reason and counts survive refresh and clear on successful retry',
+    () async {
+      const error = ConnectionResolutionException(
+        ConnectionResolutionFailure.insufficientHealthyServers,
+        requiredCount: 3,
+        availableCount: 1,
+      );
+      final runtime = _runtime('a');
+      var fail = true;
+      var host = const HostConnection(VpnStatus.disconnected);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => host.runtime,
+          inspect: (_) async => host,
+          prepare: (_, _) async {
+            if (fail) throw error;
+            return runtime;
+          },
+          start: (runtime) async =>
+              host = HostConnection(VpnStatus.connected, runtime: runtime),
+        ),
+      );
+      await expectLater(coordinator.connect(), throwsA(same(error)));
+      expect(coordinator.state.value.issue, 'insufficientHealthyServers');
+      expect(coordinator.state.value.error, same(error));
+      await coordinator.refresh();
+      expect(coordinator.state.value.issue, 'insufficientHealthyServers');
+      expect(coordinator.state.value.error, same(error));
+      fail = false;
+      await coordinator.connect();
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.issue, isNull);
+      expect(coordinator.state.value.error, isNull);
+    },
+  );
 
   test('active node IDs protect subscription replacement', () async {
     final active = _runtime('a', entryIds: const [2, 3], exitId: 4);

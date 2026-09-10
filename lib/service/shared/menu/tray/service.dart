@@ -1,11 +1,14 @@
 import 'dart:ui';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/failure.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/shared/notification/service.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -18,7 +21,21 @@ final class TrayService with TrayListener {
 
   factory TrayService() => _singleton;
 
-  TrayService._internal();
+  TrayService._internal()
+    : _connect = (() => ConnectionCoordinator.instance.connect()),
+      _notify = ((message) => NotificationService().pushNotification(message)),
+      _showMainWindow = (() => AppStartupService().showMainWindow());
+
+  @visibleForTesting
+  TrayService.forTesting({
+    required this._connect,
+    required this._notify,
+    required this._showMainWindow,
+  });
+
+  final Future<void> Function() _connect;
+  final Future<void> Function(String) _notify;
+  final Future<void> Function() _showMainWindow;
 
   //==========================
   var _initialized = false;
@@ -154,14 +171,7 @@ final class TrayService with TrayListener {
     try {
       switch (key) {
         case _TrayMenuKey.startVpn:
-          try {
-            await ConnectionCoordinator.instance.connect();
-          } catch (_) {
-            await NotificationService().pushNotification(
-              appLocalizationsNoContext().prototypeConnectionFailed,
-            );
-            rethrow;
-          }
+          await _connect();
           break;
         case _TrayMenuKey.stopVpn:
           await ConnectionCoordinator.instance.disconnect();
@@ -185,9 +195,20 @@ final class TrayService with TrayListener {
           );
           break;
       }
-    } catch (_) {
+    } catch (error) {
+      if (key == _TrayMenuKey.startVpn) {
+        if (connectionFailureReason(error) == 'cancelled') return;
+        try {
+          await _notify(
+            connectionFailureMessage(appLocalizationsNoContext(), error: error),
+          );
+        } catch (notificationError) {
+          ygLogger('Tray connection notification failed: $notificationError');
+        }
+        if (!connectionFailureNeedsWindow(error)) return;
+      }
       // Keep the coordinator's failure/permission state for the normal UI retry.
-      await AppStartupService().showMainWindow();
+      await _showMainWindow();
     }
   }
 }

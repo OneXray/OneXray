@@ -6,8 +6,8 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/service/connect/failure.dart';
 import 'package:onexray/service/connect/preparation.dart';
-import 'package:onexray/service/connect/platform_requirements.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -34,6 +34,9 @@ class ConnectionView {
   final int uploadSpeed;
   final int downloadSpeed;
   final String? issue;
+
+  /// The command's cause (including resolver counts), kept only in memory.
+  final Object? error;
   final PlatformPermissionResult? permission;
   const ConnectionView({
     this.phase = ConnectionPhase.disconnected,
@@ -43,6 +46,7 @@ class ConnectionView {
     this.uploadSpeed = 0,
     this.downloadSpeed = 0,
     this.issue,
+    this.error,
     this.permission,
   });
   bool get busy =>
@@ -204,9 +208,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           _lastNativeStatus = null;
           state.value = ConnectionView(
             phase: ConnectionPhase.failed,
-            issue: error is ConnectionHostException
-                ? error.reason
-                : 'runtimeUnavailable',
+            issue: connectionFailureReason(
+              error,
+              fallback: 'runtimeUnavailable',
+            ),
+            error: error,
             permission: error is ConnectionHostException
                 ? error.permission
                 : null,
@@ -369,6 +375,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
               traffic: old.traffic,
             ),
             issue: old.issue ?? 'runtimeUnavailable',
+            error: old.error,
             permission: old.permission,
           );
         } else {
@@ -377,6 +384,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             runtime: old.runtime,
             traffic: old.traffic,
             issue: old.issue ?? 'runtimeUnavailable',
+            error: old.error,
             permission: old.permission,
           );
         }
@@ -421,6 +429,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           runtime: old.runtime,
           traffic: old.traffic,
           issue: old.issue,
+          error: old.error,
           permission: old.permission,
         );
       }
@@ -563,11 +572,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         }
         final issue = cancellation.isCompleted
             ? 'cancelled'
-            : error is ConnectionHostException
-            ? error.reason
-            : error is ConnectionPlatformRequirementException
-            ? error.reason
-            : 'changeFailed';
+            : connectionFailureReason(error);
         if (touchedHost) {
           final status = failed?.status;
           _lastNativeStatus = status;
@@ -582,11 +587,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
                       current.runtime,
             traffic: failed?.traffic ?? current.traffic,
             issue: issue,
+            error: error,
             permission: permission,
           );
           _syncPolling();
         } else {
-          _publish(current, issue: issue, permission: permission);
+          _publish(current, issue: issue, error: error, permission: permission);
         }
         rethrow;
       } finally {
@@ -674,6 +680,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       runtime: runtime,
       traffic: traffic,
       issue: issue,
+      error: error,
       permission:
           permission ??
           (error is ConnectionHostException ? error.permission : null),
@@ -705,6 +712,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   void _publish(
     HostConnection current, {
     String? issue,
+    Object? error,
     PlatformPermissionResult? permission,
     bool keepResult = false,
     bool liveTraffic = false,
@@ -714,6 +722,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     final permissionRequired = _permissionRequired(checkedPermission);
     if (permissionRequired) {
       issue = 'permissionRequired';
+      error = null;
       permission = checkedPermission;
     }
     // Query replies also travel through the event stream. Consume only the
@@ -730,6 +739,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       if (!(current.connected && old.phase != ConnectionPhase.connected) &&
           !permissionResolved) {
         if (old.issue != 'runtimeUnavailable') issue ??= old.issue;
+        if (issue == old.issue) error ??= old.error;
         permission ??= old.permission;
       }
     }
@@ -783,6 +793,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
               ? 'runtimeMetadataUnavailable'
               : null),
       permission: permission,
+      error: error,
     );
     _syncPolling();
   }

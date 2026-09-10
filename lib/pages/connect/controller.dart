@@ -106,6 +106,7 @@ class ConnectPageState {
       connectionView.phase == other.connectionView.phase &&
       connectionView.runtime == other.connectionView.runtime &&
       connectionView.issue == other.connectionView.issue &&
+      connectionView.error == other.connectionView.error &&
       connectionView.permission == other.connectionView.permission;
 }
 
