@@ -1,4 +1,6 @@
 {
+  "routingLocalDnsAddress": "本機 DNS 位址",
+  "tunnelDnsServerNameHint": "僅用於 Apple 平台的 DNS over TLS。DNS 位址與網域名稱必須屬於同一服務，並與其 TLS 憑證相符。",
   "menuShortcutChooseConfiguration": "切換設定",
   "menuShortcutUpdateSubscriptions": "更新訂閱",
   "menuBarReconnect": "重新連線",

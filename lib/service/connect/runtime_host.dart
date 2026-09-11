@@ -223,11 +223,11 @@ class ConnectionRuntimeHost {
             )
           : null,
       windowsNetworkSettings: windows
-          ? const WindowsVpnNetworkSettings(
+          ? WindowsVpnNetworkSettings(
               ipv4Address: PlatformPolicy.tunIpv4Address,
               ipv6Address: PlatformPolicy.tunIpv6Address,
-              dnsIpv4Address: PlatformPolicy.dnsIpv4Address,
-              dnsIpv6Address: PlatformPolicy.dnsIpv6Address,
+              dnsIpv4Address: policy.dnsIpv4Address,
+              dnsIpv6Address: policy.dnsIpv6Address,
             )
           : null,
       windowsPolicy: windows

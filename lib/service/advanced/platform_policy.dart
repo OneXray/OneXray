@@ -25,6 +25,9 @@ final class PlatformPolicy {
 
   factory PlatformPolicy.fromJson(Map<String, dynamic> value) {
     final policy = _readPolicyObject(_defaults, value);
+    for (final key in ['dnsIpv4Address', 'dnsIpv6Address', 'dnsServerName']) {
+      policy[key] = (policy[key] as String).trim();
+    }
     final android = policy['android'] as Map<String, dynamic>;
     if (!{'all', 'included', 'excluded'}.contains(android['appScope'])) {
       throw const FormatException('Invalid Android app scope');
@@ -74,12 +77,40 @@ final class PlatformPolicy {
 
   static const tunIpv4Address = '198.18.0.1';
   static const tunIpv6Address = 'fc00::1';
-  static const dnsIpv4Address = '8.8.8.8';
-  static const dnsIpv6Address = '2001:4860:4860::8888';
-  static const dnsServerName = 'dns.google';
+  String get dnsIpv4Address => toJson()['dnsIpv4Address'] as String;
+  String get dnsIpv6Address => toJson()['dnsIpv6Address'] as String;
+  String get dnsServerName => toJson()['dnsServerName'] as String;
+
+  /// Native DNS setters require IP literals; Xray DNS syntax is independent.
+  void validateDns(ConnectionPlatform platform, {WindowsMode? windowsMode}) {
+    void checkAddress(String value, InternetAddressType family, String label) {
+      final address = RegExp(r'[\[\]%\s]').hasMatch(value)
+          ? null
+          : InternetAddress.tryParse(value);
+      if (address == null || address.type != family) {
+        throw FormatException(
+          '$label must be an ${family.name} address: $value',
+        );
+      }
+    }
+
+    checkAddress(dnsIpv4Address, InternetAddressType.IPv4, 'Tunnel DNS IPv4');
+    if (ipv6Enabled ||
+        (platform == ConnectionPlatform.windows &&
+            (windowsMode ?? windowsBuildMode) == WindowsMode.msix)) {
+      checkAddress(dnsIpv6Address, InternetAddressType.IPv6, 'Tunnel DNS IPv6');
+    }
+    if ((platform == ConnectionPlatform.ios ||
+            platform == ConnectionPlatform.macos) &&
+        toJson()['apple']['dnsOverTls'] == true &&
+        dnsServerName.isEmpty) {
+      throw const FormatException('DNS over TLS requires a server name');
+    }
+  }
 
   /// Compiles for a real start. Inactive platform drafts remain in [toJson].
   TunJson toTun(ConnectionPlatform platform, {WindowsMode? windowsMode}) {
+    validateDns(platform, windowsMode: windowsMode);
     final policy = toJson();
     final tun = <String, dynamic>{
       'tunIPv4': tunIpv4Address,
@@ -163,10 +194,15 @@ final class PlatformPolicy {
   }
 
   WindowsVpnPolicy toWindowsPolicy() {
+    validateDns(ConnectionPlatform.windows, windowsMode: WindowsMode.msix);
     final policy = toJson();
     final windows = policy['windows'] as Map<String, dynamic>;
     final cidrs = (windows['excludedCidrs'] as List).cast<String>();
-    _validateExclusions(cidrs, ipv6: policy['ipv6Enabled'] as bool);
+    _validateExclusions(
+      cidrs,
+      dnsAddresses: [dnsIpv4Address, dnsIpv6Address],
+      ipv6: policy['ipv6Enabled'] as bool,
+    );
     return WindowsVpnPolicy(
       alwaysOn: windows['alwaysOn'] as bool,
       allowLocalNetwork: windows['allowLocalNetwork'] as bool,
@@ -177,6 +213,9 @@ final class PlatformPolicy {
 
 const _defaults = <String, dynamic>{
   'ipv6Enabled': true,
+  'dnsIpv4Address': '8.8.8.8',
+  'dnsIpv6Address': '2001:4860:4860::8888',
+  'dnsServerName': 'dns.google',
   'xrayOutboundInterfaceName': '',
   'android': {
     'appScope': 'all',
@@ -268,14 +307,17 @@ List<String> _appleExcludedRoutes(List<String> values, {required bool ipv6}) {
   return routes;
 }
 
-void _validateExclusions(List<String> values, {bool ipv6 = true}) {
+void _validateExclusions(
+  List<String> values, {
+  required List<String> dnsAddresses,
+  bool ipv6 = true,
+}) {
   if (values.length > 64) {
     throw const FormatException('Windows VPN allows at most 64 exclusions');
   }
   final seen = <String>{};
   final dns = [
-    InternetAddress(PlatformPolicy.dnsIpv4Address).rawAddress,
-    InternetAddress(PlatformPolicy.dnsIpv6Address).rawAddress,
+    for (final address in dnsAddresses) InternetAddress(address).rawAddress,
   ];
   for (final value in values) {
     final parts = value.split('/');

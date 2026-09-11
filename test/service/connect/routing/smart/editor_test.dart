@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/compiler.dart';
@@ -30,11 +31,82 @@ RegionCatalog _regions() => RegionCatalog.fromJson(
 );
 
 void main() {
+  test(
+    'Smart keeps legacy defaults and reconnects only for effective DNS changes',
+    () {
+      expect(SmartRoutingSettings.fromJson({}).directDnsAddress, '8.8.8.8');
+      for (final enabled in [false, true]) {
+        final before = SmartRoutingSettings(
+          directDns: enabled,
+          directDnsAddress: '1.1.1.1',
+        );
+        final after = SmartRoutingSettings.fromJson({
+          ...before.toJson(),
+          'directDnsAddress': '9.9.9.9',
+        });
+        expect(after.directDnsAddress, '9.9.9.9');
+        expect(
+          SmartRoutingEditorService.sameRuntime(
+            ConnectionSettings(smart: before),
+            after,
+            _regions(),
+          ),
+          !enabled,
+        );
+      }
+    },
+  );
+
   late AppDatabase db;
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
   });
+
+  test(
+    'Smart validates an edited DNS address with libXray before saving',
+    () async {
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        ),
+      );
+      final original = await coordinator.configuration;
+      var coreError = 'Invalid DNS address';
+      var calls = 0;
+      final service = SmartRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        loadRegions: () async => _regions(),
+        testXray: (text) async {
+          calls++;
+          final json = jsonDecode(text);
+          expect(json['dns']['servers'].last['tag'], 'app-dns-direct');
+          expect(json['dns']['servers'].last['address'], '1.1.1.1');
+          expect(json.containsKey('inbounds'), false);
+          return coreError;
+        },
+      );
+      Future<bool> save() => service.save(
+        original: original,
+        smart: SmartRoutingSettings(directDnsAddress: ' 1.1.1.1 '),
+        confirmReconnect: () async => throw StateError('Must not reconnect'),
+      );
+      await expectLater(
+        save(),
+        throwsA(isA<AppFailure>().having((e) => e.cause, 'cause', coreError)),
+      );
+      expect((await coordinator.configuration).encode(), original.encode());
+      coreError = '';
+      expect(await save(), true);
+      expect(
+        (await coordinator.configuration).connection.smart.directDnsAddress,
+        '1.1.1.1',
+      );
+      expect(calls, 2);
+    },
+  );
 
   test('unselected Smart saves without activation or servers; stale settings are rejected', () async {
     final original = ConnectionConfiguration(

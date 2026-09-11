@@ -16,6 +16,72 @@ import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 
 void main() {
+  test('reconnect comparisons include only effective DNS settings', () {
+    final original = PlatformPolicy.fromJson({
+      'xrayOutboundInterfaceName': 'Ethernet',
+    });
+    for (final platform in ConnectionPlatform.values) {
+      for (final field in ['dnsIpv4Address', 'dnsIpv6Address']) {
+        final changed = PlatformPolicy.fromJson({
+          ...original.toJson(),
+          field: field == 'dnsIpv4Address' ? '1.1.1.1' : '2606:4700:4700::1111',
+        });
+        expect(
+          PolicyEditorService.sameRuntime(original, changed, platform),
+          false,
+        );
+      }
+      final renamed = PlatformPolicy.fromJson({
+        ...original.toJson(),
+        'dnsServerName': 'cloudflare-dns.com',
+      });
+      expect(
+        PolicyEditorService.sameRuntime(original, renamed, platform),
+        true,
+      );
+      final off = PlatformPolicy.fromJson({
+        ...original.toJson(),
+        'ipv6Enabled': false,
+      });
+      final offChanged = PlatformPolicy.fromJson({
+        ...off.toJson(),
+        'dnsIpv6Address': '2606:4700:4700::1111',
+      });
+      expect(
+        PolicyEditorService.sameRuntime(
+          off,
+          offChanged,
+          platform,
+          windowsMode: WindowsMode.exe,
+        ),
+        true,
+      );
+      if (platform == ConnectionPlatform.windows) {
+        expect(
+          PolicyEditorService.sameRuntime(
+            off,
+            offChanged,
+            platform,
+            windowsMode: WindowsMode.msix,
+          ),
+          false,
+        );
+      }
+      if (platform == ConnectionPlatform.ios ||
+          platform == ConnectionPlatform.macos) {
+        final dot = PlatformPolicy.fromJson({
+          ...original.toJson(),
+          'apple': {'dnsOverTls': true},
+        });
+        final changed = PlatformPolicy.fromJson({
+          ...dot.toJson(),
+          'dnsServerName': 'cloudflare-dns.com',
+        });
+        expect(PolicyEditorService.sameRuntime(dot, changed, platform), false);
+      }
+    }
+  });
+
   late AppDatabase db;
   late ConnectionCoordinator coordinator;
   late HostConnection host;
@@ -152,6 +218,9 @@ void main() {
       );
       final seed = await service.load();
       seed.policy['ipv6Enabled'] = false;
+      seed.policy['dnsIpv4Address'] = '1.1.1.1';
+      seed.policy['dnsIpv6Address'] = '2606:4700:4700::1111';
+      seed.policy['dnsServerName'] = 'cloudflare-dns.com';
       seed.policy['android']['appScope'] = 'excluded';
       seed.policy['android']['excludedAppPackageNames'] = [
         'com.example.bypass',

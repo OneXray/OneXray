@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
 import 'package:onexray/pages/shared/alert.dart';
+import 'package:onexray/pages/shared/widgets/dns_text_field.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -105,17 +106,38 @@ class VpnTunnelPane extends StatelessWidget {
                     icon: LucideIcons.globe2,
                     title: l.prototypeTunnelDns,
                     children: [
-                      PolicyValueRow(
-                        title: l.prototypeIpv4Dns,
-                        value: PlatformPolicy.dnsIpv4Address,
-                      ),
-                      PolicyValueRow(
-                        title: l.prototypeIpv6Dns,
-                        value: PlatformPolicy.dnsIpv6Address,
-                      ),
-                      PolicyValueRow(
-                        title: l.prototypeDomain,
-                        value: PlatformPolicy.dnsServerName,
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          spacing: 18,
+                          children: [
+                            DnsTextField(
+                              label: l.prototypeIpv4Dns,
+                              value:
+                                  controller.value['dnsIpv4Address'] as String,
+                              enabled: !controller.blocked,
+                              onChanged: (value) =>
+                                  controller.update('dnsIpv4Address', value),
+                            ),
+                            DnsTextField(
+                              label: l.prototypeIpv6Dns,
+                              value:
+                                  controller.value['dnsIpv6Address'] as String,
+                              enabled: !controller.blocked,
+                              onChanged: (value) =>
+                                  controller.update('dnsIpv6Address', value),
+                            ),
+                            DnsTextField(
+                              label: l.prototypeDomain,
+                              value:
+                                  controller.value['dnsServerName'] as String,
+                              enabled: !controller.blocked,
+                              hint: l.tunnelDnsServerNameHint,
+                              onChanged: (value) =>
+                                  controller.update('dnsServerName', value),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

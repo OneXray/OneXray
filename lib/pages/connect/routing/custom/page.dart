@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/dns_text_field.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/routing/custom/controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_page.dart';
@@ -228,7 +229,32 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                             12,
                                           ),
                                           child: RoutingCard(
-                                            child: _dns(context, mobile),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                _dns(context, mobile),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        13,
+                                                        8,
+                                                        13,
+                                                        13,
+                                                      ),
+                                                  child: DnsTextField(
+                                                    label: l
+                                                        .routingLocalDnsAddress,
+                                                    value:
+                                                        state.directDnsAddress,
+                                                    enabled:
+                                                        !state.editingBlocked,
+                                                    onChanged: controller
+                                                        .setDirectDnsAddress,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ],

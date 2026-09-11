@@ -1,4 +1,6 @@
 {
+  "routingLocalDnsAddress": "Адрес локального DNS",
+  "tunnelDnsServerNameHint": "Используется только для DNS over TLS на платформах Apple. Адреса DNS и имя сервера должны принадлежать одной службе и соответствовать её TLS-сертификату.",
   "menuShortcutChooseConfiguration": "Сменить конфигурацию",
   "menuShortcutUpdateSubscriptions": "Обновить подписки",
   "menuBarReconnect": "Переподключиться",

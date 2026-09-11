@@ -5,6 +5,7 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/state_db.dart';
+import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
 
@@ -25,6 +26,13 @@ class CustomRoutingService {
     Future<String> Function(String)? testXray,
   }) => GeoDataService().withFiles(() async {
     final config = state.xrayJson;
+    config.dns = RoutingDns.compile(
+      directAddress: state.directDnsAddress.trim(),
+      directDomains: [
+        for (final rule in state.rules)
+          if (rule.action == RoutingRuleAction.direct) ...rule.domain,
+      ],
+    );
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
     config.outbounds = [
       for (final tag in tags) createFreedomOutbound(tag: tag).toJson(),

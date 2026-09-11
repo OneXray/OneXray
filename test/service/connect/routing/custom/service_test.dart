@@ -14,6 +14,7 @@ void main() {
     final state = RoutingProfileState(
       name: 'Route',
       entryCount: 3,
+      directDnsAddress: '1.1.1.1',
       rules: [RoutingRuleState(port: 0, network: 'TCP')],
     );
     final source = state.encode();
@@ -22,6 +23,9 @@ void main() {
     Future<String> check(String text) async {
       calls++;
       final config = jsonDecode(text);
+      expect(config['dns']['servers'].last['address'], '1.1.1.1');
+      expect(config['dns']['servers'].last['tag'], 'app-dns-direct');
+      expect(config['dns']['servers'].last['skipFallback'], true);
       expect(config['env']['xray.location.asset'], VpnConstants.datDir);
       expect(config['outbounds'], [
         for (var i = 0; i < 3; i++)
@@ -77,6 +81,7 @@ void main() {
       final service = CustomRoutingService(database);
       final state = RoutingProfileState(
         name: 'One',
+        directDnsAddress: '9.9.9.9',
         rules: [
           RoutingRuleState(
             ruleTag: 'Example',
@@ -89,12 +94,18 @@ void main() {
       final row = (await database.routingProfileDao.searchRow(id))!;
       final stored = jsonDecode(utf8.decode(base64Decode(row.data))) as Map;
       expect(stored['outbounds'], [{}]);
+      expect(stored['dns'], {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '9.9.9.9'},
+        ],
+      });
       expect(stored.containsKey('name'), false);
       expect(stored.containsKey('geodata'), false);
       final roundTrip = CustomRoutingService.read(row);
       expect(roundTrip.id, id);
       expect(roundTrip.name, 'One');
       expect(roundTrip.entryCount, 1);
+      expect(roundTrip.directDnsAddress, '9.9.9.9');
       expect(roundTrip.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
       expect(stored['routing']['domainStrategy'], 'IPIfNonMatch');
       expect(roundTrip.rules.single.toJson(), state.rules.single.toJson());

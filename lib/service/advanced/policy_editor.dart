@@ -68,6 +68,7 @@ class PolicyEditorService {
               .toList();
     }
     final policy = PlatformPolicy.fromJson(value);
+    policy.validateDns(platform, windowsMode: windowsMode);
     if (requiresInterface && policy.xrayOutboundInterfaceName.trim().isEmpty) {
       throw const FormatException('Network interface is required');
     }
@@ -128,6 +129,11 @@ class PolicyEditorService {
       final json = policy.toJson();
       final result = <String, dynamic>{
         'ipv6': policy.ipv6Enabled,
+        'dnsIpv4Address': policy.dnsIpv4Address,
+        if (policy.ipv6Enabled ||
+            (platform == ConnectionPlatform.windows &&
+                (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
+          'dnsIpv6Address': policy.dnsIpv6Address,
         'log': json['log'],
       };
       if (platform == ConnectionPlatform.android) {
@@ -141,7 +147,9 @@ class PolicyEditorService {
         result['android'] = {'scope': scope, 'packages': packages};
       } else if (platform == ConnectionPlatform.ios ||
           platform == ConnectionPlatform.macos) {
-        result['apple'] = policy.toTun(platform).toJson();
+        final tun = policy.toTun(platform).toJson();
+        if (tun['enableDot'] != true) tun.remove('dnsServerName');
+        result['apple'] = tun;
       } else {
         result['interface'] = policy.xrayOutboundInterfaceName;
         if (platform == ConnectionPlatform.windows &&

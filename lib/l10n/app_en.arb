@@ -1,4 +1,6 @@
 {
+  "routingLocalDnsAddress": "Local DNS address",
+  "tunnelDnsServerNameHint": "Used only for DNS over TLS on Apple platforms. The DNS addresses and server name must belong to the same service and match its TLS certificate.",
   "menuShortcutChooseConfiguration": "Switch configuration",
   "menuShortcutUpdateSubscriptions": "Update subscriptions",
   "menuBarReconnect": "Reconnect",

@@ -1,4 +1,5 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/core/tools/json.dart';
 
 enum RoutingRuleAction { proxy, direct, block }
@@ -85,12 +86,14 @@ final class RoutingProfileState {
   final int? id;
   final String name;
   final int entryCount;
+  final String directDnsAddress;
   final List<RoutingRuleState> rules;
 
   RoutingProfileState({
     this.id,
     required this.name,
     this.entryCount = 1,
+    this.directDnsAddress = RoutingDns.defaultAddress,
     Iterable<RoutingRuleState> rules = const [],
   }) : rules = List.unmodifiable(rules);
 
@@ -102,7 +105,6 @@ final class RoutingProfileState {
     if (xrayJson.env != null ||
         xrayJson.geodata != null ||
         xrayJson.log != null ||
-        xrayJson.dns != null ||
         xrayJson.inbounds != null ||
         xrayJson.policy != null ||
         xrayJson.stats != null ||
@@ -126,6 +128,7 @@ final class RoutingProfileState {
       id: id,
       name: name,
       entryCount: outbounds.length,
+      directDnsAddress: _directDnsAddress(xrayJson.dns),
       rules: [
         for (final rule in xrayJson.routing?.rules ?? const [])
           RoutingRuleState.fromXrayJson(rule),
@@ -138,6 +141,14 @@ final class RoutingProfileState {
   XrayJson get xrayJson {
     validate();
     return XrayJson(
+      dns: XrayDns(
+        servers: [
+          XrayDnsServer(
+            tag: RoutingDns.directTag,
+            address: directDnsAddress.trim(),
+          ),
+        ],
+      ),
       outbounds: [
         for (var index = 0; index < entryCount; index++) <String, dynamic>{},
       ],
@@ -155,11 +166,13 @@ final class RoutingProfileState {
     bool clearId = false,
     String? name,
     int? entryCount,
+    String? directDnsAddress,
     Iterable<RoutingRuleState>? rules,
   }) => RoutingProfileState(
     id: clearId ? null : id ?? this.id,
     name: name ?? this.name,
     entryCount: entryCount ?? this.entryCount,
+    directDnsAddress: directDnsAddress ?? this.directDnsAddress,
     rules: rules ?? this.rules,
   );
 
@@ -174,6 +187,29 @@ final class RoutingProfileState {
       throw const FormatException('Custom routing requires 1–3 entry nodes');
     }
   }
+}
+
+String _directDnsAddress(XrayDns? dns) {
+  if (dns == null) return RoutingDns.defaultAddress;
+  final servers = dns.servers;
+  if (servers == null || servers.length != 1) {
+    throw const FormatException(
+      'Custom routing requires one tagged direct DNS server',
+    );
+  }
+  final server = servers
+      .where((server) => server.tag == RoutingDns.directTag)
+      .firstOrNull;
+  if (server == null ||
+      server.address == null ||
+      server.domains != null ||
+      server.skipFallback != null ||
+      server.queryStrategy != null) {
+    throw const FormatException(
+      'Custom DNS supports only app-dns-direct with an address',
+    );
+  }
+  return server.address!;
 }
 
 Object? _copyValue(Object? value) =>

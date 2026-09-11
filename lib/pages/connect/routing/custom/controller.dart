@@ -15,6 +15,7 @@ import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 
 typedef OpenCustomRule = Future<RoutingRuleState?> Function(
@@ -33,6 +34,7 @@ class CustomRoutingEditorState {
   final List<Object> ruleKeys;
   final Object? selectedRuleKey;
   final int entryCount;
+  final String directDnsAddress;
   final bool processing;
   final bool transferBusy;
   final bool saving;
@@ -49,6 +51,7 @@ class CustomRoutingEditorState {
     Iterable<Object> ruleKeys = const [],
     this.selectedRuleKey,
     this.entryCount = 1,
+    this.directDnsAddress = RoutingDns.defaultAddress,
     this.processing = true,
     this.transferBusy = false,
     this.saving = false,
@@ -73,6 +76,7 @@ class CustomRoutingEditorState {
     Iterable<Object>? ruleKeys,
     Object? selectedRuleKey = _unchangedCustomRoutingValue,
     int? entryCount,
+    String? directDnsAddress,
     bool? processing,
     bool? transferBusy,
     bool? saving,
@@ -92,6 +96,7 @@ class CustomRoutingEditorState {
         ? this.selectedRuleKey
         : selectedRuleKey,
     entryCount: entryCount ?? this.entryCount,
+    directDnsAddress: directDnsAddress ?? this.directDnsAddress,
     processing: processing ?? this.processing,
     transferBusy: transferBusy ?? this.transferBusy,
     saving: saving ?? this.saving,
@@ -202,6 +207,7 @@ class CustomRoutingEditorController
           ruleKeys: keys,
           selectedRuleKey: selected,
           entryCount: value.entryCount,
+          directDnsAddress: value.directDnsAddress,
           processing: false,
           transferBusy: transfer.state.busy,
           inlineEditing: state.inlineEditing,
@@ -240,6 +246,7 @@ class CustomRoutingEditorController
     id: profileId,
     name: state.name.trim(),
     entryCount: state.entryCount,
+    directDnsAddress: state.directDnsAddress.trim(),
     rules: state.rules,
   );
 
@@ -262,6 +269,7 @@ class CustomRoutingEditorController
       state.copyWith(
         name: nextName,
         entryCount: value.entryCount,
+        directDnsAddress: value.directDnsAddress,
         rules: value.rules,
         ruleKeys: keys,
         selectedRuleKey: selected,
@@ -341,6 +349,10 @@ class CustomRoutingEditorController
 
   void setEntryCount(int value) {
     emit(state.copyWith(entryCount: value));
+  }
+
+  void setDirectDnsAddress(String value) {
+    emit(state.copyWith(directDnsAddress: value, error: null));
   }
 
   Future<void> editRule(

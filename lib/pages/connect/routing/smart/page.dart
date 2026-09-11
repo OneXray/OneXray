@@ -10,6 +10,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/dns_text_field.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -181,6 +182,14 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             'directDns',
             smart.directDns,
             state,
+            below: smart.directDns
+                ? DnsTextField(
+                    label: l.routingLocalDnsAddress,
+                    value: smart.directDnsAddress,
+                    onChanged: (value) =>
+                        controller.update('directDnsAddress', value),
+                  )
+                : null,
           ),
           _switch(
             l.prototypeBlockAdDomains,
@@ -225,12 +234,14 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
     IconData icon,
     String key,
     bool value,
-    SmartRoutingEditorState state,
-  ) => RoutingSettingRow(
+    SmartRoutingEditorState state, {
+    Widget? below,
+  }) => RoutingSettingRow(
     icon: icon,
     title: title,
     description: description,
     enabled: state.original != null,
+    below: below,
     trailing: Semantics(
       label: title,
       child: ShadSwitch(

@@ -77,10 +77,27 @@ Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bi
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
-智能路由和自定义路由保留两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。
+智能路由和自定义路由保留两个使用独立 tag 的 DNS server。代理 DNS 固定为 `8.8.8.8`；
+直连 DNS 默认使用该地址，可在各份路由配置中独立修改。智能路由关闭直连 DNS 开关后，
+保留已保存的地址，但运行时使用原默认地址且不匹配直连域名，直到重新开启开关。
+直连 DNS 地址的语法由 libXray 校验，App 不另行检查协议或连通性。
 direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
 宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
+
+## 隧道 DNS
+
+VPN 隧道页可编辑 IPv4 DNS、IPv6 DNS 和 DNS 服务器域名，保存在现有平台策略 JSON 中。
+缺失字段沿用原 Google 默认值。这些全局设置独立于各份路由的直连 DNS，不修改 Raw JSON
+自身的 DNS 地址，无需新增数据库列或升级 schema。
+
+现有原生 TUN 请求将配置的地址传给 Apple 和 Android；Linux 和 Windows EXE 生成的 Xray
+TUN 入站也使用这些地址。Windows MSIX 将其用于网络设置和排除规则校验，保持现有 IPv6
+处理方式。原生 DNS 地址必须是对应地址族的 IP 字面量；未生效的 IPv6 值仅保留，不应用。
+
+服务器域名仅用于 Apple DNS over TLS，不作为搜索域。开启 DoT 时，地址与域名必须属于
+同一服务，并与其 TLS 证书匹配。有效 DNS 设置的修改复用现有保存及确认重连流程；修改
+未生效的服务器域名或 IPv6 设置不触发重连。恢复默认只修改草稿，保存后才生效。
 
 ## IPv6 策略
 
@@ -103,6 +120,12 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 保持不变；关闭开关不代表 Xray 的所有 IPv6 流量都被禁止。
 
 ## 自定义路由
+
+自定义路由通过 `dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`
+存储和分享直连 DNS 地址。使用固定 tag 标记服务器，不依赖数组位置；仅允许编辑这一条
+带标签服务器的 `address`。域名匹配、回退和查询策略在校验及运行编译时生成，不存储或
+导出。已有配置未包含 DNS 时沿用原默认值；不支持的 DNS 字段、无标签服务器和重复
+服务器直接拒绝，不静默丢弃。
 
 普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
 `RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI

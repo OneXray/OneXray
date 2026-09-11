@@ -21,8 +21,8 @@ final class RoutingProfileDocument {
     _onlyKeys(
       document,
       allowMetadata
-          ? const {'name', 'outbounds', 'routing', 'geodata'}
-          : const {'outbounds', 'routing'},
+          ? const {'name', 'outbounds', 'routing', 'geodata', 'dns'}
+          : const {'outbounds', 'routing', 'dns'},
       'template',
     );
     final embeddedName = document['name'];
@@ -63,6 +63,20 @@ final class RoutingProfileDocument {
 // Do not silently discard fields the ordinary editor cannot represent.
 // Field values and rule semantics are validated by libXray when saving.
 void _checkEditableFields(Map<String, dynamic> document) {
+  if (document.containsKey('dns')) {
+    final dns = _object(document['dns'], 'dns');
+    _onlyKeys(dns, const {'servers'}, 'dns');
+    final servers = dns['servers'];
+    if (servers is! List) {
+      throw const FormatException('dns.servers must be an array');
+    }
+    for (var index = 0; index < servers.length; index++) {
+      _onlyKeys(_object(servers[index], 'dns.servers[$index]'), const {
+        'tag',
+        'address',
+      }, 'dns.servers[$index]');
+    }
+  }
   final routing = document.containsKey('routing')
       ? _object(document['routing'], 'routing')
       : <String, dynamic>{};

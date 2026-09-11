@@ -1,3 +1,5 @@
+import 'package:onexray/service/connect/routing/dns.dart';
+
 enum ConnectionPlatform { ios, macos, android, windows, linux }
 
 enum SelectionKind { automatic, region, source, server }
@@ -48,6 +50,7 @@ class SmartRoutingSettings {
   final bool directApple;
   final bool directWindows;
   final bool directDns;
+  final String directDnsAddress;
   final bool blockAds;
 
   SmartRoutingSettings({
@@ -58,6 +61,7 @@ class SmartRoutingSettings {
     this.directApple = true,
     this.directWindows = true,
     this.directDns = true,
+    this.directDnsAddress = RoutingDns.defaultAddress,
     this.blockAds = false,
   }) : directRegions = List.unmodifiable(directRegions) {
     if (entryCount < 1 || entryCount > 3) {
@@ -75,6 +79,8 @@ class SmartRoutingSettings {
         directApple: value['directApple'] as bool? ?? true,
         directWindows: value['directWindows'] as bool? ?? true,
         directDns: value['directDns'] as bool? ?? true,
+        directDnsAddress:
+            value['directDnsAddress'] as String? ?? RoutingDns.defaultAddress,
         blockAds: value['blockAds'] as bool? ?? false,
       );
 
@@ -86,8 +92,12 @@ class SmartRoutingSettings {
     'directApple': directApple,
     'directWindows': directWindows,
     'directDns': directDns,
+    'directDnsAddress': directDnsAddress,
     'blockAds': blockAds,
   };
+
+  String get effectiveDirectDnsAddress =>
+      directDns ? directDnsAddress.trim() : RoutingDns.defaultAddress;
 }
 
 /// Retains the normal selection while Raw is active. The coordinator stores
