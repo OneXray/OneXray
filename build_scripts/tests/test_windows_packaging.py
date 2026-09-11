@@ -73,7 +73,8 @@ class WindowsPackagingTest(unittest.TestCase):
         source = (Path(self.builder.root_dir) / "build/windows" /
                   self.builder.target_architecture / "runner/Release")
         source.mkdir(parents=True, exist_ok=True)
-        for name in ("OneXray.exe", "flutter_windows.dll", *_RUNTIME_FILES):
+        runtime_files = self.builder._required_crt_files()
+        for name in ("OneXray.exe", "flutter_windows.dll", *_RUNTIME_FILES, *runtime_files):
             (source / name).write_bytes(_pe(self.builder._machine()))
         for name in ("data/icudtl.dat", "data/app.so", "data/flutter_assets/AssetManifest.bin",
                      "data/flutter_assets/assets/dat/geoip.dat", "plugin.dll"):
@@ -162,6 +163,44 @@ class WindowsPackagingTest(unittest.TestCase):
         (source / "wintun.dll").write_bytes(_pe(0xAA64))
         with self.assertRaisesRegex(ValueError, "wrong architecture"):
             self.builder._release_bundle()
+
+    def test_fastforge_rejects_missing_visual_cpp_runtime_before_collecting_packages(self):
+        # Keep expectations independent from the helper used by the bundle fixture.
+        for architecture, package_arch, required_files in (
+            ("x64", "amd64", ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")),
+            ("arm64", "arm64", ("msvcp140.dll", "vcruntime140.dll")),
+        ):
+            self.builder.target_architecture = architecture
+            self.builder.package_suffix = f"windows-{package_arch}"
+            self.assertEqual(self.builder._required_crt_files(), required_files)
+            source = self._bundle()
+            dist = Path(self.builder.root_dir) / "dist/26.7.3"
+            dist.mkdir(parents=True, exist_ok=True)
+            for extension in ("exe", "zip"):
+                (dist / f"OneXray-windows-{package_arch}.{extension}").write_bytes(b"fixture")
+            for name in required_files:
+                with self.subTest(architecture=architecture, runtime=name):
+                    original = (source / name).read_bytes()
+                    (source / name).unlink()
+                    with patch.object(self.builder, "fastforge_build"):
+                        with self.assertRaisesRegex(FileNotFoundError, "Windows release runtime missing"):
+                            self.builder.package_exe_and_zip()
+                    self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
+                    (source / name).write_bytes(original)
+
+    def test_msix_rejects_visual_cpp_runtime_of_the_other_architecture(self):
+        del self.builder._prepare_msix_bundle
+        for architecture, wrong_machine in (("x64", 0xAA64), ("arm64", 0x8664)):
+            with self.subTest(architecture=architecture):
+                self.builder.target_architecture = architecture
+                source = self._bundle()
+                (source / "msvcp140.dll").write_bytes(_pe(wrong_machine))
+                with patch("app.windows.run_command") as create:
+                    with patch("app.windows.package_with_vcore") as augment:
+                        with self.assertRaisesRegex(ValueError, "wrong architecture.*msvcp140"):
+                            self.builder.package_msix()
+                create.assert_not_called()
+                augment.assert_not_called()
 
     def test_wintun_copies_only_the_verified_architecture_dll(self):
         archive = Path(self.builder.workspace_dir) / "references/windows-build" / f"wintun-{_WINTUN_VERSION}.zip"

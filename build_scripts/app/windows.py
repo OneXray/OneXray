@@ -137,10 +137,19 @@ class WindowsBuilder(Builder):
     def _machine(self) -> int:
         return 0x8664 if self.target_architecture == "x64" else 0xAA64
 
+    def _required_crt_files(self) -> tuple[str, ...]:
+        runtime_files = ("msvcp140.dll", "vcruntime140.dll")
+        if self.target_architecture == "x64":
+            runtime_files += ("vcruntime140_1.dll",)
+        return runtime_files
+
     def _release_bundle(self) -> Path:
         source = (Path(self.root_dir) / "build" / "windows" /
                   self.target_architecture / "runner" / "Release")
-        for name in (f"{self.project}.exe", "flutter_windows.dll", *_RUNTIME_FILES):
+        for name in (
+            f"{self.project}.exe", "flutter_windows.dll", *_RUNTIME_FILES,
+            *self._required_crt_files(),
+        ):
             artifact = source / name
             if not artifact.is_file():
                 raise FileNotFoundError(f"Windows release runtime missing: {artifact}")

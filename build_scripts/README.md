@@ -147,8 +147,8 @@ For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WIN
 `--windows-mode exe|msix` selects both packaging and the Flutter
 `--dart-define=ONEXRAY_WINDOWS_MODE` value. One Fastforge invocation builds and
 packages EXE and ZIP from the same bundle; MSIX is compiled separately without
-Fastforge. CMake always bundles Wintun and VCore in a flat
-layout. The verified official Wintun archive is cached under workspace
+Fastforge. CMake always bundles the target MSVC runtime, Wintun, and VCore in a flat
+layout; runtime DLLs must exist and match the target architecture before packages are collected. The verified official Wintun archive is cached under workspace
 `references/windows-build/`; only the architecture-matched DLL is copied.
 Sources and distribution notes are linked on the [documentation site](https://onexray.com/docs/credits/).
 
@@ -247,7 +247,7 @@ Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 
 `--windows-mode exe|msix` 同时控制打包格式和 Flutter 的
 `--dart-define=ONEXRAY_WINDOWS_MODE`。一次 Fastforge 调用完成 EXE / ZIP 的共同编译与打包，
 MSIX 单独编译，不使用 Fastforge；
-CMake 在两种模式下都平铺安装 Wintun 与 VCore。官方 Wintun 压缩包校验摘要后缓存在
+CMake 在两种模式下都平铺安装目标 MSVC runtime、Wintun 与 VCore；运行库 DLL 必须存在且架构匹配，才归集产物。官方 Wintun 压缩包校验摘要后缓存在
 工作区 `references/windows-build/`，仅复制匹配架构的 DLL。来源与分发说明放在
 [文档站](https://onexray.com/zh/docs/credits/)。
 
@@ -350,7 +350,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray <system>
 `--windows-mode exe|msix` задаёт формат пакета и значение Flutter
 `--dart-define=ONEXRAY_WINDOWS_MODE`. Один вызов Fastforge собирает приложение
 и упаковывает EXE и ZIP; MSIX компилируется отдельно без Fastforge.
-CMake включает Wintun и VCore в обеих конфигурациях.
+CMake включает целевую среду выполнения MSVC, Wintun и VCore в обеих конфигурациях; перед сбором пакетов проверяются наличие и архитектура DLL.
 Проверенный официальный архив Wintun сохраняется в `references/windows-build/`
 рабочего каталога; копируется только DLL нужной архитектуры. Сведения об источнике
 и распространении размещены на [сайте документации](https://onexray.com/ru/docs/credits/).
