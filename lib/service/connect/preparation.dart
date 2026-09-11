@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -41,7 +40,7 @@ Future<List<int>> allocateRuntimePorts(
   throw const FormatException('Runtime ports are unavailable');
 }
 
-/// Resolves and validates without publishing settings or starting a VPN.
+/// Resolves and compiles without publishing settings or starting a VPN.
 class ConnectionPreparation {
   final AppDatabase db;
   final ConnectionResolver resolver;
@@ -185,14 +184,6 @@ class ConnectionPreparation {
         maskAddress: policy.maskAddress,
       ),
     );
-    final validation = await AppHostApi().testXray(compiled.validationJson);
-    if (validation.isNotEmpty) {
-      throw AppFailure(
-        FailureCategory.configuration,
-        'xrayValidation',
-        cause: validation,
-      );
-    }
     for (final server in [...entries, ?finalExit]) {
       final row = await db.coreConfigDao.searchRow(server.id);
       if (row == null ||

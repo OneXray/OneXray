@@ -1,228 +1,178 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/ffi/desktop_core_exit.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
+import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
   test(
-    'reopens a verified managed PID and stops only that recorded process',
+    'finds Core by exact name without executable links or PID records',
     () async {
       final fixture = await _Fixture.create();
-      await fixture.writeRecord();
-      await fixture.writeProcess(42);
-      await fixture.writeProcess(43);
-      final api = fixture.api((pid, signal) {
-        fixture.signals.add((pid: pid, signal: signal));
-        Directory(p.join(fixture.proc.path, '$pid'))
-            .deleteSync(recursive: true);
-        return true;
-      });
-
-      expect(
-        await api.queryCoreRunning(),
-        isTrue,
-      ); // No in-memory Process exists.
-      expect(await api.cleanupStaleCore(), isTrue);
-      expect(fixture.signals, isEmpty);
-      expect(await api.stopCore(), isTrue);
-      expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
-      expect(await Directory(p.join(fixture.proc.path, '43')).exists(), isTrue);
-      expect(await fixture.store.read(), isNull);
-      expect(await api.queryCoreRunning(), isFalse);
-    },
-  );
-
-  test(
-    'a restored process emits its exit without another status read',
-    () async {
-      final fixture = await _Fixture.create();
-      await fixture.writeRecord();
       await fixture.writeProcess(42);
       final api = fixture.api((_, _) => false);
+
       expect(await api.queryCoreRunning(), isTrue);
-      await api.observeVpnStatus();
-      expect(fixture.watchedPids, [42]);
-      await Directory(p.join(fixture.proc.path, '42')).delete(recursive: true);
-      fixture.exited.complete(true);
-      await Future<void>.delayed(Duration.zero);
-      expect(fixture.events, [VpnStatus.disconnected]);
-      expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+      expect((await api.readVpnStatus()).status, VpnStatus.connected);
     },
   );
 
-  test('rejects PID reuse, another executable, config changes', () async {
-    for (final mismatch in ['ticks', 'exe', 'config']) {
-      final fixture = await _Fixture.create();
-      await fixture.writeRecord();
-      final otherExecutable = File(
-        p.join(fixture.directory.path, 'other', 'OneXrayCore'),
-      );
-      await otherExecutable.parent.create();
-      await otherExecutable.writeAsString('not executed');
-      await fixture.writeProcess(
-        42,
-        ticks: mismatch == 'ticks' ? 124 : 123,
-        executable: mismatch == 'exe' ? otherExecutable.path : null,
-        configPath: mismatch == 'config'
-            ? '${fixture.config.path}.different'
-            : null,
-      );
-      final api = fixture.api((pid, signal) {
-        fixture.signals.add((pid: pid, signal: signal));
-        return true;
-      });
-      expect(await api.queryCoreRunning(), isNull, reason: mismatch);
+  test('stops all exact-name Core processes without touching xray', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeProcess(42);
+    await fixture.writeProcess(43);
+    await fixture.writeProcess(44, name: 'xray');
+    await fixture.writeProcess(45, name: 'OneXray');
+    await fixture.writeProcess(46, name: 'OneXrayCoreHelper');
+    final api = fixture.api((pid, _) {
+      fixture.exitProcess(pid);
+      return true;
+    });
+
+    expect(await api.stopCore(), isTrue);
+    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+    expect(
+      fixture.signals.map((value) => value.pid),
+      unorderedEquals([42, 43]),
+    );
+    for (final pid in [44, 45, 46]) {
       expect(
-        (await api.readVpnStatus()).state,
-        NativeVpnCommandState.failed,
-        reason: mismatch,
+        await Directory(p.join(fixture.proc.path, '$pid')).exists(),
+        isTrue,
       );
-      expect(await api.cleanupStaleCore(), isFalse, reason: mismatch);
-      expect(await api.stopCore(), isFalse, reason: mismatch);
-      expect(fixture.signals, isEmpty, reason: mismatch);
-      expect(await fixture.recordFile.exists(), isTrue, reason: mismatch);
     }
   });
 
-  test(
-    'upgrade cleanup stops a v26.8.4 PID-only core from an old ZIP directory',
-    () async {
-      for (final deleted in [false, true]) {
-        final fixture = await _Fixture.create();
-        await fixture.writeV2684Process(42, deleted: deleted);
-        final api = fixture.api((pid, signal) {
-          fixture.signals.add((pid: pid, signal: signal));
-          Directory(p.join(fixture.proc.path, '$pid'))
-              .deleteSync(recursive: true);
-          return true;
-        });
-        await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
-        expect(await api.queryCoreRunning(), isNull);
-        expect(await api.stopCore(), isFalse);
-        expect(await api.cleanupStaleCore(), isTrue, reason: '$deleted');
-        expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
-        expect(await fixture.store.read(), isNull);
-      }
-    },
-  );
-
-  test(
-    'upgrade cleanup rejects PID-only records for another process',
-    () async {
-      for (final mismatch in [
-        'executable',
-        'argv0',
-        'config',
-        'uid',
-        'arguments',
-      ]) {
-        final fixture = await _Fixture.create();
-        final otherExecutable = File(
-          p.join(fixture.directory.path, 'other', 'OneXrayCore'),
-        );
-        await otherExecutable.parent.create();
-        await otherExecutable.writeAsString('not executed');
-        await fixture.writeV2684Process(
-          42,
-          executable: mismatch == 'executable' ? otherExecutable.path : null,
-          argv0: mismatch == 'argv0'
-              ? p.join(fixture.directory.path, 'another', 'bin', 'OneXrayCore')
-              : null,
-          configPath: mismatch == 'config' ? '${fixture.config.path}.x' : null,
-          effectiveUid: mismatch == 'uid' ? 2000 : 1000,
-          extraArgument: mismatch == 'arguments' ? '-runtime' : null,
-        );
-        final api = fixture.api((pid, signal) {
-          fixture.signals.add((pid: pid, signal: signal));
-          return true;
-        });
-        await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
-        expect(await api.cleanupStaleCore(), isFalse, reason: mismatch);
-        expect(await fixture.recordFile.exists(), isTrue, reason: mismatch);
-        expect(fixture.signals, isEmpty, reason: mismatch);
-      }
-    },
-  );
-
-  test('v26.8.4 PID reuse after SIGTERM is not escalated', () async {
+  test('zombies and exited processes are not a connected VPN', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeV2684Process(42);
-    final api = fixture.api((pid, signal) {
-      fixture.signals.add((pid: pid, signal: signal));
-      File(p.join(fixture.proc.path, '$pid', 'stat')).writeAsStringSync(
-        '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} 124',
-      );
-      return true;
-    });
-    await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
-    expect(await api.cleanupStaleCore(), isFalse);
-    expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
-    expect(await fixture.recordFile.exists(), isTrue);
-  });
+    await fixture.writeProcess(42, state: 'Z');
+    await fixture.writeProcess(43, state: 'X');
+    await fixture.writeProcess(44, name: 'xray');
+    final api = fixture.api((_, _) => false);
 
-  test('unreadable process records stay intact', () async {
-    final fixture = await _Fixture.create();
-    final api = fixture.api((pid, signal) {
-      fixture.signals.add((pid: pid, signal: signal));
-      return true;
-    });
-    await fixture.store.write(const DesktopCoreProcessRecord(pid: 42));
-    await fixture.recordFile.writeAsString('invalid JSON');
-    expect(await api.queryCoreRunning(), isNull);
-    expect(await api.cleanupStaleCore(), isFalse);
-    expect(await api.stopCore(), isFalse);
-    expect(await fixture.recordFile.readAsString(), 'invalid JSON');
+    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+    expect(await api.stopCore(), isTrue);
     expect(fixture.signals, isEmpty);
   });
 
   test(
-    'PID reuse after SIGTERM prevents escalation and keeps the evidence',
+    'unreadable legacy PID records do not block discovery or stop',
     () async {
       final fixture = await _Fixture.create();
-      await fixture.writeRecord();
+      final oldRecord = File(
+        p.join(fixture.directory.path, 'run', 'core-process.json'),
+      );
+      await oldRecord.parent.create();
+      await oldRecord.writeAsString('invalid JSON');
       await fixture.writeProcess(42);
-      final api = fixture.api((pid, signal) {
-        fixture.signals.add((pid: pid, signal: signal));
-        File(p.join(fixture.proc.path, '$pid', 'stat')).writeAsStringSync(
-          '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} 124',
-        );
+      final api = fixture.api((pid, _) {
+        fixture.exitProcess(pid);
         return true;
       });
-      expect(await api.stopCore(), isFalse);
-      expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
-      expect(await fixture.recordFile.exists(), isTrue);
+
+      expect(await api.cleanupStaleCore(), isTrue);
+      expect(fixture.signals, isEmpty);
+      expect((await api.readVpnStatus()).status, VpnStatus.connected);
+      expect(await api.stopCore(), isTrue);
+      expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
     },
   );
 
-  test('absent recorded PID is cleared, but a config outside App files is not owned', () async {
+  test('a discovered Core publishes its exit without a status poll', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeRecord();
-    final api = fixture.api((pid, signal) {
-      fixture.signals.add((pid: pid, signal: signal));
+    await fixture.writeProcess(42);
+    final api = fixture.api((_, _) => false);
+    await api.observeVpnStatus();
+    expect(fixture.watchedPids, [42]);
+
+    final nextStatus = fixture.nextStatus();
+    fixture.exitProcess(42);
+    expect(await nextStatus, VpnStatus.disconnected);
+    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+  });
+
+  test('only the last named Core exit disconnects the VPN', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeProcess(42);
+    await fixture.writeProcess(43);
+    final api = fixture.api((_, _) => false);
+    await api.observeVpnStatus();
+
+    var nextStatus = fixture.nextStatus();
+    fixture.exitProcess(42);
+    expect(await nextStatus, VpnStatus.connected);
+    nextStatus = fixture.nextStatus();
+    fixture.exitProcess(43);
+    expect(await nextStatus, VpnStatus.disconnected);
+  });
+
+  test('disposing exit observation suppresses late notifications', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeProcess(42);
+    final api = fixture.api((_, _) => false);
+    await api.observeVpnStatus();
+    api.disposeVpnStatus();
+    fixture.exitProcess(42);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(fixture.events, isEmpty);
+  });
+
+  test('a failed signal does not claim that the VPN stopped', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeProcess(42);
+    final api = fixture.api((_, _) => false);
+
+    expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
+    expect((await api.readVpnStatus()).status, VpnStatus.connected);
+    expect(fixture.events, [VpnStatus.disconnecting]);
+  });
+
+  test(
+    'an unresponsive named Core is killed after the graceful stop deadline',
+    () async {
+      final fixture = await _Fixture.create();
+      await fixture.writeProcess(42);
+      final api = fixture.api((pid, signal) {
+        if (signal == ProcessSignal.sigkill) fixture.exitProcess(pid);
+        return true;
+      });
+
+      expect((await api.stopVpn()).status, VpnStatus.disconnected);
+      expect(fixture.signals, [
+        (pid: 42, signal: ProcessSignal.sigterm),
+        (pid: 42, signal: ProcessSignal.sigkill),
+      ]);
+      expect(fixture.events, [VpnStatus.disconnecting, VpnStatus.disconnected]);
+    },
+  );
+
+  test('a PID now named xray is no longer a Core target', () async {
+    final fixture = await _Fixture.create();
+    await fixture.writeProcess(42);
+    final api = fixture.api((pid, _) {
+      File(p.join(fixture.proc.path, '$pid', 'stat'))
+          .writeAsStringSync('$pid (xray) S');
       return true;
     });
-    expect(await api.queryCoreRunning(), isFalse);
+
     expect(await api.stopCore(), isTrue);
-    expect(await fixture.store.read(), isNull);
-    final outside = File(p.join(fixture.directory.path, 'outside.json'));
-    await outside.writeAsString('{}');
-    await fixture.store.write(
-      DesktopCoreProcessRecord(
-        pid: 42,
-        configPath: outside.path,
-        startTicks: 123,
-      ),
-    );
-    await fixture.writeProcess(42, configPath: outside.path);
+    expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
+    expect(await Directory(p.join(fixture.proc.path, '42')).exists(), isTrue);
+  });
+
+  test('process discovery failure is not treated as disconnected', () async {
+    final fixture = await _Fixture.create();
+    final api = fixture.api((_, _) => false);
+    await fixture.proc.delete(recursive: true);
+
     expect(await api.queryCoreRunning(), isNull);
+    expect((await api.readVpnStatus()).state, NativeVpnCommandState.failed);
+    expect(await api.cleanupStaleCore(), isFalse);
     expect(await api.stopCore(), isFalse);
-    expect(await fixture.recordFile.exists(), isTrue);
     expect(fixture.signals, isEmpty);
   });
 }
@@ -230,67 +180,48 @@ void main() {
 class _Fixture {
   final Directory directory;
   final Directory proc;
-  final File executable;
-  final File v2684Executable;
-  final File config;
-  final DesktopCoreProcessStore store;
   final signals = <({int pid, ProcessSignal signal})>[];
   final watchedPids = <int>[];
   final events = <VpnStatus>[];
-  final exited = Completer<bool>();
+  final _statuses = StreamController<VpnStatus>.broadcast();
+  final _exits = <int, Completer<bool>>{};
 
-  _Fixture(
-    this.directory,
-    this.proc,
-    this.executable,
-    this.v2684Executable,
-    this.config,
-  ) : store = DesktopCoreProcessStore(directory: directory.path);
-
-  File get recordFile =>
-      File(p.join(directory.path, 'run', 'core-process.json'));
+  _Fixture(this.directory, this.proc);
 
   static Future<_Fixture> create() async {
     final fixtures = await Directory(
       '../references/onexray-refactor-validation/test-fixtures',
     ).absolute.create(recursive: true);
     final directory = await fixtures.createTemp('onexray-linux-process-');
+    final fixture = _Fixture(
+      directory,
+      await Directory(p.join(directory.path, 'proc')).create(),
+    );
     addTearDown(() => directory.delete(recursive: true));
-    final proc = await Directory(p.join(directory.path, 'proc')).create();
-    final self = await Directory(p.join(proc.path, 'self')).create();
-    await File(p.join(self.path, 'status'))
-        .writeAsString('Name:\tOneXray\nUid:\t1000\t1000\t1000\t1000\n');
-    final executable = File(
-      p.join(directory.path, 'new-install', 'OneXrayCore'),
-    );
-    await executable.parent.create();
-    await executable.writeAsString('not executed');
-    final v2684Executable = File(
-      p.join(directory.path, 'old-install', 'bin', 'OneXrayCore'),
-    );
-    await v2684Executable.parent.create(recursive: true);
-    await v2684Executable.writeAsString('not executed');
-    final input = await Directory(
-      p.join(directory.path, 'run', 'core-inputs', 'input-fixture'),
-    ).create(recursive: true);
-    final config = File(p.join(input.path, 'xray.json'));
-    await config.writeAsString('{}');
-    return _Fixture(directory, proc, executable, v2684Executable, config);
+    addTearDown(fixture._statuses.close);
+    return fixture;
   }
 
   LinuxFfiApi api(bool Function(int, ProcessSignal) signal) {
     final api = LinuxFfiApi.forTesting(
       filesDirectory: directory.path,
-      executablePath: executable.path,
+      executablePath: p.join(directory.path, 'OneXrayCore'),
       procDirectory: proc.path,
-      signalProcess: signal,
+      signalProcess: (pid, value) {
+        signals.add((pid: pid, signal: value));
+        return signal(pid, value);
+      },
       watchExit: (pid) {
         watchedPids.add(pid);
+        final exited = _exits.putIfAbsent(pid, () => Completer<bool>());
         return DesktopCoreExitWatch(exited.future, () {
           if (!exited.isCompleted) exited.complete(false);
         });
       },
-      notify: (status) async => events.add(status),
+      notify: (status) async {
+        events.add(status);
+        _statuses.add(status);
+      },
       notifyError: (error) => fail('Unexpected watch error: $error'),
     );
     addTearDown(api.disposeVpnStatus);
@@ -298,68 +229,23 @@ class _Fixture {
     return api;
   }
 
-  Future<void> writeRecord() => store.write(
-    DesktopCoreProcessRecord(pid: 42, configPath: config.path, startTicks: 123),
-  );
-
   Future<void> writeProcess(
     int pid, {
-    int ticks = 123,
-    String? executable,
-    String? configPath,
+    String name = 'OneXrayCore',
+    String state = 'S',
   }) async {
     final folder = await Directory(p.join(proc.path, '$pid')).create();
-    await Link(p.join(folder.path, 'exe'))
-        .create(executable ?? this.executable.path);
-    await File(p.join(folder.path, 'stat')).writeAsString(
-      '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} $ticks',
-    );
-    await File(p.join(folder.path, 'status'))
-        .writeAsString('Name:\tOneXrayCore\nUid:\t1000\t1000\t1000\t1000\n');
-    final args = [
-      this.executable.path,
-      'run',
-      '-config',
-      configPath ?? config.path,
-      '',
-    ];
-    await File(p.join(folder.path, 'cmdline'))
-        .writeAsBytes(utf8.encode(args.join('\x00')));
+    // Deliberately omit exe, cmdline, UIDs and start ticks.
+    await File(p.join(folder.path, 'stat'))
+        .writeAsString('$pid ($name) $state');
   }
 
-  Future<void> writeV2684Process(
-    int pid, {
-    String? executable,
-    String? argv0,
-    String? configPath,
-    int effectiveUid = 1000,
-    String? extraArgument,
-    bool deleted = false,
-  }) async {
-    final folder = await Directory(p.join(proc.path, '$pid')).create();
-    final executablePath = executable ?? v2684Executable.path;
-    await Link(p.join(folder.path, 'exe'))
-        .create(deleted ? '$executablePath (deleted)' : executablePath);
-    await File(p.join(folder.path, 'stat')).writeAsString(
-      '$pid (OneXrayCore) S ${List.filled(18, '0').join(' ')} 123',
-    );
-    await File(p.join(folder.path, 'status')).writeAsString(
-      'Name:\tOneXrayCore\n'
-      'Uid:\t$effectiveUid\t$effectiveUid\t$effectiveUid\t$effectiveUid\n',
-    );
-    final legacyConfig = p.join(directory.path, 'run', 'xray.json');
-    await File(legacyConfig).writeAsString('{}');
-    await File(p.join(folder.path, 'cmdline')).writeAsBytes(
-      utf8.encode(
-        [
-          argv0 ?? executablePath,
-          'run',
-          '-config',
-          configPath ?? legacyConfig,
-          ?extraArgument,
-          '',
-        ].join('\x00'),
-      ),
-    );
+  void exitProcess(int pid) {
+    Directory(p.join(proc.path, '$pid')).deleteSync(recursive: true);
+    final exited = _exits[pid];
+    if (exited != null && !exited.isCompleted) exited.complete(true);
   }
+
+  Future<VpnStatus> nextStatus() =>
+      _statuses.stream.first.timeout(const Duration(seconds: 2));
 }

@@ -668,7 +668,6 @@ ConnectionRuntime _runtime({bool expert = false}) {
     configuration: configuration,
     compiled: CompiledConnection(
       xrayJson: '{}',
-      validationJson: '{}',
       entries: [server(1, 'Singapore 03'), server(2, 'Japan 02')],
       finalExit: server(3, 'United States 01'),
       nodeTags: {},

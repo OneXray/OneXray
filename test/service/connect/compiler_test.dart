@@ -96,10 +96,6 @@ void main() {
         expect(direct['queryStrategy'], 'UseIPv4');
         expect(direct['domains'], isNotEmpty);
       }
-      expect(
-        jsonDecode(compiled.validationJson)['dns'],
-        compiled.config['dns'],
-      );
     }
     final disabled =
         ConnectionCompiler.compile(
@@ -157,7 +153,7 @@ void main() {
     }
   });
 
-  test('normal preflight uses real chains, routing and DNS without runtime resources', () {
+  test('normal runtime includes real chains and managed resources', () {
     final plan = ConnectionCompiler.compile(
       settings: ConnectionSettings(
         smart: SmartRoutingSettings(entryCount: 2, finalExitId: 9),
@@ -170,31 +166,16 @@ void main() {
         interfaceName: 'Ethernet',
       ),
     );
-    final validation = jsonDecode(plan.validationJson);
     final runtime = plan.config;
-    expect(validation['routing'], runtime['routing']);
-    expect(validation['dns'], runtime['dns']);
-    final expectedOutbounds =
-        jsonDecode(jsonEncode(runtime['outbounds'])) as List;
-    for (final outbound in expectedOutbounds) {
-      final stream = outbound['streamSettings'] as Map?;
-      final sockopt = stream?['sockopt'] as Map?;
-      sockopt?.remove('interface');
-      if (sockopt?.isEmpty == true) stream!.remove('sockopt');
-      if (stream?.isEmpty == true) outbound.remove('streamSettings');
-    }
-    expect(validation['outbounds'], expectedOutbounds);
-    expect(validation['routing']['balancers'].single['selector'], [
+    expect(runtime['routing']['balancers'].single['selector'], [
       'app-exit-0',
       'app-exit-1',
     ]);
     expect(
-      validation['outbounds'][0]['streamSettings']['sockopt']['dialerProxy'],
+      runtime['outbounds'][0]['streamSettings']['sockopt']['dialerProxy'],
       'app-entry-0',
     );
-    expect(validation['log']['loglevel'], 'none');
     for (final key in ['inbounds', 'stats', 'metrics', 'policy']) {
-      expect(validation.containsKey(key), false);
       expect(runtime.containsKey(key), true);
     }
     expect(
@@ -203,43 +184,38 @@ void main() {
     );
   });
 
-  test(
-    'Raw preflight keeps user configuration while runtime keeps managed fields',
-    () {
-      final source = <String, dynamic>{
-        'inbounds': [
-          {'tag': 'extra', 'protocol': 'socks', 'port': 10080},
+  test('Raw runtime keeps user configuration alongside managed fields', () {
+    final source = <String, dynamic>{
+      'inbounds': [
+        {'tag': 'extra', 'protocol': 'socks', 'port': 10080},
+      ],
+      'outbounds': [
+        {'tag': 'proxy', 'protocol': 'freedom'},
+      ],
+      'routing': {
+        'rules': [
+          {
+            'domain': ['regexp:['],
+            'balancerTag': 'missing',
+          },
         ],
-        'outbounds': [
-          {'tag': 'proxy', 'protocol': 'freedom'},
-        ],
-        'routing': {
-          'rules': [
-            {
-              'domain': ['regexp:['],
-              'balancerTag': 'missing',
-            },
-          ],
-        },
-      };
-      final before = jsonEncode(source);
-      final plan = ConnectionCompiler.compile(
-        settings: ConnectionSettings(expert: true),
-        entries: [],
-        raw: source,
-        regions: catalog,
-        options: options(),
-      );
-      final validation = jsonDecode(plan.validationJson);
-      expect(validation['inbounds'], source['inbounds']);
-      expect(validation['outbounds'], source['outbounds']);
-      expect(validation['routing'], source['routing']);
-      expect(validation.containsKey('metrics'), false);
-      expect(plan.config['inbounds'].first['tag'], 'tunIn');
-      expect(plan.config['metrics']['listen'], '127.0.0.1:18186');
-      expect(jsonEncode(source), before);
-    },
-  );
+      },
+    };
+    final before = jsonEncode(source);
+    final plan = ConnectionCompiler.compile(
+      settings: ConnectionSettings(expert: true),
+      entries: [],
+      raw: source,
+      regions: catalog,
+      options: options(),
+    );
+    expect(plan.config['inbounds'].last, source['inbounds'].single);
+    expect(plan.config['outbounds'], source['outbounds']);
+    expect(plan.config['routing'], source['routing']);
+    expect(plan.config['inbounds'].first['tag'], 'tunIn');
+    expect(plan.config['metrics']['listen'], '127.0.0.1:18186');
+    expect(jsonEncode(source), before);
+  });
 
   test(
     'Windows EXE/MSIX select the same managed inbound in normal and Raw',
