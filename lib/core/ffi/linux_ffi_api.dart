@@ -24,8 +24,7 @@ class LinuxFfiApi extends BaseFfiApi {
   LinuxFfiApi._internal()
     : _filesDirectory = null,
       _executablePath = null,
-      _procDirectory = '/proc',
-      _signalProcess = Process.killPid,
+      _runCommand = Process.run,
       _watchExit = watchLinuxCoreExit,
       _notify = AppFlutterApi().vpnStatusChanged,
       _notifyError = AppFlutterApi().vpnStatusController.addError;
@@ -34,8 +33,7 @@ class LinuxFfiApi extends BaseFfiApi {
   LinuxFfiApi.forTesting({
     required String this._filesDirectory,
     required this._executablePath,
-    required this._procDirectory,
-    required this._signalProcess,
+    required this._runCommand,
     required this._watchExit,
     Future<void> Function(VpnStatus)? notify,
     void Function(Object)? notifyError,
@@ -47,8 +45,7 @@ class LinuxFfiApi extends BaseFfiApi {
   final _processManager = LocalProcessManager();
   final String? _filesDirectory;
   final String? _executablePath;
-  final String _procDirectory;
-  final bool Function(int, ProcessSignal) _signalProcess;
+  final Future<ProcessResult> Function(String, List<String>) _runCommand;
   final DesktopCoreExitWatch Function(int) _watchExit;
   final Future<void> Function(VpnStatus) _notify;
   final void Function(Object) _notifyError;
@@ -196,7 +193,7 @@ class LinuxFfiApi extends BaseFfiApi {
       _bindProcess(process);
       _observeProcess(process.pid);
       await Future<void>.delayed(const Duration(seconds: 1));
-      if (!await _isCoreProcess(process.pid)) {
+      if (!(await _findCorePids()).contains(process.pid)) {
         _lastCoreError = 'The Core process exited during startup.';
         return false;
       }
@@ -217,33 +214,32 @@ class LinuxFfiApi extends BaseFfiApi {
   Future<bool> _stopCoreProcess() async {
     _stopping = true;
     try {
+      var pids = await _findCorePids();
       for (final (signal, timeout) in const [
-        (ProcessSignal.sigterm, Duration(seconds: 3)),
-        (ProcessSignal.sigkill, Duration(seconds: 2)),
+        ('-TERM', Duration(seconds: 3)),
+        ('-KILL', Duration(seconds: 2)),
       ]) {
-        final pids = await _findCorePids();
-        if (pids.isEmpty) {
-          _coreProcess = null;
-          _clearExitWatches();
-          return true;
-        }
+        if (pids.isEmpty) break;
         final exits = [for (final pid in pids) _observeProcess(pid).exited];
-        for (final pid in pids) {
-          // Only the exact process name matters, including before escalation.
-          if (await _isCoreProcess(pid) &&
-              !_signalProcess(pid, signal) &&
-              await _isCoreProcess(pid)) {
-            return false;
-          }
+        final arguments = [signal, '-x', _coreBin];
+        final result = await _runCommand('pkill', arguments);
+        if (result.exitCode != 0 && result.exitCode != 1) {
+          throw ProcessException(
+            'pkill',
+            arguments,
+            'Core stop command failed',
+            result.exitCode,
+          );
         }
-        if ((await _findCorePids()).isEmpty) {
-          _coreProcess = null;
-          _clearExitWatches();
-          return true;
+        if (result.exitCode == 0) {
+          await Future.wait(exits).timeout(timeout, onTimeout: () => []);
         }
-        await Future.wait(exits).timeout(timeout, onTimeout: () => []);
+        // pkill 0 means at least one signal was sent, not that every Core exited.
+        // Exit 1 can mean either no matches or a permission failure.
+        pids = await _findCorePids();
+        if (result.exitCode == 1 && pids.isNotEmpty) return false;
       }
-      final stopped = (await _findCorePids()).isEmpty;
+      final stopped = pids.isEmpty;
       if (stopped) {
         _coreProcess = null;
         _clearExitWatches();
@@ -268,41 +264,27 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   Future<Set<int>> _findCorePids() async {
-    final pids = <int>{};
-    await for (final entry in Directory(
-      _procDirectory,
-    ).list(followLinks: false)) {
-      final pid = int.tryParse(p.basename(entry.path));
-      if (entry is Directory &&
-          pid != null &&
-          pid > 0 &&
-          await _isCoreProcess(pid)) {
-        pids.add(pid);
-      }
+    // procps does the name/state scan natively. Do not match full command lines
+    // or include zombies/dead processes when reporting a running VPN.
+    const arguments = ['-x', '-r', 'R,S,D,T,t,I', _coreBin];
+    final result = await _runCommand('pgrep', arguments);
+    if (result.exitCode == 1) return {};
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        'pgrep',
+        arguments,
+        'Core process query failed',
+        result.exitCode,
+      );
+    }
+    final pids = {
+      for (final value in '${result.stdout}'.trim().split(RegExp(r'\s+')))
+        int.parse(value),
+    };
+    if (pids.any((pid) => pid <= 0)) {
+      throw const FormatException('Invalid Core PID returned by pgrep');
     }
     return pids;
-  }
-
-  Future<bool> _isCoreProcess(int pid) async {
-    try {
-      // File capabilities can block /proc/<pid>/exe, but name/state remain
-      // readable in stat. Do not require paths, start ticks or saved records.
-      final text = await File(p.join(_procDirectory, '$pid', 'stat'))
-          .readAsString();
-      final opening = text.indexOf('(');
-      final closing = text.lastIndexOf(')');
-      if (opening < 0 || closing <= opening) return false;
-      final state = text.substring(closing + 1).trimLeft();
-      return text.substring(opening + 1, closing) == _coreBin &&
-          state.isNotEmpty &&
-          state[0] != 'Z' &&
-          state[0] != 'X';
-    } on FileSystemException catch (error) {
-      if (error.osError?.errorCode == 2 || error.osError?.errorCode == 3) {
-        return false;
-      }
-      rethrow;
-    }
   }
 
   String get corePath {

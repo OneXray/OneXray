@@ -9,53 +9,45 @@ import 'package:path/path.dart' as p;
 
 void main() {
   test(
-    'finds Core by exact name without executable links or PID records',
+    'discovers live Core processes through procps without a procfs mirror',
     () async {
       final fixture = await _Fixture.create();
-      await fixture.writeProcess(42);
-      final api = fixture.api((_, _) => false);
+      fixture.pids.addAll([42, 43]);
+      final api = fixture.api();
 
       expect(await api.queryCoreRunning(), isTrue);
       expect((await api.readVpnStatus()).status, VpnStatus.connected);
+      expect(
+        fixture.commands,
+        everyElement(['pgrep', '-x', '-r', 'R,S,D,T,t,I', 'OneXrayCore']),
+      );
     },
   );
 
-  test('stops all exact-name Core processes without touching xray', () async {
-    final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    await fixture.writeProcess(43);
-    await fixture.writeProcess(44, name: 'xray');
-    await fixture.writeProcess(45, name: 'OneXray');
-    await fixture.writeProcess(46, name: 'OneXrayCoreHelper');
-    final api = fixture.api((pid, _) {
-      fixture.exitProcess(pid);
-      return true;
-    });
+  test(
+    'stops all matching Cores through exact-name pkill and confirms exit',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.addAll([42, 43]);
+      final api = fixture.api();
 
-    expect(await api.stopCore(), isTrue);
-    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
-    expect(
-      fixture.signals.map((value) => value.pid),
-      unorderedEquals([42, 43]),
-    );
-    for (final pid in [44, 45, 46]) {
-      expect(
-        await Directory(p.join(fixture.proc.path, '$pid')).exists(),
-        isTrue,
-      );
-    }
-  });
+      expect((await api.stopVpn()).status, VpnStatus.disconnected);
+      expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+      expect(fixture.pkills, [
+        ['pkill', '-TERM', '-x', 'OneXrayCore'],
+      ]);
+      expect(fixture.watchedPids, unorderedEquals([42, 43]));
+      expect(fixture.events, [VpnStatus.disconnecting, VpnStatus.disconnected]);
+    },
+  );
 
-  test('zombies and exited processes are not a connected VPN', () async {
+  test('pgrep exit 1 means no live Core and needs no signal', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42, state: 'Z');
-    await fixture.writeProcess(43, state: 'X');
-    await fixture.writeProcess(44, name: 'xray');
-    final api = fixture.api((_, _) => false);
+    final api = fixture.api();
 
     expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
     expect(await api.stopCore(), isTrue);
-    expect(fixture.signals, isEmpty);
+    expect(fixture.pkills, isEmpty);
   });
 
   test(
@@ -67,14 +59,11 @@ void main() {
       );
       await oldRecord.parent.create();
       await oldRecord.writeAsString('invalid JSON');
-      await fixture.writeProcess(42);
-      final api = fixture.api((pid, _) {
-        fixture.exitProcess(pid);
-        return true;
-      });
+      fixture.pids.add(42);
+      final api = fixture.api();
 
       expect(await api.cleanupStaleCore(), isTrue);
-      expect(fixture.signals, isEmpty);
+      expect(fixture.pkills, isEmpty);
       expect((await api.readVpnStatus()).status, VpnStatus.connected);
       expect(await api.stopCore(), isTrue);
       expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
@@ -83,22 +72,19 @@ void main() {
 
   test('a discovered Core publishes its exit without a status poll', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    final api = fixture.api((_, _) => false);
+    fixture.pids.add(42);
+    final api = fixture.api();
     await api.observeVpnStatus();
-    expect(fixture.watchedPids, [42]);
 
     final nextStatus = fixture.nextStatus();
     fixture.exitProcess(42);
     expect(await nextStatus, VpnStatus.disconnected);
-    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
   });
 
   test('only the last named Core exit disconnects the VPN', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    await fixture.writeProcess(43);
-    final api = fixture.api((_, _) => false);
+    fixture.pids.addAll([42, 43]);
+    final api = fixture.api();
     await api.observeVpnStatus();
 
     var nextStatus = fixture.nextStatus();
@@ -111,8 +97,8 @@ void main() {
 
   test('disposing exit observation suppresses late notifications', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    final api = fixture.api((_, _) => false);
+    fixture.pids.add(42);
+    final api = fixture.api();
     await api.observeVpnStatus();
     api.disposeVpnStatus();
     fixture.exitProcess(42);
@@ -121,99 +107,243 @@ void main() {
     expect(fixture.events, isEmpty);
   });
 
-  test('a failed signal does not claim that the VPN stopped', () async {
+  test('pkill exit 1 is not success while a Core still exists', () async {
     final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    final api = fixture.api((_, _) => false);
+    fixture.pids.add(42);
+    final api = fixture.api(
+      runCommand: (executable, _) async => executable == 'pgrep'
+          ? fixture.queryResult()
+          : ProcessResult(1, 1, '', 'permission denied'),
+    );
 
     expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
     expect((await api.readVpnStatus()).status, VpnStatus.connected);
+    expect(fixture.pkills, [
+      ['pkill', '-TERM', '-x', 'OneXrayCore'],
+    ]);
     expect(fixture.events, [VpnStatus.disconnecting]);
   });
 
   test(
-    'an unresponsive named Core is killed after the graceful stop deadline',
+    'pkill exit 1 succeeds if the matched process already disappeared',
     () async {
       final fixture = await _Fixture.create();
-      await fixture.writeProcess(42);
-      final api = fixture.api((pid, signal) {
-        if (signal == ProcessSignal.sigkill) fixture.exitProcess(pid);
-        return true;
-      });
+      fixture.pids.add(42);
+      final api = fixture.api(
+        runCommand: (executable, _) async {
+          if (executable == 'pgrep') return fixture.queryResult();
+          fixture.exitProcess(42);
+          return ProcessResult(1, 1, '', '');
+        },
+      );
 
       expect((await api.stopVpn()).status, VpnStatus.disconnected);
-      expect(fixture.signals, [
-        (pid: 42, signal: ProcessSignal.sigterm),
-        (pid: 42, signal: ProcessSignal.sigkill),
+      expect(fixture.pkills, [
+        ['pkill', '-TERM', '-x', 'OneXrayCore'],
       ]);
-      expect(fixture.events, [VpnStatus.disconnecting, VpnStatus.disconnected]);
     },
   );
 
-  test('a PID now named xray is no longer a Core target', () async {
-    final fixture = await _Fixture.create();
-    await fixture.writeProcess(42);
-    final api = fixture.api((pid, _) {
-      File(p.join(fixture.proc.path, '$pid', 'stat'))
-          .writeAsStringSync('$pid (xray) S');
-      return true;
-    });
+  test(
+    'successful pkill waits for Core exit before reporting disconnected',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      final signalled = Completer<void>();
+      final api = fixture.api(
+        runCommand: (executable, _) async {
+          if (executable == 'pgrep') return fixture.queryResult();
+          signalled.complete();
+          return ProcessResult(1, 0, '', '');
+        },
+      );
+      var completed = false;
+      final stopped = api.stopVpn().then((result) {
+        completed = true;
+        return result;
+      });
+      await signalled.future;
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+      expect(fixture.events, [VpnStatus.disconnecting]);
 
-    expect(await api.stopCore(), isTrue);
-    expect(fixture.signals, [(pid: 42, signal: ProcessSignal.sigterm)]);
-    expect(await Directory(p.join(fixture.proc.path, '42')).exists(), isTrue);
-  });
+      fixture.exitProcess(42);
+      expect((await stopped).status, VpnStatus.disconnected);
+    },
+  );
 
-  test('process discovery failure is not treated as disconnected', () async {
+  test(
+    'a failed final query blocks success even after the watched Core exits',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      var signalled = false;
+      final api = fixture.api(
+        runCommand: (executable, _) async {
+          if (executable == 'pgrep') {
+            return signalled
+                ? ProcessResult(1, 3, '', 'query failed')
+                : fixture.queryResult();
+          }
+          signalled = true;
+          fixture.exitProcess(42);
+          return ProcessResult(1, 0, '', '');
+        },
+      );
+
+      expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
+      expect(fixture.events, [VpnStatus.disconnecting]);
+    },
+  );
+
+  test(
+    'an unresponsive Core receives exact-name KILL after the graceful deadline',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      final api = fixture.api(
+        runCommand: (executable, arguments) async {
+          if (executable == 'pgrep') return fixture.queryResult();
+          if (arguments.first == '-KILL') fixture.exitProcess(42);
+          return ProcessResult(1, 0, '', '');
+        },
+      );
+
+      expect((await api.stopVpn()).status, VpnStatus.disconnected);
+      expect(fixture.pkills, [
+        ['pkill', '-TERM', '-x', 'OneXrayCore'],
+        ['pkill', '-KILL', '-x', 'OneXrayCore'],
+      ]);
+    },
+  );
+
+  test(
+    'even a successful KILL is not a confirmed stop while Core remains',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      final api = fixture.api(
+        runCommand: (executable, _) async => executable == 'pgrep'
+            ? fixture.queryResult()
+            : ProcessResult(1, 0, '', ''),
+      );
+
+      expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
+      expect(await api.queryCoreRunning(), isTrue);
+      expect(fixture.pkills, hasLength(2));
+      expect(fixture.events, [VpnStatus.disconnecting]);
+    },
+  );
+
+  test('missing procps is an error, not a disconnected VPN', () async {
     final fixture = await _Fixture.create();
-    final api = fixture.api((_, _) => false);
-    await fixture.proc.delete(recursive: true);
+    final api = fixture.api(
+      runCommand: (executable, arguments) async =>
+          throw ProcessException(executable, arguments, 'Not found', 2),
+    );
 
     expect(await api.queryCoreRunning(), isNull);
     expect((await api.readVpnStatus()).state, NativeVpnCommandState.failed);
     expect(await api.cleanupStaleCore(), isFalse);
     expect(await api.stopCore(), isFalse);
-    expect(fixture.signals, isEmpty);
+    expect(fixture.pkills, isEmpty);
   });
+
+  for (final code in [2, 3]) {
+    test('pgrep exit $code is not treated as no matches', () async {
+      final fixture = await _Fixture.create();
+      final api = fixture.api(
+        runCommand: (_, _) async => ProcessResult(1, code, '', 'query failed'),
+      );
+
+      expect(await api.queryCoreRunning(), isNull);
+      expect(await api.stopCore(), isFalse);
+      expect(fixture.pkills, isEmpty);
+    });
+
+    test('pkill exit $code never claims a successful stop', () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      final api = fixture.api(
+        runCommand: (executable, _) async => executable == 'pgrep'
+            ? fixture.queryResult()
+            : ProcessResult(1, code, '', 'stop failed'),
+      );
+
+      expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
+      expect(await api.queryCoreRunning(), isTrue);
+      expect(fixture.events, [VpnStatus.disconnecting]);
+    });
+  }
+
+  for (final output in ['', '0\n', '-1\n', 'not a PID\n']) {
+    test(
+      'invalid pgrep output is not a disconnected VPN: ${output.trim()}',
+      () async {
+        final fixture = await _Fixture.create();
+        final api = fixture.api(
+          runCommand: (_, _) async => ProcessResult(1, 0, output, ''),
+        );
+
+        expect(await api.queryCoreRunning(), isNull);
+        expect(await api.stopCore(), isFalse);
+        expect(fixture.pkills, isEmpty);
+      },
+    );
+  }
 }
 
 class _Fixture {
   final Directory directory;
-  final Directory proc;
-  final signals = <({int pid, ProcessSignal signal})>[];
+  final pids = <int>{};
+  final commands = <List<String>>[];
   final watchedPids = <int>[];
   final events = <VpnStatus>[];
   final _statuses = StreamController<VpnStatus>.broadcast();
   final _exits = <int, Completer<bool>>{};
 
-  _Fixture(this.directory, this.proc);
+  _Fixture(this.directory);
+
+  Iterable<List<String>> get pkills =>
+      commands.where((command) => command.first == 'pkill');
 
   static Future<_Fixture> create() async {
     final fixtures = await Directory(
       '../references/onexray-refactor-validation/test-fixtures',
     ).absolute.create(recursive: true);
     final directory = await fixtures.createTemp('onexray-linux-process-');
-    final fixture = _Fixture(
-      directory,
-      await Directory(p.join(directory.path, 'proc')).create(),
-    );
+    final fixture = _Fixture(directory);
     addTearDown(() => directory.delete(recursive: true));
     addTearDown(fixture._statuses.close);
     return fixture;
   }
 
-  LinuxFfiApi api(bool Function(int, ProcessSignal) signal) {
+  LinuxFfiApi api({
+    Future<ProcessResult> Function(String, List<String>)? runCommand,
+  }) {
     final api = LinuxFfiApi.forTesting(
       filesDirectory: directory.path,
       executablePath: p.join(directory.path, 'OneXrayCore'),
-      procDirectory: proc.path,
-      signalProcess: (pid, value) {
-        signals.add((pid: pid, signal: value));
-        return signal(pid, value);
+      runCommand: (executable, arguments) async {
+        commands.add([executable, ...arguments]);
+        if (executable == 'pgrep') {
+          expect(arguments, ['-x', '-r', 'R,S,D,T,t,I', 'OneXrayCore']);
+        } else {
+          expect(executable, 'pkill');
+          expect(arguments.first, isIn(['-TERM', '-KILL']));
+          expect(arguments.skip(1), ['-x', 'OneXrayCore']);
+        }
+        if (runCommand != null) return runCommand(executable, arguments);
+        if (executable == 'pgrep') return queryResult();
+        final matched = pids.isNotEmpty;
+        for (final pid in pids.toList()) {
+          exitProcess(pid);
+        }
+        return ProcessResult(1, matched ? 0 : 1, '', '');
       },
       watchExit: (pid) {
         watchedPids.add(pid);
-        final exited = _exits.putIfAbsent(pid, () => Completer<bool>());
+        final exited = _exits[pid] = Completer<bool>();
         return DesktopCoreExitWatch(exited.future, () {
           if (!exited.isCompleted) exited.complete(false);
         });
@@ -229,19 +359,11 @@ class _Fixture {
     return api;
   }
 
-  Future<void> writeProcess(
-    int pid, {
-    String name = 'OneXrayCore',
-    String state = 'S',
-  }) async {
-    final folder = await Directory(p.join(proc.path, '$pid')).create();
-    // Deliberately omit exe, cmdline, UIDs and start ticks.
-    await File(p.join(folder.path, 'stat'))
-        .writeAsString('$pid ($name) $state');
-  }
+  ProcessResult queryResult() =>
+      ProcessResult(1, pids.isEmpty ? 1 : 0, '${pids.join('\n')}\n', '');
 
   void exitProcess(int pid) {
-    Directory(p.join(proc.path, '$pid')).deleteSync(recursive: true);
+    pids.remove(pid);
     final exited = _exits[pid];
     if (exited != null && !exited.isCompleted) exited.complete(true);
   }

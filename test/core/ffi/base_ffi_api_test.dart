@@ -148,8 +148,7 @@ final class _TestFfiApi extends LinuxFfiApi {
     : super.forTesting(
         filesDirectory: directory ?? '',
         executablePath: '',
-        procDirectory: '',
-        signalProcess: (_, _) => false,
+        runCommand: (_, _) => throw UnimplementedError(),
         watchExit: (_) => throw UnimplementedError(),
         notify: (status) async => statuses.add(status),
       );

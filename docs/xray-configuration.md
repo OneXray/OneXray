@@ -219,11 +219,13 @@ Windows EXE 额外保存验证进程归属所需的 PID、启动时间和本次�
 状态，验证路径、创建时间和当前 Windows session 后才停止目标；不按进程名批量结束 Core。
 v26.8.4 的 EXE PID-only 记录仅接管同一安装目录下旧 bin 路径的 Core。
 EXE 的 UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutter UI。
-Linux 按精确进程名 `OneXrayCore` 发现和停止所有匹配进程，不再保存或读取旧 PID 记录，
-不校验可执行路径、启动时间、UID 或配置参数。查询只读取 `/proc` 中的进程名和存活状态，
-避免带网络 capabilities 的 Core 因 `/proc/<pid>/exe` 不可读而被误判为连接失败。
-僵尸和已退出进程不视为已连接；停止先发送 SIGTERM，有界等待后仍存在则发送 SIGKILL，
-发送信号时仍要求名称精确匹配，不处理其它 `xray` 或名称前缀相似的进程。
+Linux 使用系统 `procps` 工具按精确进程名 `OneXrayCore` 管理所有匹配进程，不保存或读取
+旧 PID 记录，不校验可执行路径、启动时间、UID 或配置参数。`pgrep -x` 配合存活状态筛选
+查询 PID，不再由 Dart 逐个读取 `/proc`；僵尸和已退出进程不视为已连接，也不依赖受
+capabilities 保护的 `/proc/<pid>/exe`。工具缺失、执行失败或无效输出不等于已断开。
+停止使用 `pkill -TERM -x OneXrayCore`，等待进程退出事件；超时仍存在时才使用
+`pkill -KILL -x OneXrayCore`。发送信号成功不等于停止完成，只有再次查询确认没有存活
+匹配进程才报告已断开。匹配的是进程名而非完整命令行，不处理其它 `xray` 或名称前缀相似的进程。
 
 普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
 `VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension
