@@ -1,3 +1,6 @@
+import 'dart:ffi';
+import 'dart:io';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/constants/preferences.dart';
@@ -13,6 +16,7 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 
 void main() {
   final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  final isLinuxArm64 = Platform.isLinux && Abi.current() == Abi.linuxArm64;
   const generatedLocales = <Locale>[
     Locale("en"),
     Locale("zh"),
@@ -21,6 +25,75 @@ void main() {
   final supportedLocales = AppLocalePolicy.normalizeSupportedLocales(
     generatedLocales,
   );
+
+  test("Linux ARM64 resolves CJK locales to English", () {
+    expect(
+      AppLocalePolicy.resolve(const Locale("zh", "CN"), supportedLocales),
+      AppLocalePolicy.english,
+    );
+  }, skip: !isLinuxArm64);
+
+  test("Linux ARM64 fallback precedes exact and regional CJK matching", () {
+    final locales = [
+      ...supportedLocales,
+      const Locale("ja"),
+      const Locale("ko"),
+    ];
+    for (final locale in const [
+      Locale("zh"),
+      Locale("zh", "CN"),
+      Locale("zh", "SG"),
+      Locale("zh", "TW"),
+      Locale("zh", "HK"),
+      Locale("zh", "MO"),
+      AppLocalePolicy.simplifiedChinese,
+      AppLocalePolicy.traditionalChinese,
+      Locale("ja"),
+      Locale("ja", "JP"),
+      Locale("ko"),
+      Locale("ko", "KR"),
+    ]) {
+      expect(
+        AppLocalePolicy.resolve(locale, locales, abi: Abi.linuxArm64),
+        AppLocalePolicy.english,
+        reason: locale.toLanguageTag(),
+      );
+    }
+  });
+
+  test("Linux ARM64 preserves supported non-CJK locales", () {
+    const locales = [Locale("en"), Locale("ru"), Locale("fa")];
+    for (final locale in locales) {
+      expect(
+        AppLocalePolicy.resolve(locale, locales, abi: Abi.linuxArm64),
+        locale,
+      );
+    }
+  });
+
+  test("other platforms and Linux x64 retain supported CJK locales", () {
+    const locales = [
+      AppLocalePolicy.simplifiedChinese,
+      AppLocalePolicy.traditionalChinese,
+      Locale("ja"),
+      Locale("ko"),
+    ];
+    for (final abi in [
+      Abi.linuxX64,
+      Abi.androidArm64,
+      Abi.iosArm64,
+      Abi.macosArm64,
+      Abi.windowsArm64,
+    ]) {
+      for (final locale in locales) {
+        expect(
+          AppLocalePolicy.resolve(locale, locales, abi: abi),
+          locale,
+          reason: '$abi: ${locale.toLanguageTag()}',
+        );
+      }
+    }
+  });
 
   test("normalizes generated Chinese locales to explicit scripts", () {
     expect(supportedLocales, <Locale>[
@@ -32,11 +105,19 @@ void main() {
 
   test("resolves Simplified Chinese to zh-Hans", () {
     expect(
-      AppLocalePolicy.resolve(const Locale("zh"), supportedLocales),
+      AppLocalePolicy.resolve(
+        const Locale("zh"),
+        supportedLocales,
+        abi: Abi.linuxX64,
+      ),
       AppLocalePolicy.simplifiedChinese,
     );
     expect(
-      AppLocalePolicy.resolve(const Locale("zh", "CN"), supportedLocales),
+      AppLocalePolicy.resolve(
+        const Locale("zh", "CN"),
+        supportedLocales,
+        abi: Abi.linuxX64,
+      ),
       AppLocalePolicy.simplifiedChinese,
     );
   });
@@ -47,6 +128,7 @@ void main() {
         AppLocalePolicy.resolve(
           Locale.fromSubtags(languageCode: "zh", countryCode: countryCode),
           supportedLocales,
+          abi: Abi.linuxX64,
         ),
         AppLocalePolicy.traditionalChinese,
       );
@@ -56,7 +138,11 @@ void main() {
   test("unsupported or absent system language falls back to English", () {
     final reversedLocales = supportedLocales.reversed;
     expect(
-      AppLocalePolicy.resolve(const Locale("ja"), reversedLocales),
+      AppLocalePolicy.resolve(
+        const Locale("ja"),
+        reversedLocales,
+        abi: Abi.linuxX64,
+      ),
       const Locale("en"),
     );
     expect(AppLocalePolicy.resolve(null, reversedLocales), const Locale("en"));
@@ -98,7 +184,10 @@ void main() {
       await bus.asyncInitTheme();
       expect(bus.state.languageCode, LanguageCode.zh);
       expect(bus.state.themeCode.themeMode, ThemeMode.dark);
-      expect(appLocalizationsNoContext().localeName, "zh");
+      expect(
+        appLocalizationsNoContext().localeName,
+        isLinuxArm64 ? "en" : "zh",
+      );
 
       await bus.updateLanguageCode(LanguageCode.system);
       await bus.updateThemeCode(ThemeCode.system);
@@ -117,9 +206,63 @@ void main() {
     expect(LanguageCode.system.locale, const Locale("fa"));
     expect(LanguageCode.system.textDirection, TextDirection.rtl);
     binding.platformDispatcher.localeTestValue = const Locale("zh", "TW");
-    expect(LanguageCode.system.locale, AppLocalePolicy.traditionalChinese);
+    expect(
+      LanguageCode.system.locale,
+      isLinuxArm64
+          ? AppLocalePolicy.english
+          : AppLocalePolicy.traditionalChinese,
+    );
     expect(LanguageCode.system.textDirection, TextDirection.ltr);
   });
+
+  testWidgets(
+    "UI and background locales agree without rewriting language choices",
+    (tester) async {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      addTearDown(binding.platformDispatcher.clearLocaleTestValue);
+      binding.platformDispatcher.localeTestValue = const Locale("zh", "TW");
+      final bus = AppEventBus();
+      addTearDown(bus.close);
+      const probe = ValueKey('locale-probe');
+
+      for (final (language, requested) in const [
+        (LanguageCode.system, AppLocalePolicy.traditionalChinese),
+        (LanguageCode.zh, AppLocalePolicy.simplifiedChinese),
+        (LanguageCode.zhHant, AppLocalePolicy.traditionalChinese),
+        (LanguageCode.en, AppLocalePolicy.english),
+        (LanguageCode.ru, Locale("ru")),
+        (LanguageCode.fa, Locale("fa")),
+      ]) {
+        await bus.updateLanguageCode(language);
+        final expected = isLinuxArm64 && requested.languageCode == "zh"
+            ? AppLocalePolicy.english
+            : requested;
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: language == LanguageCode.system ? null : language.locale,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+            supportedLocales: AppLocalePolicy.normalizeSupportedLocales(
+              AppLocalizations.supportedLocales,
+            ),
+            localeResolutionCallback: AppLocalePolicy.resolve,
+            home: const SizedBox(key: probe),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final context = tester.element(find.byKey(probe));
+        expect(Localizations.localeOf(context), expected);
+        expect(language.locale, expected);
+        expect(
+          AppLocalizations.of(context)!.localeName,
+          appLocalizationsNoContext().localeName,
+        );
+        expect(bus.state.languageCode, language);
+        expect(await PreferencesKey().readLanguageCode(), language.name);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
 
   test(
     "approved latency labels accept measured and unavailable values",
