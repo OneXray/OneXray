@@ -166,6 +166,9 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       if (config == null) {
         throw const FormatException('xrayJson is empty');
       }
+      // Create as the App user before Windows starts an elevated Core.
+      final errorFile = desktopCoreErrorFile(config);
+      await errorFile.writeAsString('', flush: true);
       launchAttempted = true;
       final pid = await _process.start(
         _corePath,
@@ -173,11 +176,17 @@ class WindowsExeFfiApi extends WindowsFfiApi {
           dns: request.tun?.tunDnsIPv4 ?? '',
           interfaceName: request.tun?.autoOutboundsInterface ?? '',
           configPath: config,
+          errorFile: errorFile.path,
         ),
       );
       await Future<void>.delayed(const Duration(seconds: 1));
       if (!(await _findCorePids()).contains(pid)) {
-        throw StateError('Windows Core exited during start');
+        throw StateError(
+          await readDesktopCoreStartError(
+            config,
+            'Windows Core exited during start',
+          ),
+        );
       }
       await _notify(VpnStatus.connected);
       return commandSuccess(status: VpnStatus.connected);

@@ -221,7 +221,9 @@ void main() {
       SharedPreferencesAsyncPlatform.instance =
           InMemorySharedPreferencesAsync.empty();
       addTearDown(binding.platformDispatcher.clearLocaleTestValue);
+      addTearDown(binding.platformDispatcher.clearLocalesTestValue);
       binding.platformDispatcher.localeTestValue = const Locale("zh", "TW");
+      binding.platformDispatcher.localesTestValue = const [Locale("zh", "TW")];
       final bus = AppEventBus();
       addTearDown(bus.close);
       const probe = ValueKey('locale-probe');

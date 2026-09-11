@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
+import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/pigeon/model.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -106,6 +109,131 @@ void main() {
 
     expect(fixture.events, isEmpty);
   });
+
+  test(
+    'an old exit query cannot disconnect or cancel a new observation',
+    () async {
+      final fixture = await _Fixture.create();
+      fixture.pids.add(42);
+      Future<ProcessResult>? nextQuery;
+      final api = fixture.api(
+        runCommand: (_, _) async {
+          final pending = nextQuery;
+          nextQuery = null;
+          return pending ?? fixture.queryResult();
+        },
+      );
+      await api.observeVpnStatus();
+      final pending = Completer<ProcessResult>();
+      nextQuery = pending.future;
+      fixture.exitProcess(42);
+      await Future<void>.delayed(Duration.zero);
+      api.disposeVpnStatus();
+      fixture.pids.add(84);
+      await api.observeVpnStatus();
+      pending.complete(ProcessResult(1, 1, '', ''));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fixture.events, isEmpty);
+      final nextStatus = fixture.nextStatus();
+      fixture.exitProcess(84);
+      expect(await nextStatus, VpnStatus.disconnected);
+    },
+  );
+
+  test('disposing during an exit query suppresses its late result', () async {
+    final fixture = await _Fixture.create();
+    fixture.pids.add(42);
+    final pending = Completer<ProcessResult>();
+    var queryPending = false;
+    final api = fixture.api(
+      runCommand: (_, _) async =>
+          queryPending ? pending.future : fixture.queryResult(),
+    );
+    await api.observeVpnStatus();
+    queryPending = true;
+    fixture.exitProcess(42);
+    await Future<void>.delayed(Duration.zero);
+    api.disposeVpnStatus();
+    pending.complete(ProcessResult(1, 1, '', ''));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(fixture.events, isEmpty);
+  });
+
+  test('an old exit query cannot reconnect after a confirmed stop', () async {
+    final fixture = await _Fixture.create();
+    fixture.pids.addAll([42, 43]);
+    Future<ProcessResult>? nextQuery;
+    final api = fixture.api(
+      runCommand: (executable, _) async {
+        if (executable == 'pgrep') {
+          final pending = nextQuery;
+          nextQuery = null;
+          return pending ?? fixture.queryResult();
+        }
+        fixture.exitProcess(43);
+        return ProcessResult(1, 0, '', '');
+      },
+    );
+    await api.observeVpnStatus();
+    final pending = Completer<ProcessResult>();
+    nextQuery = pending.future;
+    fixture.exitProcess(42);
+    await Future<void>.delayed(Duration.zero);
+    expect((await api.stopVpn()).status, VpnStatus.disconnected);
+    pending.complete(ProcessResult(1, 0, '43\n', ''));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(fixture.events, [VpnStatus.disconnecting, VpnStatus.disconnected]);
+    expect(fixture.watchedPids.where((pid) => pid == 43), hasLength(2));
+  });
+
+  for (final diagnostic in [
+    'failed to load geosite: category TEST-MISSING not found',
+    '',
+  ]) {
+    test('Linux preserves Core startup diagnostics: $diagnostic', () async {
+      final fixture = await _Fixture.create();
+      final api = fixture.api(
+        startProcess: (_, arguments) async {
+          final config = arguments[arguments.indexOf('-config') + 1];
+          expect(
+            arguments[arguments.indexOf('-error-file') + 1],
+            '$config.error',
+          );
+          final file = File('$config.error');
+          expect(await file.readAsString(), isEmpty);
+          await file.writeAsString(diagnostic);
+          return _ExitedProcess();
+        },
+        readRequest: () async => StartVpnRequest(
+          TunJson.fromJson({
+            'tunDnsIPv4': '8.8.8.8',
+            'autoOutboundsInterface': 'eth0',
+          }),
+          '18187',
+          '18186',
+          jsonEncode(
+            LibXrayInvokeRequest(
+              method: LibXrayMethod.runXray,
+              payload: RunXrayRequest('{"inbounds":[]}').toJson(),
+            ).toJson(),
+          ),
+        ),
+      );
+
+      final result = await api.startVpn();
+      expect(result.state, NativeVpnCommandState.failed);
+      expect(
+        result.message,
+        diagnostic.isEmpty
+            ? 'The Core process exited during startup.'
+            : diagnostic,
+      );
+      expect(fixture.events.last, VpnStatus.disconnected);
+    });
+  }
 
   test('pkill exit 1 is not success while a Core still exists', () async {
     final fixture = await _Fixture.create();
@@ -320,10 +448,14 @@ class _Fixture {
 
   LinuxFfiApi api({
     Future<ProcessResult> Function(String, List<String>)? runCommand,
+    Future<Process> Function(String, List<String>)? startProcess,
+    Future<StartVpnRequest> Function()? readRequest,
   }) {
     final api = LinuxFfiApi.forTesting(
       filesDirectory: directory.path,
       executablePath: p.join(directory.path, 'OneXrayCore'),
+      startProcess: startProcess,
+      readRequest: readRequest,
       runCommand: (executable, arguments) async {
         commands.add([executable, ...arguments]);
         if (executable == 'pgrep') {
@@ -370,4 +502,18 @@ class _Fixture {
 
   Future<VpnStatus> nextStatus() =>
       _statuses.stream.first.timeout(const Duration(seconds: 2));
+}
+
+class _ExitedProcess extends Fake implements Process {
+  @override
+  int get pid => 42;
+
+  @override
+  Future<int> get exitCode => Future.value(1);
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
 }

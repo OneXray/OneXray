@@ -213,7 +213,12 @@ libXray，未运行时同样成功；真实 Apple VPN 即使已断开，也仍�
 连接。状态查询或实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
-再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows MSIX 的
+再创建唯一的 `core-inputs/input-*/xray.json`。Linux 和 Windows EXE 同时由 App 创建空的
+`xray.json.error`，通过桌面 Core 的 `-error-file` 参数接收实际配置加载、构造或启动错误。
+Core 退出后读取本次文件，保留原始错误；没有诊断时才使用通用退出提示，不重新运行
+`testXray`。该文件独立于 Xray 的日志开关，不是运行状态或流量记录；Windows 提权 Core
+复用 App 预创建文件的读取权限。发布时必须同时打包支持该参数的桌面 Core。
+输入目录不复用，也不保留历史。Windows MSIX 的
 `snapshotToken` 仅用于 VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照。
 Windows EXE 使用系统进程列表按精确进程名 `OneXrayCore.exe` 管理所有存活匹配进程，
 按 Windows 名称规则忽略大小写，不匹配完整命令行、名称前缀或其它 `xray` 进程。不保存或
@@ -233,6 +238,8 @@ capabilities 保护的 `/proc/<pid>/exe`。工具缺失、执行失败或无效�
 停止使用 `pkill -TERM -x OneXrayCore`，等待进程退出事件；超时仍存在时才使用
 `pkill -KILL -x OneXrayCore`。发送信号成功不等于停止完成，只有再次查询确认没有存活
 匹配进程才报告已断开。匹配的是进程名而非完整命令行，不处理其它 `xray` 或名称前缀相似的进程。
+退出监听取消或旧运行停止时，同时使正在等待的退出后查询失效；过期结果既不发布 VPN
+状态，也不替换后续运行的进程监听。
 
 普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
 `VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension

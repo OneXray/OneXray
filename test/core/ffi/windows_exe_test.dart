@@ -190,9 +190,12 @@ void main() {
       ]);
       expect(process.arguments![5], '-config');
       expect(
-        await File(process.arguments!.last).readAsString(),
+        await File(process.arguments![6]).readAsString(),
         '{"inbounds":[]}',
       );
+      expect(process.arguments![7], '-error-file');
+      expect(process.arguments!.last, '${process.arguments![6]}.error');
+      expect(await File(process.arguments!.last).readAsString(), isEmpty);
       expect(
         await File(p.join(directory.path, 'run', 'core-process.json')).exists(),
         isFalse,
@@ -216,6 +219,24 @@ void main() {
       expect(events.last, VpnStatus.disconnected);
     },
   );
+
+  test('EXE returns the actual Core startup diagnostic', () async {
+    final api = create();
+    final starting = api.startVpn();
+    await process.launched.future;
+    final arguments = process.arguments!;
+    final config = arguments[arguments.indexOf('-config') + 1];
+    const diagnostic =
+        'failed to load geosite: category TEST-MISSING not found';
+    await File('$config.error').writeAsString(diagnostic);
+    process.exitPid(42);
+
+    final result = await starting;
+    expect(result.state, NativeVpnCommandState.failed);
+    expect(result.message, contains(diagnostic));
+    expect(events.last, VpnStatus.disconnected);
+    expect((await api.readVpnStatus()).status, VpnStatus.disconnected);
+  });
 
   test(
     'another named Core cannot mask the newly launched Core exiting',
