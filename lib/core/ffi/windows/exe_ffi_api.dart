@@ -23,6 +23,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   final _exitWatches = <int, DesktopCoreExitWatch>{};
   // Cancelling waits also invalidates the reads already triggered by their exits.
   int _watchGeneration = 0;
+  int _queryGeneration = 0;
   bool _observing = false;
   VpnStatus? _transition;
 
@@ -54,10 +55,12 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   @override
   Future<void> observeVpnStatus() async {
     _observing = true;
+    final query = _findCorePids();
+    final generation = _queryGeneration;
     try {
-      await _findCorePids();
+      await query;
     } catch (_) {
-      disposeVpnStatus();
+      if (generation == _queryGeneration) disposeVpnStatus();
       rethrow;
     }
   }
@@ -70,6 +73,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
 
   void _clearExitWatches() {
     _watchGeneration++;
+    _queryGeneration++;
     for (final watch in _exitWatches.values) {
       watch.cancel();
     }
@@ -84,6 +88,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       if (_exitWatches.containsKey(pid)) continue;
       final watch = _process.watchExit(pid);
       final generation = _watchGeneration;
+      int? queryGeneration;
       _exitWatches[pid] = watch;
       unawaited(
         watch.exited
@@ -91,12 +96,17 @@ class WindowsExeFfiApi extends WindowsFfiApi {
               if (!identical(_exitWatches[pid], watch)) return;
               _exitWatches.remove(pid);
               if (!exited || !_observing || _transition != null) return;
-              final running = await _running();
+              final query = _findCorePids();
+              queryGeneration = _queryGeneration;
+              final pids = await query;
               if (_observing &&
                   _transition == null &&
-                  generation == _watchGeneration) {
+                  generation == _watchGeneration &&
+                  queryGeneration == _queryGeneration) {
                 await _notify(
-                  running ? VpnStatus.connected : VpnStatus.disconnected,
+                  pids.isNotEmpty
+                      ? VpnStatus.connected
+                      : VpnStatus.disconnected,
                 );
               }
             })
@@ -106,7 +116,9 @@ class WindowsExeFfiApi extends WindowsFfiApi {
               }
               if (_observing &&
                   _transition == null &&
-                  generation == _watchGeneration) {
+                  generation == _watchGeneration &&
+                  (queryGeneration == null ||
+                      queryGeneration == _queryGeneration)) {
                 _notifyError(error);
               }
             }),
@@ -115,9 +127,10 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   }
 
   Future<Set<int>> _findCorePids() async {
-    final generation = _watchGeneration;
+    // Claim the query revision before awaiting, including one-shot status reads.
+    final generation = ++_queryGeneration;
     final pids = await _process.findPids();
-    if (_observing && generation == _watchGeneration) _syncExitWatches(pids);
+    if (_observing && generation == _queryGeneration) _syncExitWatches(pids);
     return pids;
   }
 
@@ -219,6 +232,8 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   }
 
   Future<void> _stop() async {
+    // A denied stop must still retire older queries, but keep live exit watches.
+    _queryGeneration++;
     await _process.stopAll();
     _clearExitWatches();
   }

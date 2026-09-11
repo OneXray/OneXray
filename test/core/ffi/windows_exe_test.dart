@@ -364,6 +364,65 @@ void main() {
     },
   );
 
+  for (final failQuery in [false, true]) {
+    test(
+      'a newer EXE read supersedes an exit query (error: $failQuery)',
+      () async {
+        process.pids.add(42);
+        final api = create();
+        addTearDown(api.disposeVpnStatus);
+        await api.observeVpnStatus();
+        final pending = Completer<Set<int>>();
+        process.nextQuery = pending.future;
+        process.exitPid(42);
+        await Future<void>.delayed(Duration.zero);
+        expect(process.nextQuery, isNull);
+
+        process.pids.add(84);
+        expect((await api.readVpnStatus()).status, VpnStatus.connected);
+        if (failQuery) {
+          pending.completeError(StateError('stale process query failed'));
+        } else {
+          pending.complete({});
+        }
+        await Future<void>.delayed(Duration.zero);
+        expect(events, isEmpty);
+        expect(errors, isEmpty);
+        expect(process.exits[84]!.isCompleted, isFalse);
+        process.exitPid(84);
+        await Future<void>.delayed(Duration.zero);
+        expect(events, [VpnStatus.disconnected]);
+      },
+    );
+  }
+
+  test(
+    'a failed EXE stop invalidates pending queries without losing live watches',
+    () async {
+      process.pids.addAll({42, 84});
+      final api = create();
+      addTearDown(api.disposeVpnStatus);
+      await api.observeVpnStatus();
+      final pending = Completer<Set<int>>();
+      process.nextQuery = pending.future;
+      process.exitPid(42);
+      await Future<void>.delayed(Duration.zero);
+      expect(process.nextQuery, isNull);
+
+      process.failStop = true;
+      expect((await api.stopVpn()).state, NativeVpnCommandState.failed);
+      events.clear();
+      pending.complete({});
+      await Future<void>.delayed(Duration.zero);
+      expect(events, isEmpty);
+      expect(errors, isEmpty);
+      expect(process.exits[84]!.isCompleted, isFalse);
+      process.exitPid(84);
+      await Future<void>.delayed(Duration.zero);
+      expect(events, [VpnStatus.disconnected]);
+    },
+  );
+
   test(
     'a restored EXE stays connected until the last named Core exits',
     () async {

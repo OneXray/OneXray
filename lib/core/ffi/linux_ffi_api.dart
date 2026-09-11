@@ -57,6 +57,7 @@ class LinuxFfiApi extends BaseFfiApi {
   final void Function(Object) _notifyError;
   final _exitWatches = <int, DesktopCoreExitWatch>{};
   int _watchGeneration = 0;
+  int _queryGeneration = 0;
   Process? _coreProcess;
   VpnStatus? _transition;
   bool _observing = false;
@@ -118,11 +119,12 @@ class LinuxFfiApi extends BaseFfiApi {
   @override
   Future<void> observeVpnStatus() async {
     _observing = true;
-    final generation = _watchGeneration;
+    final query = _findCorePids();
+    final generation = _queryGeneration;
     try {
-      await _findCorePids();
+      await query;
     } catch (_) {
-      if (generation == _watchGeneration) disposeVpnStatus();
+      if (generation == _queryGeneration) disposeVpnStatus();
       rethrow;
     }
   }
@@ -135,6 +137,7 @@ class LinuxFfiApi extends BaseFfiApi {
 
   void _clearExitWatches() {
     _watchGeneration++;
+    _queryGeneration++;
     for (final watch in _exitWatches.values) {
       watch.cancel();
     }
@@ -158,6 +161,7 @@ class LinuxFfiApi extends BaseFfiApi {
           ? DesktopCoreExitWatch(process!.exitCode.then((_) => true), () {})
           : _watchExit(pid);
       final generation = _watchGeneration;
+      int? queryGeneration;
       unawaited(
         watch.exited
             .then((exited) async {
@@ -167,18 +171,18 @@ class LinuxFfiApi extends BaseFfiApi {
               if (!exited || !_observing || _stopping || _transition != null) {
                 return;
               }
-              final running = await queryCoreRunning();
+              final query = _findCorePids();
+              queryGeneration = _queryGeneration;
+              final pids = await query;
               if (!_observing ||
                   _stopping ||
                   _transition != null ||
-                  generation != _watchGeneration) {
+                  generation != _watchGeneration ||
+                  queryGeneration != _queryGeneration) {
                 return;
               }
-              if (running == null) {
-                throw StateError('Unable to read Linux Core process state.');
-              }
               await _notify(
-                running ? VpnStatus.connected : VpnStatus.disconnected,
+                pids.isNotEmpty ? VpnStatus.connected : VpnStatus.disconnected,
               );
             })
             .catchError((Object error) {
@@ -188,7 +192,9 @@ class LinuxFfiApi extends BaseFfiApi {
               if (_observing &&
                   !_stopping &&
                   _transition == null &&
-                  generation == _watchGeneration) {
+                  generation == _watchGeneration &&
+                  (queryGeneration == null ||
+                      queryGeneration == _queryGeneration)) {
                 _notifyError(error);
               }
             }),
@@ -298,7 +304,8 @@ class LinuxFfiApi extends BaseFfiApi {
   }
 
   Future<Set<int>> _findCorePids() async {
-    final generation = _watchGeneration;
+    // Claim the query revision before awaiting, including one-shot status reads.
+    final generation = ++_queryGeneration;
     // procps does the name/state scan natively. Do not match full command lines
     // or include zombies/dead processes when reporting a running VPN.
     const arguments = ['-x', '-r', 'R,S,D,T,t,I', _coreBin];
@@ -320,7 +327,7 @@ class LinuxFfiApi extends BaseFfiApi {
     if (pids.any((pid) => pid <= 0)) {
       throw const FormatException('Invalid Core PID returned by pgrep');
     }
-    if (_observing && generation == _watchGeneration) _syncExitWatches(pids);
+    if (_observing && generation == _queryGeneration) _syncExitWatches(pids);
     return pids;
   }
 

@@ -161,6 +161,44 @@ void main() {
     expect(fixture.events, isEmpty);
   });
 
+  for (final failQuery in [false, true]) {
+    test(
+      'a newer Linux read supersedes an exit query (error: $failQuery)',
+      () async {
+        final fixture = await _Fixture.create();
+        fixture.pids.add(42);
+        Future<ProcessResult>? nextQuery;
+        final api = fixture.api(
+          runCommand: (_, _) async {
+            final pending = nextQuery;
+            nextQuery = null;
+            return pending ?? fixture.queryResult();
+          },
+        );
+        await api.observeVpnStatus();
+        final pending = Completer<ProcessResult>();
+        nextQuery = pending.future;
+        fixture.exitProcess(42);
+        await Future<void>.delayed(Duration.zero);
+        expect(nextQuery, isNull);
+
+        fixture.pids.add(84);
+        expect((await api.readVpnStatus()).status, VpnStatus.connected);
+        if (failQuery) {
+          pending.completeError(StateError('stale process query failed'));
+        } else {
+          pending.complete(ProcessResult(1, 1, '', ''));
+        }
+        await Future<void>.delayed(Duration.zero);
+        expect(fixture.events, isEmpty);
+        expect(fixture._exits[84]!.isCompleted, isFalse);
+        final nextStatus = fixture.nextStatus();
+        fixture.exitProcess(84);
+        expect(await nextStatus, VpnStatus.disconnected);
+      },
+    );
+  }
+
   test('an old exit query cannot reconnect after a confirmed stop', () async {
     final fixture = await _Fixture.create();
     fixture.pids.addAll([42, 43]);

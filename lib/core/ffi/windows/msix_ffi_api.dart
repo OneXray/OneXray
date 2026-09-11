@@ -152,9 +152,12 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
 
     _commandActive = true;
     var providerStartInvoked = false;
+    String? coreConfig;
     try {
       final request = await _readRequest();
-      final coreConfig = await _publishCoreConfig(readRunXrayRequest(request));
+      coreConfig = await _publishCoreConfig(readRunXrayRequest(request));
+      final errorFile = desktopCoreErrorFile(coreConfig);
+      await errorFile.writeAsString('', flush: true);
       final backend = WindowsSessionBackend(
         processes: [
           WindowsManagedProcess(
@@ -163,6 +166,7 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
               dns: networkSettings.dnsIpv4Address,
               interfaceName: request.tun?.autoOutboundsInterface ?? '',
               configPath: coreConfig,
+              errorFile: errorFile.path,
             ),
           ),
         ],
@@ -187,7 +191,11 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
     } catch (error, stackTrace) {
       ygLogger('start Windows VPN failed: $error\n$stackTrace');
       await _cleanupFailedStart(providerStartInvoked);
-      return commandFailed(error.toString());
+      return commandFailed(
+        providerStartInvoked && coreConfig != null
+            ? await readDesktopCoreStartError(coreConfig, error.toString())
+            : error.toString(),
+      );
     } finally {
       _commandActive = false;
     }
