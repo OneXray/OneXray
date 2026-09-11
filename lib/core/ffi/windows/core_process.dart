@@ -1,95 +1,77 @@
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
-import 'package:onexray/core/ffi/desktop_core_process.dart';
+import 'package:flutter/foundation.dart';
 import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:path/path.dart' as p;
 import 'package:win32/win32.dart';
 
-/// Win32 work (including the UAC prompt) never blocks the Flutter isolate.
+/// Discovery, UAC and exit waits run off the Flutter isolate.
 class WindowsCoreProcess {
-  DesktopCoreExitWatch watchExit(
-    DesktopCoreProcessRecord record,
-    String executable,
-  ) {
+  final String _name;
+
+  WindowsCoreProcess() : _name = 'OneXrayCore.exe';
+
+  @visibleForTesting
+  WindowsCoreProcess.forTesting({required String processName})
+    : _name = processName;
+
+  Future<Set<int>> findPids() => Isolate.run(() => _namedPids(_name));
+
+  Future<void> stopAll() => Isolate.run(() => _stopNamed(_name));
+
+  DesktopCoreExitWatch watchExit(int pid) {
     final created = CreateEvent(null, true, false, null);
     if (!created.value.isValid) _failed('CreateEvent', created.error);
     final cancelEvent = created.value;
     var closed = false;
-    final exited = _waitForExit(record, executable, cancelEvent.address)
-        .whenComplete(() {
-          closed = true;
-          CloseHandle(cancelEvent);
-        });
+    final exited = _waitForExit(pid, _name, cancelEvent.address).whenComplete(
+      () {
+        closed = true;
+        CloseHandle(cancelEvent);
+      },
+    );
     return DesktopCoreExitWatch(exited, () {
       if (!closed) SetEvent(cancelEvent);
     });
   }
 
-  Future<DesktopCoreProcessRecord> start(
-    String executable,
-    List<String> arguments,
-    String configPath,
-  ) => Isolate.run(() {
-    final handle = _launchElevated(executable, arguments);
-    try {
-      final pid = GetProcessId(handle);
-      if (pid.value == 0) _failed('GetProcessId', pid.error);
-      return DesktopCoreProcessRecord(
-        pid: pid.value,
-        configPath: configPath,
-        startTicks: _creationTime(handle),
-      );
-    } catch (_) {
-      _terminate(handle);
-      rethrow;
-    } finally {
-      CloseHandle(handle);
-    }
-  });
-
-  Future<bool> isRunning(DesktopCoreProcessRecord record, String executable) =>
+  Future<int> start(String executable, List<String> arguments) =>
       Isolate.run(() {
-        final handle = _openOwned(record, executable);
-        if (handle == null) return false;
-        CloseHandle(handle);
-        return true;
-      });
-
-  Future<void> stop(DesktopCoreProcessRecord record, String executable) =>
-      Isolate.run(() {
-        final handle = _openOwned(record, executable, terminate: true);
-        if (handle == null) return;
+        final handle = _launchElevated(executable, arguments);
         try {
-          _terminate(handle);
+          final pid = GetProcessId(handle);
+          if (pid.value == 0) _failed('GetProcessId', pid.error);
+          return pid.value;
+        } catch (_) {
+          _stopNamed(_name);
+          rethrow;
         } finally {
           CloseHandle(handle);
         }
       });
 }
 
-Future<bool> _waitForExit(
-  DesktopCoreProcessRecord record,
-  String executable,
-  int cancelAddress,
-) => Isolate.run(() {
-  final process = _openOwned(record, executable);
-  if (process == null) return true;
-  try {
-    return using((arena) {
-      final handles = arena<Pointer>(2);
-      handles[0] = process;
-      handles[1] = Pointer.fromAddress(cancelAddress);
-      final result = WaitForMultipleObjects(2, handles, false, INFINITE);
-      if (result.value == WAIT_OBJECT_0) return true;
-      if (result.value == WAIT_EVENT(WAIT_OBJECT_0 + 1)) return false;
-      _failed('WaitForMultipleObjects', result.error);
+Future<bool> _waitForExit(int pid, String name, int cancelAddress) =>
+    Isolate.run(() {
+      final process = _openNamed(pid, name);
+      if (process == null) return true;
+      try {
+        return using((arena) {
+          final handles = arena<Pointer>(2);
+          handles[0] = process;
+          handles[1] = Pointer.fromAddress(cancelAddress);
+          final result = WaitForMultipleObjects(2, handles, false, INFINITE);
+          if (result.value == WAIT_OBJECT_0) return true;
+          if (result.value == WAIT_EVENT(WAIT_OBJECT_0 + 1)) return false;
+          _failed('WaitForMultipleObjects', result.error);
+        });
+      } finally {
+        CloseHandle(process);
+      }
     });
-  } finally {
-    CloseHandle(process);
-  }
-});
 
 /// ShellExecuteEx takes a command-line string, not an argv array.
 String quoteWindowsArgument(String value) {
@@ -129,82 +111,170 @@ HANDLE _launchElevated(String executable, List<String> arguments) {
   }
 }
 
-HANDLE? _openOwned(
-  DesktopCoreProcessRecord record,
-  String executable, {
-  bool terminate = false,
-}) {
-  if (record.pid <= 0) throw StateError('Invalid Windows Core PID');
-  final rights = PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE;
-  var opened = OpenProcess(
-    terminate ? rights | PROCESS_TERMINATE : rights,
-    false,
-    record.pid,
-  );
-  if (!opened.value.isValid && terminate) {
-    opened = OpenProcess(rights, false, record.pid);
+// Query names directly: no executable-path, owner or session lookup is needed.
+Set<int> _namedPids(String name) => using((arena) {
+  const initialSnapshotBytes = 64 * 1024;
+  const maxSnapshotBytes = 64 * 1024 * 1024;
+  final required = arena<Uint32>();
+  var capacity = initialSnapshotBytes;
+  while (capacity <= maxSnapshotBytes) {
+    final buffer = calloc<Uint8>(capacity);
+    try {
+      final status = NtQuerySystemInformation(
+        SystemProcessInformation,
+        buffer,
+        capacity,
+        required,
+      );
+      if (status == STATUS_INFO_LENGTH_MISMATCH) {
+        capacity = required.value > capacity
+            ? required.value + initialSnapshotBytes
+            : capacity * 2;
+        continue;
+      }
+      if (status.isError) throw WindowsException(status.toHRESULT());
+      final pids = <int>{};
+      var offset = 0;
+      while (true) {
+        if (offset + sizeOf<SYSTEM_PROCESS_INFORMATION>() > required.value ||
+            required.value > capacity) {
+          throw StateError('Invalid Windows process snapshot');
+        }
+        final entry = (buffer + offset).cast<SYSTEM_PROCESS_INFORMATION>().ref;
+        final image = entry.ImageName;
+        if (image.Length > 0) {
+          final start = image.Buffer.address - buffer.address;
+          if (image.Length.isOdd ||
+              start < 0 ||
+              start + image.Length > required.value) {
+            throw StateError('Invalid Windows process name');
+          }
+          if (entry.NumberOfThreads > 0 &&
+              image.Buffer.toDartString(length: image.Length ~/ 2)
+                      .toLowerCase() ==
+                  name.toLowerCase()) {
+            pids.add(entry.UniqueProcessId.address);
+          }
+        }
+        if (entry.NextEntryOffset == 0) return pids;
+        if (entry.NextEntryOffset < sizeOf<SYSTEM_PROCESS_INFORMATION>()) {
+          throw StateError('Invalid Windows process snapshot offset');
+        }
+        offset += entry.NextEntryOffset;
+      }
+    } finally {
+      calloc.free(buffer);
+    }
   }
+  throw StateError('Windows process snapshot exceeds the size limit');
+});
+
+void _stopNamed(String name) {
+  final handles = <int, HANDLE>{};
+  var elevate = false;
+  try {
+    for (final pid in _namedPids(name)) {
+      final opened = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, false, pid);
+      if (opened.value.isValid) {
+        handles[pid] = opened.value;
+      } else if (_namedPids(name).contains(pid)) {
+        if (opened.error != ERROR_ACCESS_DENIED) {
+          _failed('OpenProcess', opened.error);
+        }
+        elevate = true;
+      }
+    }
+    if (handles.isNotEmpty) {
+      // Recheck names after opening handles so a reused PID cannot select an
+      // unrelated process. Handles, not cached PIDs, are used for termination.
+      final current = _namedPids(name);
+      for (final entry in handles.entries.toList()) {
+        if (!current.contains(entry.key)) {
+          CloseHandle(handles.remove(entry.key)!);
+          continue;
+        }
+        if (elevate || !_running(entry.value)) continue;
+        final killed = TerminateProcess(entry.value, 0);
+        if (!killed.value && _running(entry.value)) {
+          if (killed.error != ERROR_ACCESS_DENIED) {
+            _failed('TerminateProcess', killed.error);
+          }
+          elevate = true;
+        }
+      }
+    }
+    if (elevate) {
+      final taskkill = _launchElevated(
+        p.windows.join(_systemDirectory(), 'taskkill.exe'),
+        ['/IM', name, '/F'],
+      );
+      try {
+        final waited = WaitForSingleObject(taskkill, 5000);
+        if (waited.value == WAIT_TIMEOUT) {
+          throw StateError('Timed out waiting for elevated Core termination');
+        }
+        if (waited.value != WAIT_OBJECT_0) {
+          _failed('WaitForSingleObject', waited.error);
+        }
+        final exitCode = using((arena) {
+          final code = arena<Uint32>();
+          final result = GetExitCodeProcess(taskkill, code);
+          if (!result.value) _failed('GetExitCodeProcess', result.error);
+          return code.value;
+        });
+        // No targets is also possible when a Core exits during the UAC prompt.
+        if (exitCode != 0 && _namedPids(name).isNotEmpty) {
+          throw StateError('Elevated Core termination failed: $exitCode');
+        }
+      } finally {
+        CloseHandle(taskkill);
+      }
+    }
+    final waiting = Stopwatch()..start();
+    while (true) {
+      if (_namedPids(name).isEmpty && !handles.values.any(_running)) return;
+      if (waiting.elapsed >= const Duration(seconds: 3)) {
+        throw StateError('Windows Core did not stop');
+      }
+      sleep(const Duration(milliseconds: 50));
+    }
+  } finally {
+    for (final handle in handles.values) {
+      CloseHandle(handle);
+    }
+  }
+}
+
+String _systemDirectory() => using((arena) {
+  final buffer = arena.pwstrBuffer(32768);
+  final result = GetSystemDirectory(buffer, 32768);
+  if (result.value == 0 || result.value >= 32768) {
+    _failed('GetSystemDirectory', result.error);
+  }
+  return buffer.toDartString();
+});
+
+HANDLE? _openNamed(int pid, String name) {
+  if (pid <= 0) throw StateError('Invalid Windows Core PID');
+  final opened = OpenProcess(PROCESS_ACCESS_RIGHTS(SYNCHRONIZE), false, pid);
   if (!opened.value.isValid) {
-    if (opened.error == ERROR_INVALID_PARAMETER) return null; // Exited.
+    // Exiting processes can disappear before OpenProcess. Only a fresh name
+    // query proves this race; other failures must not masquerade as an exit.
+    if (!_namedPids(name).contains(pid)) return null;
     _failed('OpenProcess', opened.error);
   }
   final handle = opened.value;
   try {
-    if (!_running(handle) ||
-        (record.startTicks != null &&
-            _creationTime(handle) != record.startTicks)) {
+    if (!_running(handle) || !_namedPids(name).contains(pid)) {
       CloseHandle(handle);
-      return null; // The recorded process exited; never act on a reused PID.
+      return null;
     }
-    using((arena) {
-      final actualPath = arena.pwstrBuffer(32768);
-      final length = arena<Uint32>()..value = 32768;
-      final image = QueryFullProcessImageName(
-        handle,
-        PROCESS_NAME_FORMAT(0),
-        actualPath,
-        length,
-      );
-      if (!image.value) _failed('QueryFullProcessImageName', image.error);
-      // Released v26.8.4 stored only the PID and kept Core under bin/.
-      final legacy = record.startTicks == null && record.configPath == null;
-      final expected = legacy
-          ? p.windows.join(
-              p.windows.dirname(executable),
-              'bin',
-              'OneXrayCore.exe',
-            )
-          : executable;
-      if (!p.windows.equals(actualPath.toDartString(), expected)) {
-        throw StateError('Windows Core process ownership does not match');
-      }
-      final session = arena<Uint32>();
-      final currentSession = arena<Uint32>();
-      final a = ProcessIdToSessionId(record.pid, session);
-      final b = ProcessIdToSessionId(GetCurrentProcessId(), currentSession);
-      if (!a.value || !b.value || session.value != currentSession.value) {
-        throw StateError('Windows Core belongs to another session');
-      }
-    });
     return handle;
   } catch (_) {
     CloseHandle(handle);
     rethrow;
   }
 }
-
-int _creationTime(HANDLE handle) => using((arena) {
-  final created = arena<FILETIME>();
-  final result = GetProcessTimes(
-    handle,
-    created,
-    arena<FILETIME>(),
-    arena<FILETIME>(),
-    arena<FILETIME>(),
-  );
-  if (!result.value) _failed('GetProcessTimes', result.error);
-  return (created.ref.dwHighDateTime << 32) | created.ref.dwLowDateTime;
-});
 
 bool _running(HANDLE handle) {
   final result = WaitForSingleObject(handle, 0);
@@ -213,37 +283,6 @@ bool _running(HANDLE handle) {
     WAIT_TIMEOUT => true,
     _ => _failed('WaitForSingleObject', result.error),
   };
-}
-
-void _terminate(HANDLE handle) {
-  if (!_running(handle)) return;
-  final result = TerminateProcess(handle, 0);
-  if (!result.value && _running(handle)) {
-    final pid = GetProcessId(handle);
-    if (pid.value == 0) _failed('GetProcessId', pid.error);
-    final systemDirectory = using((arena) {
-      final buffer = arena.pwstrBuffer(32768);
-      final result = GetSystemDirectory(buffer, 32768);
-      if (result.value == 0 || result.value >= 32768) {
-        _failed('GetSystemDirectory', result.error);
-      }
-      return buffer.toDartString();
-    });
-    final taskkill = _launchElevated(
-      p.windows.join(systemDirectory, 'taskkill.exe'),
-      ['/PID', '${pid.value}', '/T', '/F'],
-    );
-    try {
-      if (WaitForSingleObject(taskkill, 5000).value != WAIT_OBJECT_0) {
-        throw StateError('Timed out waiting for elevated Core termination');
-      }
-    } finally {
-      CloseHandle(taskkill);
-    }
-  }
-  if (WaitForSingleObject(handle, 3000).value != WAIT_OBJECT_0) {
-    throw StateError('Windows Core did not stop');
-  }
 }
 
 Never _failed(String operation, Object error) =>
