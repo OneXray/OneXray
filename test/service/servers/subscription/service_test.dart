@@ -9,6 +9,9 @@ import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/servers/subscription/failure.dart';
+import 'package:onexray/l10n/localizations/app_localizations_en.dart';
+import 'package:onexray/core/errors/failure.dart';
 
 void main() {
   late AppDatabase database;
@@ -18,6 +21,280 @@ void main() {
     addTearDown(bus.close);
     database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
+  });
+
+  test('new subscriptions default to no HWID and opted-in sources get distinct IDs', () async {
+    final inputs = <SubscriptionInput>[];
+    final service = _service(database, (input) async {
+      inputs.add(input);
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('Node')],
+      );
+    });
+    for (final enabled in [false, true, true]) {
+      final result = await service.insertSubscription(
+        SubscriptionInput(
+          name: 'Source ${inputs.length}',
+          url: 'https://example.com/${inputs.length}',
+          hwidEnabled: enabled,
+        ),
+      );
+      expect(result.success, isTrue);
+      final row = (await database.subscriptionDao.searchRow(result.subId))!;
+      expect(row.hwidEnabled, enabled);
+      expect(row.hwid, inputs.last.hwid);
+      if (enabled) {
+        expect(
+          row.hwid,
+          matches(
+            RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+            ),
+          ),
+        );
+      } else {
+        expect(row.hwid, isNull);
+      }
+    }
+    expect(inputs[1].hwid, isNot(inputs[2].hwid));
+  });
+
+  test(
+    'refresh, toggles and provider edits retain the original HWID',
+    () async {
+      final inputs = <SubscriptionInput>[];
+      Future<SubscriptionLoadResult> load(SubscriptionInput input) async {
+        inputs.add(input);
+        return SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [_node('Node')],
+        );
+      }
+
+      final service = _service(database, load);
+      final result = await service.insertSubscription(
+        const SubscriptionInput(
+          name: 'Provider',
+          url: 'https://example.com/one',
+          hwidEnabled: true,
+          hwid: 'draft-device-identity',
+        ),
+      );
+      final row = (await database.subscriptionDao.searchRow(result.subId))!;
+      expect(row.hwid, 'draft-device-identity');
+
+      // A fresh service reads identity/consent from storage, not an in-memory map.
+      final restarted = _service(database, load);
+      for (final enabled in [false, true]) {
+        expect(
+          await restarted.saveSubscriptionInput(
+            row.id,
+            SubscriptionInput(
+              name: 'Renamed',
+              url: 'https://example.com/two',
+              hwidEnabled: enabled,
+            ),
+          ),
+          SubscriptionUpdateResult.success,
+        );
+        expect(
+          (await restarted.refreshSubscriptionResult(row)).success,
+          isTrue,
+        );
+        expect(inputs.last.hwid, row.hwid);
+        expect(inputs.last.hwidEnabled, enabled);
+      }
+      await restarted.saveSubscriptionInput(
+        row.id,
+        const SubscriptionInput(
+          name: 'Another provider',
+          url: 'https://another.example/one',
+        ),
+      );
+      final changed = (await database.subscriptionDao.searchRow(row.id))!;
+      expect(changed.hwidEnabled, isFalse);
+      expect(changed.hwid, row.hwid);
+      await restarted.saveSubscriptionInput(
+        row.id,
+        SubscriptionInput(
+          name: changed.name,
+          url: changed.url,
+          hwidEnabled: true,
+          hwid: 'must-not-replace-the-saved-identity',
+        ),
+      );
+      expect(
+        (await restarted.refreshSubscriptionResult(changed)).success,
+        isTrue,
+      );
+      expect(inputs.last.hwid, row.hwid);
+    },
+  );
+
+  for (final enabled in [false, true]) {
+    test(
+      'first edit saves the generated draft HWID (enabled: $enabled)',
+      () async {
+        final source = await _source(database);
+        final service = _service(
+          database,
+          (_) async =>
+              throw StateError('Saving must not download the subscription'),
+        );
+        await service.saveSubscriptionInput(
+          source.id,
+          SubscriptionInput(
+            name: source.name,
+            url: source.url,
+            hwidEnabled: enabled,
+            hwid: 'first-draft-identity',
+          ),
+        );
+        final saved = (await database.subscriptionDao.searchRow(source.id))!;
+        expect(saved.hwid, 'first-draft-identity');
+        expect(saved.hwidEnabled, enabled);
+      },
+    );
+  }
+
+  for (final useService in [true, false]) {
+    test(
+      'changing HWID consent rejects in-flight content (service: $useService)',
+      () async {
+        final source = await _source(database);
+        final keptId = await database.coreConfigDao.insertRow(
+          _node('Keep', subId: source.id),
+        );
+        final started = Completer<void>();
+        final pending = Completer<SubscriptionLoadResult>();
+        final service = _service(database, (_) {
+          started.complete();
+          return pending.future;
+        });
+        final refresh = service.refreshSubscriptionResult(source);
+        await started.future;
+        if (useService) {
+          await service.saveSubscriptionInput(
+            source.id,
+            SubscriptionInput(
+              name: source.name,
+              url: source.url,
+              ageSecretKey: source.ageSecretKey,
+              agePublicKey: source.agePublicKey,
+              hwidEnabled: true,
+            ),
+          );
+        } else {
+          await database.subscriptionDao.updateRow(
+            source.copyWith(
+              hwidEnabled: true,
+              hwid: const Value('new-identity'),
+            ),
+          );
+        }
+        pending.complete(
+          SubscriptionLoadResult(
+            status: SubscriptionUpdateResult.success,
+            rows: [_node('Obsolete')],
+          ),
+        );
+        expect((await refresh).superseded, isTrue);
+        final nodes = await database.coreConfigDao
+            .allOutboundRowsWithDataBySubId(source.id);
+        expect(nodes.single.id, keptId);
+        expect(
+          (await database.subscriptionDao.searchRow(source.id))!.timestamp,
+          source.timestamp,
+        );
+      },
+    );
+  }
+
+  test(
+    'manual refresh-all joins repeats and continues after a failed source',
+    () async {
+      final first = await _source(database);
+      final secondId = await database.subscriptionDao.insertRow(
+        SubscriptionCompanion.insert(
+          name: 'Second',
+          url: 'https://example.com/second',
+          timestamp: DateTime.now(),
+        ),
+      );
+      final existing = await database.coreConfigDao.insertRow(
+        _node('Keep', subId: first.id),
+      );
+      final started = Completer<void>();
+      final release = Completer<void>();
+      var calls = 0;
+      final pings = <int>[];
+      final service = _service(database, (input) async {
+        expect(AppEventBus.instance.state.downloading, isTrue);
+        calls++;
+        if (input.name == first.name) {
+          started.complete();
+          await release.future;
+          return const SubscriptionLoadResult(
+            status: SubscriptionUpdateResult.invalidContent,
+          );
+        }
+        return SubscriptionLoadResult(
+          status: SubscriptionUpdateResult.success,
+          rows: [_node('New')],
+        );
+      }, pings: pings);
+      final refreshing = service.refreshAll();
+      await started.future;
+      expect(identical(refreshing, service.refreshAll()), isTrue);
+      release.complete();
+      final results = await refreshing;
+      expect(results.values.map((row) => row.success), [false, true]);
+      expect(calls, 2);
+      expect(pings, [secondId]);
+      expect(await database.coreConfigDao.searchRow(existing), isNotNull);
+      expect(AppEventBus.instance.state.downloading, isFalse);
+      final message = subscriptionRefreshMessage(AppLocalizationsEn(), results);
+      expect(message, contains('Source:'));
+      expect(message, contains('Second:'));
+      expect(message, contains(AppLocalizationsEn().prototypeUsableNodes(1)));
+    },
+  );
+
+  test('clear-data stops the refresh-all batch and releases loading', () async {
+    await _source(database);
+    await database.subscriptionDao.insertRow(
+      SubscriptionCompanion.insert(
+        name: 'Later',
+        url: 'https://example.com/later',
+        timestamp: DateTime.now(),
+      ),
+    );
+    final started = Completer<void>();
+    final release = Completer<void>();
+    var calls = 0;
+    final service = _service(database, (_) async {
+      calls++;
+      started.complete();
+      await release.future;
+      return SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('New')],
+      );
+    });
+    final refreshing = service.refreshAll();
+    final cancelled = expectLater(
+      refreshing,
+      throwsA(isA<AppFailure>().having((e) => e.code, 'code', 'cancelled')),
+    );
+    await started.future;
+    final paused = service.pauseForDataClear();
+    release.complete();
+    await cancelled;
+    await paused;
+    expect(calls, 1);
+    expect(AppEventBus.instance.state.downloading, isFalse);
+    service.resumeAfterDataClear();
   });
 
   test(

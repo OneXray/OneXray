@@ -15,6 +15,7 @@ const _open = Key('open-sources');
 final _source = SubscriptionData(
   id: 7,
   name: 'Example subscription',
+  hwidEnabled: false,
   url: 'https://example.test/subscription',
   timestamp: DateTime(2026, 9, 1, 9, 42),
 );

@@ -23,7 +23,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      3,
+      4,
     );
   });
 
@@ -83,7 +83,7 @@ void main() {
             .read<String>('name'),
         'WAL-only name',
       );
-      expect(writer.userVersion, 3);
+      expect(writer.userVersion, 4);
       expect(_snapshot(writer, hasAgeKeys: true), _afterUpgrade(before));
       expect(
         file.parent.listSync().where(
@@ -94,7 +94,7 @@ void main() {
     },
   );
 
-  test('new installation creates schema 3 with empty assets and default connection configuration', () async {
+  test('new installation creates schema 4 with empty assets and default connection configuration', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -131,7 +131,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      3,
+      4,
     );
   });
 
@@ -146,6 +146,8 @@ void main() {
         try {
           final subscriptions = await database.subscriptionDao.allRows;
           expect(subscriptions.single.id, 7);
+          expect(subscriptions.single.hwidEnabled, isFalse);
+          expect(subscriptions.single.hwid, isNull);
           final subscriptionColumns = await database
               .customSelect('PRAGMA table_info(subscription)')
               .get();
@@ -195,7 +197,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            3,
+            4,
           );
           final subId = await reopened.subscriptionDao.insertRow(
             SubscriptionCompanion.insert(
@@ -324,7 +326,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 3);
+    expect(check.userVersion, 4);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(_columnNames(check, 'connection_config'), [
       'id',
@@ -359,6 +361,61 @@ void main() {
         await database.close();
       }
       expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
+    },
+  );
+
+  test('released schema 3 preserves all data and defaults HWID off', () async {
+    final file = await _legacyDatabase(3);
+    final beforeDb = sqlite.sqlite3.open(file.path);
+    final before = _snapshotV3(beforeDb);
+    beforeDb.close();
+
+    final database = AppDatabase.forTesting(NativeDatabase(file));
+    final source = (await database.subscriptionDao.allRows).single;
+    expect(source.id, 7);
+    expect(source.hwidEnabled, isFalse);
+    expect(source.hwid, isNull);
+    await database.close();
+
+    final upgraded = sqlite.sqlite3.open(file.path);
+    expect(upgraded.userVersion, 4);
+    expect(_snapshotV3(upgraded), before);
+    upgraded.close();
+
+    final reopened = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(reopened.close);
+    expect((await reopened.subscriptionDao.allRows).single, source);
+  });
+
+  test(
+    'schema 3 failed HWID migration rolls back without touching data',
+    () async {
+      final file = await _legacyDatabase(3);
+      final old = sqlite.sqlite3.open(file.path);
+      old.execute('ALTER TABLE subscription ADD COLUMN hwid TEXT');
+      final before = _snapshotV3(old);
+      old.close();
+
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      await expectLater(database.subscriptionDao.allRows, throwsA(anything));
+      await database.close();
+
+      final check = sqlite.sqlite3.open(file.path);
+      expect(check.userVersion, 3);
+      expect(
+        _columnNames(check, 'subscription'),
+        isNot(contains('hwid_enabled')),
+      );
+      expect(_snapshotV3(check), before);
+      check.execute('ALTER TABLE subscription DROP COLUMN hwid');
+      check.close();
+
+      final retried = AppDatabase.forTesting(NativeDatabase(file));
+      addTearDown(retried.close);
+      expect(
+        (await retried.subscriptionDao.allRows).single.hwidEnabled,
+        isFalse,
+      );
     },
   );
 
@@ -470,12 +527,49 @@ Future<File> _legacyDatabase(int version) async {
         (id, name, type, url, timestamp, category_count, rule_count)
       VALUES (5, 'legacy-geosite', 'domain', 'https://example.com/geo', 123, 2, 3)
     ''');
+    if (version == 3) {
+      database.execute('''
+        ALTER TABLE subscription DROP COLUMN count;
+        ALTER TABLE subscription DROP COLUMN expanded;
+        ALTER TABLE core_config ADD COLUMN country_code TEXT;
+        ALTER TABLE core_config ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+        UPDATE core_config SET country_code = 'JP', favorite = 1 WHERE id = 12;
+        CREATE TABLE routing_profile (
+          id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL, data TEXT NOT NULL
+        );
+        INSERT INTO routing_profile VALUES (9, 'Saved routing', 'eyJydWxlcyI6W119');
+        CREATE TABLE connection_config (
+          id INTEGER NOT NULL DEFAULT 1 PRIMARY KEY CHECK (id = 1),
+          configuration_json TEXT NOT NULL DEFAULT '{}'
+        );
+        INSERT INTO connection_config VALUES (1, '{"connection":{"selection":{"kind":"server","id":12}}}');
+      ''');
+    }
     database.execute('PRAGMA user_version = $version');
   } finally {
     database.close();
   }
   return file;
 }
+
+Map<String, List<List<Object?>>> _snapshotV3(sqlite.Database database) => {
+  for (final table in [
+    'subscription',
+    'core_config',
+    'geo_data',
+    'routing_profile',
+    'connection_config',
+  ])
+    table: database
+        .select(
+          table == 'subscription'
+              ? 'SELECT id, name, url, timestamp, age_secret_key, age_public_key FROM subscription ORDER BY id'
+              : 'SELECT * FROM $table ORDER BY id',
+        )
+        .map((row) => row.values.toList())
+        .toList(),
+};
 
 Future<Directory> _fixtureDirectory(String prefix) async {
   final fixtures = await Directory(

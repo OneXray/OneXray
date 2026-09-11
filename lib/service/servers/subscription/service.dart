@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/errors/failure.dart';
 import 'package:flutter/foundation.dart';
@@ -19,6 +20,7 @@ import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:uuid/uuid.dart';
 
 final class SubscriptionLoadResult {
   const SubscriptionLoadResult({
@@ -55,6 +57,7 @@ class SubscriptionService {
   SubscriptionService._internal()
     : _databaseOverride = null,
       _loadRowsOverride = null,
+      _client = NetClient(),
       _pingOverride = null {
     referenceReader = _storedReferences;
   }
@@ -62,22 +65,25 @@ class SubscriptionService {
   @visibleForTesting
   SubscriptionService.forTesting({
     required AppDatabase database,
-    required Future<SubscriptionLoadResult> Function(SubscriptionInput)
-    loadRows,
+    Future<SubscriptionLoadResult> Function(SubscriptionInput)? loadRows,
+    NetClient? client,
     required void Function(int) schedulePing,
     SubscriptionReferenceReader? readReferences,
   }) : _databaseOverride = database,
        _loadRowsOverride = loadRows,
+       _client = client ?? NetClient(),
        _pingOverride = schedulePing {
     referenceReader = readReferences ?? _storedReferences;
   }
 
   final AppDatabase? _databaseOverride;
+  final NetClient _client;
   final Future<SubscriptionLoadResult> Function(SubscriptionInput)?
   _loadRowsOverride;
   final void Function(int)? _pingOverride;
   final _generations = <int, int>{};
   final _refreshes = <int, Future<SubscriptionRefreshResult>>{};
+  Future<Map<SubscriptionData, SubscriptionRefreshResult>>? _refreshAll;
   var _nextGeneration = 0;
   final _downloads = InFlightOperations();
 
@@ -91,6 +97,9 @@ class SubscriptionService {
   late SubscriptionReferenceReader referenceReader;
 
   AppDatabase get _database => _databaseOverride ?? AppDatabase();
+
+  /// An app-generated identity for one subscription, never a hardware ID.
+  static String createHwid() => const Uuid().v4();
 
   Future<SubscriptionNodeReferences> _storedReferences() async {
     final value = jsonDecode(
@@ -155,6 +164,9 @@ class SubscriptionService {
     SubscriptionInput input,
   ) async {
     try {
+      if (input.hwidEnabled && input.hwid == null) {
+        input = input.withHwid(createHwid());
+      }
       final loaded = await _loadRows(input);
       if (!loaded.hasUsableRows) {
         return SubscriptionInsertResult(
@@ -172,6 +184,8 @@ class SubscriptionService {
           url: input.url,
           ageSecretKey: Value(input.normalizedAgeSecretKey),
           agePublicKey: Value(input.normalizedAgePublicKey),
+          hwidEnabled: Value(input.hwidEnabled),
+          hwid: Value(input.hwid),
           timestamp: DateTime.now(),
         );
         final nextSubId = await db.subscriptionDao.insertRow(row);
@@ -230,12 +244,17 @@ class SubscriptionService {
         )) {
           return SubscriptionUpdateResult.invalidContent;
         }
+        // Once generated, the identity belongs to this subscription, not its URL.
+        final hwid =
+            row.hwid ?? input.hwid ?? (input.hwidEnabled ? createHwid() : null);
         final updated = await _database.subscriptionDao.updateRow(
           row.copyWith(
             name: input.name,
             url: input.url,
             ageSecretKey: Value(input.normalizedAgeSecretKey),
             agePublicKey: Value(input.normalizedAgePublicKey),
+            hwidEnabled: input.hwidEnabled,
+            hwid: Value(hwid),
           ),
         );
         _ensureCurrent(id, generation);
@@ -290,6 +309,27 @@ class SubscriptionService {
     return result.success ? result.count : 0;
   }
 
+  /// Explicit refresh, independent of the automatic-update interval. Keep the
+  /// whole batch visible to loading/clear-data without waiting for probes.
+  Future<Map<SubscriptionData, SubscriptionRefreshResult>> refreshAll() =>
+      _refreshAll ??= _downloads
+          .track(
+            () => AppEventBus.instance.trackDownload(() async {
+              final results = <SubscriptionData, SubscriptionRefreshResult>{};
+              for (final source in await _database.subscriptionDao.allRows) {
+                if (_downloads.isPaused) {
+                  throw const AppFailure(FailureCategory.conflict, 'cancelled');
+                }
+                results[source] = await refreshSubscriptionResult(source);
+              }
+              if (_downloads.isPaused) {
+                throw const AppFailure(FailureCategory.conflict, 'cancelled');
+              }
+              return results;
+            }),
+          )
+          .whenComplete(() => _refreshAll = null);
+
   /// Prefer this result for reporting: an obsolete request is not a zero-node
   /// success, and unavailable parse statistics remain null.
   Future<SubscriptionRefreshResult> refreshSubscriptionResult(
@@ -342,6 +382,8 @@ class SubscriptionService {
           url: subscription.url,
           ageSecretKey: subscription.ageSecretKey,
           agePublicKey: subscription.agePublicKey,
+          hwidEnabled: subscription.hwidEnabled,
+          hwid: subscription.hwid,
         ),
       );
       _ensureCurrent(id, generation);
@@ -428,7 +470,9 @@ class SubscriptionService {
   ) =>
       current.url == expected.url &&
       current.ageSecretKey == expected.ageSecretKey &&
-      current.agePublicKey == expected.agePublicKey;
+      current.agePublicKey == expected.agePublicKey &&
+      current.hwidEnabled == expected.hwidEnabled &&
+      current.hwid == expected.hwid;
 
   Future<SubscriptionLoadResult> _loadRows(SubscriptionInput input) =>
       AppEventBus.instance.trackDownload(() => _readSubscription(input));
@@ -447,27 +491,29 @@ class SubscriptionService {
     }
     final ageContext = input.normalizedAgeContext;
 
-    final String? text;
+    final String text;
     try {
-      text = await NetClient().getText(
+      final response = await _client.getTextResponse(
         input.url,
         httpsOnly: true,
         requestHeaders: DownloadRequestHeaders(
           agePublicKey: ageContext?.publicKey,
+          hwid: input.hwidEnabled ? input.hwid : null,
         ),
       );
+      final denied = _hwidErrorStatus(response.headers);
+      if (denied != null) return SubscriptionLoadResult(status: denied);
+      text = response.data ?? '';
     } catch (error) {
+      if (error is DioException) {
+        final denied = _hwidErrorStatus(error.response?.headers);
+        if (denied != null) return SubscriptionLoadResult(status: denied);
+      }
       return SubscriptionLoadResult(
         status: SubscriptionUpdateResult.downloadFailed,
         error: error,
       );
     }
-    if (text == null) {
-      return const SubscriptionLoadResult(
-        status: SubscriptionUpdateResult.downloadFailed,
-      );
-    }
-
     try {
       final rows = await XrayShareReader().parseShareText(
         text,
@@ -491,6 +537,21 @@ class SubscriptionService {
         error: error,
       );
     }
+  }
+
+  static SubscriptionUpdateResult? _hwidErrorStatus(Headers? headers) {
+    bool enabled(String name) =>
+        headers?[name]?.any((value) => value.trim().toLowerCase() == 'true') ??
+        false;
+    if (enabled('x-hwid-not-supported')) {
+      return SubscriptionUpdateResult.hwidRequired;
+    }
+    if (enabled('x-hwid-max-devices-reached')) {
+      return SubscriptionUpdateResult.hwidLimitReached;
+    }
+    // Older providers use this for both missing IDs and device limits.
+    if (enabled('x-hwid-limit')) return SubscriptionUpdateResult.hwidRejected;
+    return null;
   }
 
   SubscriptionUpdateResult _ageErrorStatus(String error) {

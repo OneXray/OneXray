@@ -6,7 +6,7 @@ void main() {
   test(
     'connection failure notifications stay at shortcut and tray entries',
     () {
-      final shortcut = File('lib/service/shared/menu/short_cut/service.dart')
+      final shortcut = File('lib/pages/main/menu_actions.dart')
           .readAsStringSync();
       final tray = File('lib/service/shared/menu/tray/service.dart')
           .readAsStringSync();

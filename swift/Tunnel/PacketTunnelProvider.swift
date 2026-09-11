@@ -87,7 +87,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             YGLog("startTunnel noStartModel")
             throw TunnelError.noStartModel
         }
-        let settings = buildSettings(request: request)
+        let settings = try buildSettings(request: request)
         try await setTunnelNetworkSettings(settings)
         if let coreInvokeText = request.coreInvokeText {
             try await startXray(coreInvokeText)
@@ -151,7 +151,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             throw TunnelError.noRoutingData
         }
 
-        let settings = buildSettings(request: request)
+        let settings = try buildSettings(request: request)
         try await setTunnelNetworkSettings(settings)
 
         if let coreInvokeText = request.coreInvokeText {
@@ -159,7 +159,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
     }
 
-    private func buildSettings(request: StartVpnRequest) -> NEPacketTunnelNetworkSettings {
+    private func buildSettings(request: StartVpnRequest) throws -> NEPacketTunnelNetworkSettings {
         let ipv4 = NEIPv4Settings(addresses: ["198.18.0.1"], subnetMasks: ["255.254.0.0"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
 
@@ -189,8 +189,46 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
             } else {
                 settings.dnsSettings = NEDNSSettings(servers: servers)
             }
+            if tun.includeAllNetworks != true {
+                try applyExcludedRoutes(tun.excludedRoutes ?? [], to: settings)
+            }
         }
         return settings
+    }
+
+    private func applyExcludedRoutes(_ cidrs: [String], to settings: NEPacketTunnelNetworkSettings) throws {
+        var ipv4Routes: [NEIPv4Route] = []
+        var ipv6Routes: [NEIPv6Route] = []
+        for cidr in cidrs {
+            let parts = cidr.split(separator: "/", omittingEmptySubsequences: false)
+            let invalid = NSError(
+                domain: "OneXray.Tunnel", code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid excluded route: \(cidr)"]
+            )
+            guard parts.count == 2, let prefix = Int(parts[1]), prefix >= 0 else {
+                throw invalid
+            }
+            let address = String(parts[0])
+            var ipv4 = in_addr()
+            var ipv6 = in6_addr()
+            if inet_pton(AF_INET, address, &ipv4) == 1 {
+                guard prefix <= 32 else { throw invalid }
+                let mask = (0..<4).map { index in
+                    let bits = min(8, max(0, prefix - index * 8))
+                    return String((0xff << (8 - bits)) & 0xff)
+                }.joined(separator: ".")
+                ipv4Routes.append(NEIPv4Route(destinationAddress: address, subnetMask: mask))
+            } else if inet_pton(AF_INET6, address, &ipv6) == 1 {
+                guard prefix <= 128 else { throw invalid }
+                if settings.ipv6Settings != nil {
+                    ipv6Routes.append(NEIPv6Route(destinationAddress: address, networkPrefixLength: NSNumber(value: prefix)))
+                }
+            } else {
+                throw invalid
+            }
+        }
+        settings.ipv4Settings?.excludedRoutes = ipv4Routes
+        settings.ipv6Settings?.excludedRoutes = ipv6Routes
     }
 
     private func waitStartSignal(timeout: TimeInterval) async throws {

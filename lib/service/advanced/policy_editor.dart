@@ -55,9 +55,13 @@ class PolicyEditorService {
 
   PlatformPolicy validate(PolicyEditorDraft draft) {
     final value = draft.copy().policy;
-    if (supportsWindowsSystemVpn) {
-      value['windows']['excludedCidrs'] =
-          (value['windows']['excludedCidrs'] as List)
+    final apple =
+        platform == ConnectionPlatform.ios ||
+        platform == ConnectionPlatform.macos;
+    if (supportsWindowsSystemVpn || apple) {
+      final section = apple ? 'apple' : 'windows';
+      value[section]['excludedCidrs'] =
+          (value[section]['excludedCidrs'] as List)
               .cast<String>()
               .map((value) => value.trim())
               .where((value) => value.isNotEmpty)
@@ -69,6 +73,8 @@ class PolicyEditorService {
     }
     if (supportsWindowsSystemVpn) {
       policy.toWindowsPolicy();
+    } else if (apple) {
+      policy.toTun(platform);
     }
     return policy;
   }

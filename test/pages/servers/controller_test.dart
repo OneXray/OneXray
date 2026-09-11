@@ -122,12 +122,14 @@ void main() {
         SubscriptionData(
           id: 10,
           name: 'A newer source',
+          hwidEnabled: false,
           url: 'https://example.test/newer',
           timestamp: DateTime(2026, 9, 8),
         ),
         SubscriptionData(
           id: 2,
           name: 'Z older source',
+          hwidEnabled: false,
           url: 'https://example.test/older',
           timestamp: DateTime(2026, 9, 8),
         ),
@@ -162,12 +164,14 @@ void main() {
       SubscriptionData(
         id: 4,
         name: 'Used source',
+        hwidEnabled: false,
         url: 'https://example.test/used',
         timestamp: DateTime(2026, 9, 4),
       ),
       SubscriptionData(
         id: 5,
         name: 'Empty source',
+        hwidEnabled: false,
         url: 'https://example.test/empty',
         timestamp: DateTime(2026, 9, 4),
       ),

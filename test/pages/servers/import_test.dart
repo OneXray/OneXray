@@ -332,6 +332,72 @@ void main() {
     expect(changes, 8);
   });
 
+  testWidgets(
+    'first download respects opt-in and failed retries keep the draft HWID',
+    (tester) async {
+      final inputs = <SubscriptionInput>[];
+      final controller = ServerImportController(
+        loadSubscription: (_) async => null,
+        validateSubscription: (_, _) async => null,
+        insertSubscription: (input) async {
+          inputs.add(input);
+          return const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.hwidRequired,
+          );
+        },
+      );
+      addTearDown(controller.close);
+      controller.name.text = 'Provider';
+      controller.url.text = 'https://provider.example/sub';
+      await tester.pumpWidget(
+        _app(
+          ServerImportFormPage(
+            controller: controller,
+            action: ServerImportAction.subscription,
+          ),
+        ),
+      );
+      final context = tester.element(find.byType(ServerImportFormPage));
+      await controller.subscribe(context);
+      expect(inputs.single.hwidEnabled, isFalse);
+      expect(inputs.single.hwid, isNull);
+      expect(controller.state.hwidEnabled, isFalse);
+      expect(
+        controller.state.error,
+        AppLocalizations.of(context)!.subscriptionHwidRequired,
+      );
+
+      controller.setHwidEnabled(true);
+      await controller.subscribe(context);
+      final hwid = inputs.last.hwid;
+      expect(inputs.last.hwidEnabled, isTrue);
+      expect(hwid, isNotNull);
+      controller.setHwidEnabled(false);
+      controller.setHwidEnabled(true);
+      controller.url.text = 'https://provider.example/another-path';
+      await controller.subscribe(context);
+      expect(inputs.last.hwid, hwid);
+
+      controller.url.clear();
+      controller.url.text = 'https://provider.example/retry';
+      controller.setHwidEnabled(true);
+      await controller.subscribe(context);
+      expect(inputs.last.hwid, hwid);
+
+      controller.url.text = 'https://different.example/sub';
+      expect(controller.state.hwidEnabled, isFalse);
+      await controller.subscribe(context);
+      expect(inputs.last.hwidEnabled, isFalse);
+      expect(inputs.last.hwid, hwid);
+      controller.setHwidEnabled(true);
+      await controller.subscribe(context);
+      expect(inputs.last.hwid, hwid);
+      expect(controller.state.busy, isFalse);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Back returns to methods; Cancel closes only the import wizard', (
     tester,
   ) async {
@@ -544,6 +610,8 @@ void main() {
         url: 'https://provider.example/list',
         ageSecretKey: 'secret',
         agePublicKey: 'public',
+        hwidEnabled: true,
+        hwid: 'saved-device-id',
         timestamp: DateTime(2026),
       ),
       validateSubscription: (_, id) async {
@@ -591,9 +659,13 @@ void main() {
     );
     expect(controller.secretKey.text, 'secret');
     expect(controller.publicKey.text, 'public');
+    expect(controller.state.hwidEnabled, isTrue);
     controller.toggleSecret();
     expect(controller.state.obscureSecret, false);
     controller.name.text = 'Renamed';
+    controller.url.text = 'https://different.example/list';
+    expect(controller.state.hwidEnabled, isFalse);
+    controller.setHwidEnabled(true);
     await _tapVisible(tester, find.text('Save'));
     await tester.pump();
     expect(find.text('Save'), findsOneWidget);
@@ -612,8 +684,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(savedId, 7);
     expect(saved?.name, 'Renamed');
+    expect(saved?.url, 'https://different.example/list');
     expect(saved?.ageSecretKey, 'secret');
     expect(saved?.agePublicKey, 'public');
+    expect(saved?.hwidEnabled, isTrue);
+    expect(saved?.hwid, 'saved-device-id');
     expect(routeResult, 7);
     expect(tester.takeException(), isNull);
   });
@@ -648,6 +723,7 @@ void main() {
         SubscriptionData(
           id: 7,
           name: 'Provider',
+          hwidEnabled: false,
           url: 'https://provider.example/list',
           timestamp: DateTime(2026),
         ),

@@ -23,6 +23,7 @@ void main() {
       false,
       false,
       false,
+      ['10.250.0.0/16', '2001:db8::/64'],
       true,
       [
         OnDemandRule('connect', 'wifi', ['test']),
@@ -54,12 +55,14 @@ void main() {
       'excludeCellularServices',
       'excludeAPNs',
       'excludeDeviceCommunication',
+      'excludedRoutes',
       'onDemandEnabled',
       'onDemandRules',
       'perAppVPNMode',
       'allowAppList',
       'disallowAppList',
     });
+    expect(TunJson.fromJson(tun.toJson()).toJson(), tun.toJson());
     expect(request.toJson().keys.toSet(), {
       'tun',
       'socksPort',

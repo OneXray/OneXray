@@ -4,6 +4,7 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class SubscriptionFormView extends StatelessWidget {
@@ -17,6 +18,10 @@ class SubscriptionFormView extends StatelessWidget {
     required this.urlController,
     this.urlHint,
     this.urlHelper,
+    required this.hwidTitle,
+    required this.hwidDescription,
+    required this.hwidEnabled,
+    required this.onHwidChanged,
     required this.encryptionTitle,
     required this.ageProviderSupportTitle,
     required this.ageProviderSupportDescription,
@@ -52,6 +57,10 @@ class SubscriptionFormView extends StatelessWidget {
   final TextEditingController urlController;
   final String? urlHint;
   final String? urlHelper;
+  final String hwidTitle;
+  final String hwidDescription;
+  final bool hwidEnabled;
+  final ValueChanged<bool>? onHwidChanged;
   final String encryptionTitle;
   final String ageProviderSupportTitle;
   final String ageProviderSupportDescription;
@@ -95,9 +104,43 @@ class SubscriptionFormView extends StatelessWidget {
         child: _notice(context, supportText),
       ),
       const SizedBox(height: 14),
+      _hwidCard(context),
+      const SizedBox(height: 14),
       _encryptionCard(context),
     ],
   );
+
+  Widget _hwidCard(BuildContext context) {
+    final palette = ColorManager.palette(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.card,
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(AppRadii.card),
+      ),
+      child: SettingRow(
+        title: hwidTitle,
+        titleMaxLines: 3,
+        titleStyle: AppTypography.subscriptionAgeTitle,
+        contentPadding: const EdgeInsets.all(13),
+        subtitleWidget: Text(
+          hwidDescription,
+          style: AppTypography.subscriptionInfo.copyWith(
+            color: palette.mutedForeground,
+          ),
+        ),
+        enabled: onHwidChanged != null,
+        onTap: onHwidChanged == null
+            ? null
+            : () => onHwidChanged!(!hwidEnabled),
+        trailing: ShadSwitch(
+          value: hwidEnabled,
+          enabled: onHwidChanged != null,
+          onChanged: onHwidChanged,
+        ),
+      ),
+    );
+  }
 
   Widget _fields(BuildContext context) {
     final fields = [

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/core/pigeon/constants.dart';
@@ -32,6 +33,7 @@ abstract interface class GeoDataImport {
 /// All installed Geodata lives directly in one flat directory. Downloads and
 /// rollback backups use short-lived sibling directories only.
 class GeoDataService {
+  Future<Map<int, Object>>? _updateAll;
   static final GeoDataService _singleton = GeoDataService._(
     null,
     null,
@@ -245,6 +247,36 @@ class GeoDataService {
       }
     });
   }
+
+  /// Manual updates keep independent failures, including a failed default pair.
+  /// A caller may display the result, but never reconnects as part of an update.
+  Future<Map<int, Object>> updateAll() => _updateAll ??= _updates
+      .track(
+        () => AppEventBus.instance.trackDownload(() async {
+          final errors = <int, Object>{};
+          final custom = await _db.geoDataDao.allRows;
+          try {
+            await updateDefaults();
+          } catch (error) {
+            errors[-1] = error;
+          }
+          for (final file in custom) {
+            if (_updates.isPaused) {
+              throw const AppFailure(FailureCategory.conflict, 'cancelled');
+            }
+            try {
+              await updateCustom(file);
+            } catch (error) {
+              errors[file.id] = error;
+            }
+          }
+          if (_updates.isPaused) {
+            throw const AppFailure(FailureCategory.conflict, 'cancelled');
+          }
+          return errors;
+        }),
+      )
+      .whenComplete(() => _updateAll = null);
 
   Future<void> updateDefaults() => _updates.track(() async {
     await withFiles(() => _ensureInstalled());

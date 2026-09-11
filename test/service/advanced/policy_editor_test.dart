@@ -313,6 +313,110 @@ void main() {
   );
 
   test(
+    'Apple exclusions save, trim fields and retain disabled lists',
+    () async {
+      final service = PolicyEditorService(
+        coordinator: coordinator,
+        platform: ConnectionPlatform.macos,
+      );
+      final draft = await service.load();
+      draft.policy['apple']['excludedCidrs'] = [
+        ' 10.250.0.0/16 ',
+        '',
+        '2001:db8::/64',
+      ];
+      final originalDraft = jsonEncode(draft.policy);
+      expect(
+        await service.save(draft: draft, confirm: (_) async => false),
+        true,
+      );
+      expect(jsonEncode(draft.policy), originalDraft);
+      var saved = await service.load();
+      expect(saved.policy['apple']['excludedCidrs'], [
+        '10.250.0.0/16',
+        '2001:db8::/64',
+      ]);
+      saved.policy['apple']['captureAllTraffic'] = true;
+      expect(
+        await service.save(draft: saved, confirm: (_) async => false),
+        true,
+      );
+      saved = await service.load();
+      expect(saved.policy['apple']['excludedCidrs'], [
+        '10.250.0.0/16',
+        '2001:db8::/64',
+      ]);
+      expect(
+        saved.original.policy.toTun(ConnectionPlatform.macos).excludedRoutes,
+        isNull,
+      );
+      expect(stops, 0);
+    },
+  );
+
+  test(
+    'Apple exclusion changes require reconnect approval only when effective',
+    () async {
+      final service = PolicyEditorService(
+        coordinator: coordinator,
+        platform: ConnectionPlatform.ios,
+      );
+      final draft = await service.load();
+      draft.policy['apple']['excludedCidrs'] = ['10.250.0.0/16'];
+      final changed = service.validate(draft);
+      expect(
+        PolicyEditorService.sameRuntime(
+          draft.original.policy,
+          changed,
+          ConnectionPlatform.ios,
+        ),
+        false,
+      );
+      host = HostConnection(
+        VpnStatus.connected,
+        runtime: _runtime(draft.original),
+      );
+      var confirmations = 0;
+      expect(
+        await service.save(
+          draft: draft,
+          confirm: (disconnect) async {
+            confirmations++;
+            expect(disconnect, false);
+            return false;
+          },
+        ),
+        false,
+      );
+      expect(confirmations, 1);
+      expect(stops, 0);
+      expect(
+        (await coordinator.configuration).policy
+            .toJson()['apple']['excludedCidrs'],
+        isEmpty,
+      );
+
+      final inactive = PlatformPolicy.fromJson({
+        'apple': {'captureAllTraffic': true},
+      });
+      final disabledDraft = PolicyEditorDraft(
+        ConnectionConfiguration(policy: inactive),
+      );
+      disabledDraft.policy['apple']['excludedCidrs'] = ['invalid hidden draft'];
+      expect(
+        PolicyEditorService.sameRuntime(
+          inactive,
+          service.validate(disabledDraft),
+          ConnectionPlatform.ios,
+        ),
+        true,
+      );
+      disabledDraft.policy['apple']['captureAllTraffic'] = false;
+      expect(() => service.validate(disabledDraft), throwsFormatException);
+    },
+  );
+
+  test(
     'Windows uses full existing CIDR policy and never removes IPv6 conflicts',
     () {
       final service = PolicyEditorService(

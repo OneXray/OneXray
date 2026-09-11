@@ -145,6 +145,11 @@ final class PlatformPolicy {
       }
       tun.addAll({
         'includeAllNetworks': apple['captureAllTraffic'],
+        if (apple['captureAllTraffic'] == false)
+          'excludedRoutes': _appleExcludedRoutes(
+            (apple['excludedCidrs'] as List).cast<String>(),
+            ipv6: policy['ipv6Enabled'] as bool,
+          ),
         'excludeLocalNetworks': apple['allowLocalNetwork'],
         'excludeCellularServices': apple['bypassCellularServices'],
         'excludeAPNs': apple['bypassApplePushNotifications'],
@@ -180,6 +185,7 @@ const _defaults = <String, dynamic>{
   },
   'apple': {
     'captureAllTraffic': false,
+    'excludedCidrs': <String>[],
     'allowLocalNetwork': true,
     'bypassCellularServices': true,
     'bypassApplePushNotifications': true,
@@ -226,6 +232,40 @@ Map<String, dynamic> _readPolicyObject(
     }
     throw FormatException('Invalid platform policy field: $key');
   });
+}
+
+List<String> _appleExcludedRoutes(List<String> values, {required bool ipv6}) {
+  final routes = <String>[];
+  for (final value in values) {
+    final parts = value.split('/');
+    final address =
+        parts.length == 2 && !RegExp(r'[\[\]%\s]').hasMatch(parts[0])
+        ? InternetAddress.tryParse(parts[0])
+        : null;
+    final prefix =
+        parts.length == 2 &&
+            RegExp(r'^[0-9]+$').stringMatch(parts[1]) == parts[1]
+        ? int.tryParse(parts[1])
+        : null;
+    if (address == null ||
+        prefix == null ||
+        prefix > address.rawAddress.length * 8) {
+      throw FormatException('Invalid Apple VPN exclusion CIDR: $value');
+    }
+    final bytes = address.rawAddress;
+    for (var i = 0; i < bytes.length; i++) {
+      if ((bytes[i] & _mask(prefix, i)) != bytes[i]) {
+        throw FormatException(
+          'Apple VPN exclusion must be a network: $value. '
+          'Use /32 or /128 for a single address.',
+        );
+      }
+    }
+    if (ipv6 || address.type == InternetAddressType.IPv4) {
+      routes.add('${address.address}/$prefix');
+    }
+  }
+  return routes;
 }
 
 void _validateExclusions(List<String> values, {bool ipv6 = true}) {

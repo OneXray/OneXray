@@ -84,6 +84,63 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 }
 
 void main() {
+  for (final desktop in [false, true]) {
+    testWidgets(
+      'Apple excluded networks can be edited and survive capture all ($desktop)',
+      (tester) async {
+        if (desktop) {
+          _desktop(tester);
+        } else {
+          _phone(tester);
+        }
+        final controller = _controller();
+        await tester.pumpWidget(
+          _app(AppleVpnView(controller: controller, capabilities: _supported)),
+        );
+        expect(find.text('No bypass networks added.'), findsOneWidget);
+        await _tap(tester, find.text('Add network'));
+        final field = find.byType(TextField);
+        await tester.enterText(field, '10.250.0.0/16');
+        await tester.pumpAndSettle();
+        expect(controller.strings('apple', 'excludedCidrs'), ['10.250.0.0/16']);
+
+        await _tap(tester, _toggle('captureAllTraffic'));
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('Add network'), findsNothing);
+        expect(
+          find.text(
+            'Excluded networks are not applied while Capture all traffic is on. Your saved list is kept.',
+          ),
+          findsOneWidget,
+        );
+        expect(controller.strings('apple', 'excludedCidrs'), ['10.250.0.0/16']);
+        await _tap(tester, _toggle('captureAllTraffic'));
+        expect(
+          tester.widget<TextField>(field).controller!.text,
+          '10.250.0.0/16',
+        );
+
+        await tester.enterText(field, 'invalid-cidr');
+        await tester.pumpAndSettle();
+        expect(
+          await controller.save(
+            tester.element(find.byType(AppleVpnView)),
+            pop: false,
+          ),
+          false,
+        );
+        expect(controller.error, contains('invalid-cidr'));
+        expect(controller.error, contains('CIDR'));
+        expect(controller.busy, false);
+
+        await _tap(tester, find.byTooltip('Remove bypass network 1'));
+        expect(controller.strings('apple', 'excludedCidrs'), isEmpty);
+        expect(controller.error, isNull);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('desktop network actions stay content-sized', (tester) async {
     _desktop(tester);
     final controller = _controller(
@@ -324,6 +381,16 @@ void main() {
       );
       expect(controller.group('apple')['ethernetAction'], 'disconnect');
       expect(controller.group('apple')['cellularAction'], 'connect');
+      expect(tester.takeException(), isNull);
+      await _tap(tester, _toggle('captureAllTraffic'));
+      await _tap(tester, find.text(l.prototypeAddNetwork));
+      await tester.enterText(find.byType(TextField), '2001:db8:1234:5678::/64');
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).textDirection,
+        TextDirection.ltr,
+      );
+      expect(find.text(l.appleExcludedNetworksInputHint), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(
         _app(

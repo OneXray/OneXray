@@ -34,6 +34,7 @@ data class TunJson(
     val excludeCellularServices: Boolean?,
     val excludeAPNs: Boolean?,
     val excludeDeviceCommunication: Boolean?,
+    val excludedRoutes: List<String>? = null,
     val onDemandEnabled: Boolean?,
     val onDemandRules: List<OnDemandRule>?,
     val perAppVPNMode: PerAppVPNMode?,

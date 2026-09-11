@@ -11,12 +11,14 @@ import 'package:onexray/service/shared/failure.dart';
 Future<bool> runConnectionAction(
   BuildContext context,
   ConnectionCoordinator coordinator,
-  Future<void> Function() action,
-) async {
+  Future<void> Function() action, {
+  bool rethrowErrors = false,
+}) async {
   try {
     await action();
     return true;
   } catch (error) {
+    if (rethrowErrors) rethrow;
     if (!failureCancelled(error) &&
         connectionFailureReason(error) != 'cancelled' &&
         coordinator.state.value.issue != 'cancelled' &&
@@ -37,6 +39,8 @@ Future<ConnectionConfiguration?> applyConnectionChange(
   Map<String, dynamic> values, {
   required String Function(ConnectionSettings) label,
   Future<void> Function()? writeAssets,
+  Future<void> Function()? validateAssets,
+  bool rethrowErrors = false,
 }) async {
   final current = await coordinator.configuration;
   final next = ConnectionConfiguration(
@@ -62,10 +66,11 @@ Future<ConnectionConfiguration?> applyConnectionChange(
     await coordinator.apply(
       next,
       writeAssets: writeAssets,
+      validateAssets: validateAssets,
       expectedConfiguration: current.encode(),
       allowReconnect: reconnect,
     );
     saved = await coordinator.configuration;
-  });
+  }, rethrowErrors: rethrowErrors);
   return saved;
 }

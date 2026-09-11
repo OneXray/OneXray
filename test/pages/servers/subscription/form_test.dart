@@ -33,7 +33,8 @@ void main() {
         value: controller,
         child: BlocBuilder<ServerImportController, ServerImportPageState>(
           builder: (context, state) => SubscriptionFormView(
-            supportText: 'Supported formats',
+            supportText: AppLocalizations.of(context)!
+                .prototypeSubscriptionDescription,
             nameLabel: 'Name',
             nameHint: 'Example Service',
             nameController: name,
@@ -41,6 +42,11 @@ void main() {
             urlController: url,
             urlHint: 'https://provider.example/subscription',
             urlHelper: 'HTTPS only',
+            hwidTitle: AppLocalizations.of(context)!.subscriptionHwidTitle,
+            hwidDescription: AppLocalizations.of(context)!
+                .subscriptionHwidDescription,
+            hwidEnabled: state.hwidEnabled,
+            onHwidChanged: controller.setHwidEnabled,
             encryptionTitle: 'Encryption',
             ageProviderSupportTitle: 'Provider support required',
             ageProviderSupportDescription: 'Enter Age keys only when your provider supports encrypted subscriptions.',
@@ -95,7 +101,7 @@ void main() {
     await tester.pumpWidget(app(form()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Supported formats'), findsOneWidget);
+    expect(find.textContaining('Only VLESS / v2rayN'), findsOneWidget);
     expect(find.text('HTTPS only'), findsOneWidget);
     expect(find.byType(ShadInput), findsNWidgets(4));
     expect(
@@ -166,6 +172,52 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    for (final width in [390.0, 1000.0]) {
+      testWidgets('format notice and HWID disclosure fit at $width ($locale)', (
+        tester,
+      ) async {
+        await tester.binding.setSurfaceSize(Size(width, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        url.text = 'https://provider.example/list';
+        await tester.pumpWidget(app(form(), locale: locale));
+        await tester.pumpAndSettle();
+        final l = AppLocalizations.of(
+          tester.element(find.byType(SubscriptionFormView)),
+        )!;
+        expect(l.prototypeSubscriptionDescription, contains('VLESS / v2rayN'));
+        final formatNotice = tester.widget<Text>(
+          find.text(l.prototypeSubscriptionDescription),
+        );
+        expect(formatNotice.maxLines, isNull);
+        expect(formatNotice.overflow, isNull);
+        final disclosure = tester.widget<Text>(
+          find.text(l.subscriptionHwidDescription),
+        );
+        expect(disclosure.maxLines, isNull);
+        expect(disclosure.overflow, isNull);
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isFalse,
+        );
+        await tester.ensureVisible(find.text(l.subscriptionHwidTitle));
+        await tester.tap(find.text(l.subscriptionHwidTitle));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isTrue,
+        );
+        url.text = 'https://another.example/sub';
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+          isFalse,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   for (final locale in const [Locale('en'), Locale('fa')]) {
     testWidgets(
