@@ -37,6 +37,10 @@ focus alone is not cancellation. See [sharing](subscriptions-and-sharing.md#outg
 Microsoft YaHei UI、Microsoft YaHei，其它平台保留系统字体回退。不照搬浏览器的字体栈
 或预览工具栏尺寸。
 
+Linux 的原生 runner 在创建 Flutter View 前关闭 Impeller，所有 Linux 架构共用此设置，
+不改变其它平台的渲染器。调试使用 `flutter run -d linux --no-enable-impeller`，遵循
+[Flutter 官方关闭方式](https://docs.flutter.dev/perf/impeller#linux)。
+
 页面特有的尺寸覆盖和完整视觉验收仍需逐页核对；修改公共角色前应检查其他消费页。
 
 ## 连接
