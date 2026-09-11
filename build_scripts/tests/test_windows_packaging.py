@@ -73,9 +73,7 @@ class WindowsPackagingTest(unittest.TestCase):
         source = (Path(self.builder.root_dir) / "build/windows" /
                   self.builder.target_architecture / "runner/Release")
         source.mkdir(parents=True, exist_ok=True)
-        runtime_files = ("msvcp140.dll", "vcruntime140.dll")
-        if self.builder.target_architecture == "x64":
-            runtime_files += ("vcruntime140_1.dll",)
+        runtime_files = self.builder._required_crt_files()
         for name in ("OneXray.exe", "flutter_windows.dll", *_RUNTIME_FILES, *runtime_files):
             (source / name).write_bytes(_pe(self.builder._machine()))
         for name in ("data/icudtl.dat", "data/app.so", "data/flutter_assets/AssetManifest.bin",
@@ -167,18 +165,20 @@ class WindowsPackagingTest(unittest.TestCase):
             self.builder._release_bundle()
 
     def test_fastforge_rejects_missing_visual_cpp_runtime_before_collecting_packages(self):
-        for architecture, package_arch in (("x64", "amd64"), ("arm64", "arm64")):
+        # Keep expectations independent from the helper used by the bundle fixture.
+        for architecture, package_arch, required_files in (
+            ("x64", "amd64", ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")),
+            ("arm64", "arm64", ("msvcp140.dll", "vcruntime140.dll")),
+        ):
             self.builder.target_architecture = architecture
             self.builder.package_suffix = f"windows-{package_arch}"
+            self.assertEqual(self.builder._required_crt_files(), required_files)
             source = self._bundle()
             dist = Path(self.builder.root_dir) / "dist/26.7.3"
             dist.mkdir(parents=True, exist_ok=True)
             for extension in ("exe", "zip"):
                 (dist / f"OneXray-windows-{package_arch}.{extension}").write_bytes(b"fixture")
-            names = ("msvcp140.dll", "vcruntime140.dll")
-            if architecture == "x64":
-                names += ("vcruntime140_1.dll",)
-            for name in names:
+            for name in required_files:
                 with self.subTest(architecture=architecture, runtime=name):
                     original = (source / name).read_bytes()
                     (source / name).unlink()
