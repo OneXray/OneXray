@@ -77,35 +77,27 @@ Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bi
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
-Smart and Custom routing keep two independently tagged DNS servers. Proxy DNS
-remains `8.8.8.8`; direct DNS defaults to that address and is independently
-editable in each routing configuration. Smart retains the saved address when
-its direct-DNS switch is off, but uses the previous default with no direct domain
-matches until the switch is enabled again. Direct-DNS address syntax is validated
-by libXray, not a separate App protocol or reachability check.
+智能路由和自定义路由保留两个使用独立 tag 的 DNS server。代理 DNS 固定为 `8.8.8.8`；
+直连 DNS 默认使用该地址，可在各份路由配置中独立修改。智能路由关闭直连 DNS 开关后，
+保留已保存的地址，但运行时使用原默认地址且不匹配直连域名，直到重新开启开关。
+直连 DNS 地址的语法由 libXray 校验，App 不另行检查协议或连通性。
 direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
 宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
-## Tunnel DNS
+## 隧道 DNS
 
-The VPN Tunnel page edits IPv4 DNS, IPv6 DNS, and the DNS server name in the
-existing platform-policy JSON. Missing fields retain the previous Google
-defaults. These global settings are independent of per-route direct DNS and
-do not change Raw JSON's own DNS addresses. No database columns or schema
-upgrade are needed.
+VPN 隧道页可编辑 IPv4 DNS、IPv6 DNS 和 DNS 服务器域名，保存在现有平台策略 JSON 中。
+缺失字段沿用原 Google 默认值。这些全局设置独立于各份路由的直连 DNS，不修改 Raw JSON
+自身的 DNS 地址，无需新增数据库列或升级 schema。
 
-The existing native TUN request carries the configured addresses to Apple and
-Android; Linux and Windows EXE also use them in the generated Xray TUN inbound.
-Windows MSIX uses them in its network settings and exclusion checks, preserving
-its existing IPv6 handling. Native DNS addresses must be IP literals of the
-corresponding family. Inactive IPv6 values are retained without applying them.
+现有原生 TUN 请求将配置的地址传给 Apple 和 Android；Linux 和 Windows EXE 生成的 Xray
+TUN 入站也使用这些地址。Windows MSIX 将其用于网络设置和排除规则校验，保持现有 IPv6
+处理方式。原生 DNS 地址必须是对应地址族的 IP 字面量；未生效的 IPv6 值仅保留，不应用。
 
-The server name is used only for Apple DNS over TLS, not as a search domain.
-With DoT enabled, the addresses and name must describe the same service and its
-TLS certificate. Changes to effective DNS settings use the existing save and
-confirmed-reconnect workflow; inactive server-name and IPv6 edits do not cause
-a reconnect. Restoring defaults changes only the draft until saved.
+服务器域名仅用于 Apple DNS over TLS，不作为搜索域。开启 DoT 时，地址与域名必须属于
+同一服务，并与其 TLS 证书匹配。有效 DNS 设置的修改复用现有保存及确认重连流程；修改
+未生效的服务器域名或 IPv6 设置不触发重连。恢复默认只修改草稿，保存后才生效。
 
 ## IPv6 策略
 
@@ -129,13 +121,11 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 
 ## 自定义路由
 
-Custom routing stores and shares its direct DNS address as
-`dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`.
-The fixed tag identifies the server, not its array position. Only this single
-tagged server's `address` is editable; domains, fallback and query strategy are
-generated during validation and runtime compilation, not stored or exported.
-Existing profiles without DNS use the previous default. Unsupported DNS fields,
-untagged servers and duplicate servers are rejected rather than silently lost.
+自定义路由通过 `dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`
+存储和分享直连 DNS 地址。使用固定 tag 标记服务器，不依赖数组位置；仅允许编辑这一条
+带标签服务器的 `address`。域名匹配、回退和查询策略在校验及运行编译时生成，不存储或
+导出。已有配置未包含 DNS 时沿用原默认值；不支持的 DNS 字段、无标签服务器和重复
+服务器直接拒绝，不静默丢弃。
 
 普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
 `RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI

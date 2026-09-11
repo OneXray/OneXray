@@ -78,10 +78,9 @@ Raw 新增最多三份；已有超额旧数据仍完整显示、可编辑和选�
 
 高级是第三个根级入口，分为“VPN 隧道”和“Xray”两个 Tab。
 
-- VPN Tunnel: read-only TUN addresses, editable IPv4/IPv6 DNS and server name,
-  and a separate IPv6 switch. DNS inputs remain on this page; the server-name
-  hint explains its Apple DoT-only use. Platform configuration uses detail pages.
-  The outbound interface appears only on Windows/Linux and requires selection.
+- VPN 隧道：只读 TUN 地址、可编辑的 IPv4/IPv6 DNS 和服务器域名，以及独立 IPv6 开关。
+  DNS 输入保留在本页；域名提示说明其仅用于 Apple DoT。平台配置使用详情页。
+  出口网卡只在 Windows/Linux 显示，必须明确选择。
 - Apple：始终开启、按需 Wi-Fi 连接/断开规则及平台对应的蜂窝/Ethernet；接管全部流量
   打开后显示四项系统排除设置。关闭时可编辑绕过 VPN 的 IPv4/IPv6 网段，默认列表为空；
   重新打开后隐藏编辑控件、提示列表不生效，并保留已保存的内容。修改有效网段时复用
