@@ -47,7 +47,7 @@ Windows 矩阵为 `x64 / arm64 × exe / msix`，四个任务各自独立编译 F
 
 GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` 单平台发布只上传 Windows 文件。构建凭证包含 `windowsMode`，文件名及 artifact 名以模式区分，禁止用 EXE 凭证满足 MSIX 发布要求。发布检查细节见 [构建脚本](../build_scripts/README.md#release-provenance--发布溯源)。
 
-[`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 仅手动触发：输入一次成功 Build 的 run ID 后，将两个架构的 MSIX 合并为 MSIX Bundle；来源是 release tag 构建时继续提交到 Microsoft Partner Center，否则只生成 Bundle。
+[`publish-microsoft-store.yml`](../.github/workflows/publish-microsoft-store.yml) 仅手动触发：输入一次成功 Build 的 run ID 后，将两个架构的 MSIX 合并为 MSIX Bundle，并通过 `upload-artifact` 保存为 GitHub Actions 产物。无论是否来自 release tag 构建，都不自动上传商店；下载 Bundle 后手动提交到 Microsoft Partner Center。
 
 选择或更换 runner 时，必须通过 GitHub Actions 验证镜像实际提供并默认选择了所需的 Visual Studio、CMake 和 Windows SDK 工具链，不能只根据 runner 标签推断。
 
@@ -90,7 +90,7 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 5. 两个架构分别生成 EXE、ZIP、MSIX，EXE/ZIP 由同一份 EXE 模式 Release 目录打包，MSIX 由独立的 MSIX 模式构建生成；上传名称和凭证不会互相覆盖。
 6. Manifest 恰好包含一个 Application、两个 VCore extension、VCore activation class、所需能力和 `VCoreStartup`；没有 helper Id 或 `AppListEntry`，包内三个 VCore 文件均为目标架构且 hash 与 artifact manifest 一致。
 7. MSIX 不包含 `allowElevation`，Core 启动不触发 UAC。
-8. Microsoft Store workflow 能从两个架构的 MSIX artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据和受限能力审批。
+8. Microsoft Store workflow 能从两个架构的 MSIX artifact 生成 MSIX Bundle，并上传为 GitHub Actions 产物；商店提交和受限能力审批另行在 Partner Center 验证。
 9. 在未预装 VC++ runtime 的干净 x64 和 ARM64 Windows 上，EXE 安装版和 ZIP 完整解压版的 GUI 均可启动；原生 TUN、UAC 取消、Core 异常退出、停止 / 重连、登录项和旧版数据库升级另行在 Windows 实机验证。单纯打包成功或 Core 帮助命令成功不代表这些场景通过。
 
 静态 / 单元测试和已安装开发工具链的主机测试不能替代干净系统、安装包或 VPN 验收；未执行的矩阵项保持待验证。
@@ -133,7 +133,7 @@ $env:ONEXRAY_DEV_PUBLISHER = $certificate.Subject
 ## 主要实现入口
 
 - 构建矩阵：`.github/workflows/build.yml`
-- Microsoft Store Bundle 与发布：`.github/workflows/publish-microsoft-store.yml`
+- Microsoft Store Bundle 生成与产物上传：`.github/workflows/publish-microsoft-store.yml`
 - winget 更新：`.github/workflows/update-winget.yml`
 - Windows CMake：`windows/CMakeLists.txt`、`windows/app.cmake`
 - App 构建编排：`build_scripts/`
