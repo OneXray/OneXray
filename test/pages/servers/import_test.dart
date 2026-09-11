@@ -378,14 +378,20 @@ void main() {
       await controller.subscribe(context);
       expect(inputs.last.hwid, hwid);
 
+      controller.url.clear();
+      controller.url.text = 'https://provider.example/retry';
+      controller.setHwidEnabled(true);
+      await controller.subscribe(context);
+      expect(inputs.last.hwid, hwid);
+
       controller.url.text = 'https://different.example/sub';
       expect(controller.state.hwidEnabled, isFalse);
       await controller.subscribe(context);
-      expect(inputs.last.hwid, isNull);
+      expect(inputs.last.hwidEnabled, isFalse);
+      expect(inputs.last.hwid, hwid);
       controller.setHwidEnabled(true);
       await controller.subscribe(context);
-      expect(inputs.last.hwid, isNotNull);
-      expect(inputs.last.hwid, isNot(hwid));
+      expect(inputs.last.hwid, hwid);
       expect(controller.state.busy, isFalse);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -657,6 +663,9 @@ void main() {
     controller.toggleSecret();
     expect(controller.state.obscureSecret, false);
     controller.name.text = 'Renamed';
+    controller.url.text = 'https://different.example/list';
+    expect(controller.state.hwidEnabled, isFalse);
+    controller.setHwidEnabled(true);
     await _tapVisible(tester, find.text('Save'));
     await tester.pump();
     expect(find.text('Save'), findsOneWidget);
@@ -675,6 +684,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(savedId, 7);
     expect(saved?.name, 'Renamed');
+    expect(saved?.url, 'https://different.example/list');
     expect(saved?.ageSecretKey, 'secret');
     expect(saved?.agePublicKey, 'public');
     expect(saved?.hwidEnabled, isTrue);

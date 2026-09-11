@@ -209,7 +209,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   void _changed() {
     var hwidEnabled = state.hwidEnabled;
     if (_hwidUrl != null && !SubscriptionUrl.sameOrigin(_hwidUrl!, url.text)) {
-      _hwid = null;
+      // A new origin needs consent again, not a new subscription identity.
       _hwidUrl = null;
       hwidEnabled = false;
     }
@@ -282,7 +282,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         }
       }
       final sameOrigin = SubscriptionUrl.sameOrigin(row.url, url.text);
-      _hwid = sameOrigin ? row.hwid : null;
+      _hwid = row.hwid;
       _hwidUrl = sameOrigin ? row.url : null;
       emit(state.copyWith(hwidEnabled: sameOrigin && row.hwidEnabled));
     } catch (error) {

@@ -64,6 +64,7 @@ final class TrayService with TrayListener {
   final _pendingUpdates = <String>{};
   bool _changingConfiguration = false;
   bool _refreshRequested = false;
+  bool _menuOpen = false;
   Future<void>? _refreshing;
 
   final Future<void> Function() _connect;
@@ -143,6 +144,7 @@ final class TrayService with TrayListener {
 
   Future<void> refreshTrayManager() {
     _refreshRequested = true;
+    if (_menuOpen) return Future.value();
     return _refreshing ??= _refreshMenu().whenComplete(
       () => _refreshing = null,
     );
@@ -155,7 +157,7 @@ final class TrayService with TrayListener {
     do {
       _refreshRequested = false;
       await _publishMenu();
-    } while (_refreshRequested && _initialized);
+    } while (_refreshRequested && _initialized && !_menuOpen);
   }
 
   Future<void> _publishMenu() async {
@@ -244,14 +246,31 @@ final class TrayService with TrayListener {
 
   @override
   void onTrayIconMouseDown() {
-    trayManager.popUpContextMenu();
+    unawaited(_openMenu());
     super.onTrayIconMouseDown();
   }
 
   @override
   void onTrayIconRightMouseDown() {
-    trayManager.popUpContextMenu();
+    unawaited(_openMenu());
     super.onTrayIconRightMouseDown();
+  }
+
+  Future<void> _openMenu() async {
+    if (!_initialized || _menuOpen) return;
+    _menuOpen = true;
+    try {
+      // Keep the native popup and tray_manager's Dart ID lookup on the same
+      // menu until AppKit/Win32 finishes tracking it. Coalesce stream updates.
+      await _refreshing;
+      if (!_initialized) return;
+      await trayManager.popUpContextMenu();
+    } catch (error, stackTrace) {
+      ygLogger('Open tray menu failed: $error\n$stackTrace');
+    } finally {
+      _menuOpen = false;
+      if (_refreshRequested) _requestRefresh();
+    }
   }
 
   @override

@@ -61,7 +61,7 @@ void main() {
   });
 
   test(
-    'refresh and edits retain HWID, while a different provider gets a new ID',
+    'refresh, toggles and provider edits retain the original HWID',
     () async {
       final inputs = <SubscriptionInput>[];
       Future<SubscriptionLoadResult> load(SubscriptionInput input) async {
@@ -114,23 +114,49 @@ void main() {
       );
       final changed = (await database.subscriptionDao.searchRow(row.id))!;
       expect(changed.hwidEnabled, isFalse);
-      expect(changed.hwid, isNull);
+      expect(changed.hwid, row.hwid);
       await restarted.saveSubscriptionInput(
         row.id,
         SubscriptionInput(
           name: changed.name,
           url: changed.url,
           hwidEnabled: true,
+          hwid: 'must-not-replace-the-saved-identity',
         ),
       );
       expect(
         (await restarted.refreshSubscriptionResult(changed)).success,
         isTrue,
       );
-      expect(inputs.last.hwid, isNotNull);
-      expect(inputs.last.hwid, isNot(row.hwid));
+      expect(inputs.last.hwid, row.hwid);
     },
   );
+
+  for (final enabled in [false, true]) {
+    test(
+      'first edit saves the generated draft HWID (enabled: $enabled)',
+      () async {
+        final source = await _source(database);
+        final service = _service(
+          database,
+          (_) async =>
+              throw StateError('Saving must not download the subscription'),
+        );
+        await service.saveSubscriptionInput(
+          source.id,
+          SubscriptionInput(
+            name: source.name,
+            url: source.url,
+            hwidEnabled: enabled,
+            hwid: 'first-draft-identity',
+          ),
+        );
+        final saved = (await database.subscriptionDao.searchRow(source.id))!;
+        expect(saved.hwid, 'first-draft-identity');
+        expect(saved.hwidEnabled, enabled);
+      },
+    );
+  }
 
   for (final useService in [true, false]) {
     test(

@@ -244,12 +244,9 @@ class SubscriptionService {
         )) {
           return SubscriptionUpdateResult.invalidContent;
         }
-        // Preserve the identity across toggles and same-provider URL edits.
-        // A different origin must never inherit the previous provider's ID.
-        final retainedHwid = SubscriptionUrl.sameOrigin(row.url, input.url)
-            ? row.hwid
-            : null;
-        final hwid = retainedHwid ?? (input.hwidEnabled ? createHwid() : null);
+        // Once generated, the identity belongs to this subscription, not its URL.
+        final hwid =
+            row.hwid ?? input.hwid ?? (input.hwidEnabled ? createHwid() : null);
         final updated = await _database.subscriptionDao.updateRow(
           row.copyWith(
             name: input.name,
