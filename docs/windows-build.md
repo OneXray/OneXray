@@ -38,6 +38,7 @@ uv run --project build_scripts python build_scripts/main.py OneXray windows --wi
 - 构建时按目标架构设置安装器配置，临时使用不含 `+build` 的发布版本号供 Fastforge 打包，并通过 Flutter 参数保留构建号；成功或失败后均恢复安装器配置与完整 `pubspec.yaml`。只归集当前版本、当前架构的 EXE / ZIP，不扫描并混入旧包。
 - 卸载只删除指向当前安装位置的 Startup 快捷方式和协议注册，不删除用户数据库，也不关闭其他安装的 Core。安装 / 升级 / 卸载前应先停止 VPN 并退出 App。
 - ZIP 由 Fastforge 压缩同一份 Release 目录；必须完整解压后运行，不能只复制 `OneXray.exe`。它不注册协议、不自动创建快捷方式，也不把用户数据放在解压目录；数据根目录与 EXE 安装版相同。
+- CMake 从目标 MSVC 工具链的 Redistributable 目录安装应用本地 VC++ runtime，随同一份 Release 目录进入 EXE、ZIP 和 MSIX；不复制开发机 System32 中的 DLL，不要求用户先安装 Visual Studio 或全局 VC++ runtime。Windows 10/11 的系统 UCRT 不重复打包。
 - 提权、查询进程和等待退出在 worker isolate 执行。拒绝 UAC 或启动失败时停在失败状态，不恢复旧连接。
 
 ## CI 构建
@@ -57,6 +58,7 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 - 正式 Release 发布或从预发布转为正式版时自动触发；也可手动指定已存在的 Release tag。现有 `Publish` 流程仍只创建预发布，不直接更新 winget。
 - 跳过预发布，拒绝草稿；正式版本必须同时具备 x64 和 ARM64 的 EXE 安装包，缺失任一架构时失败。ZIP 与 MSIX 不提交到此渠道。
 - 使用 `YuanDevLLC.OneXray` 标识向 `microsoft/winget-pkgs` 提交更新 PR，不自动合并，不清理历史版本。
+- 清单的用户级作用域、安装路径和显示名称必须与实际安装器一致，不继承旧版本的机器级提权字段。既有未内置 VC++ runtime 的版本应按架构声明 `Microsoft.VCRedist.2015+` 依赖；这不能修复直接下载的旧 EXE/ZIP，也不能用成功退出码掩盖 helper 崩溃。内置 runtime 的新版本经验证后应移除不再需要的全局运行库依赖，避免额外提权。已发布的安装包和摘要不替换，二进制修复通过新版本发布。
 - 仓库需配置 `PACKAGE_MANAGER_GITHUB_TOKEN` secret（具有 `public_repo` scope 的 classic PAT），且对 `OneXray/winget-pkgs` fork 有写权限。工作流在提交前检查令牌是否配置、fork 来源和写权限。
 
 恢复或修改工作流时只验证配置与发布条件；实际执行会创建外部 PR，不能作为本地回归测试。
@@ -66,7 +68,7 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 - Windows CMake 工程使用 C++17。
 - MSVC 编译启用 `/W4 /WX`，警告会导致构建失败。
 - Flutter、Go、libXray 生成的 `OneXrayCore.exe`、Wintun 和三个 VCore 产物的架构必须与矩阵项一致。
-- CMake 在两种模式下都必须安装 `libXray.dll`、`OneXrayCore.exe`、`wintun.dll` 和三个 VCore 产物；与 App EXE 平铺在同一目录，不使用旧 `bin/` 布局。缺失依赖直接构建失败；MSIX 打包前、Fastforge 产物归集前再次检查运行文件、PE 架构与 Flutter 数据。
+- CMake 在两种模式下都必须安装 `libXray.dll`、`OneXrayCore.exe`、`wintun.dll`、三个 VCore 产物及目标 MSVC runtime；与 App EXE 平铺在同一目录，不使用旧 `bin/` 布局。`msvcp140.dll`、`vcruntime140.dll` 必须存在，x64 还要求 `vcruntime140_1.dll`。缺失依赖直接构建失败；MSIX 打包前、Fastforge 产物归集前再次检查运行文件、PE 架构与 Flutter 数据。
 - Wintun 从官方发行包获取，固定下载摘要，只提取目标架构的未修改 DLL；下载缓存放在工作区 `references/windows-build/`。App 不增加 Wintun 许可文件或许可 UI，来源与上游分发说明记录在 [文档站](https://onexray.com/zh/docs/credits/)。
 - MSIX 最低系统版本为 Windows 10 20H2（build 19042），只声明一个主 Application，但保留完全信任前台、AppContainer VPN Provider 和 full-trust Session Host 三个进程。
 - Provider 通过无参数 `FullTrustProcessLauncher` 启动 Session Host。VCore Provider 将系统 IP 包交给 Session Host；Session Host 用 kill-on-close Job Object 启动并监督普通权限 `OneXrayCore.exe`，VCore 再通过动态 loopback SOCKS5 转发。`sessionBackend` 只管理进程存活，不检查端口或 readiness；该 SOCKS5 仅监听 `127.0.0.1`，不是用户代理入口。
@@ -89,9 +91,9 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 6. Manifest 恰好包含一个 Application、两个 VCore extension、VCore activation class、所需能力和 `VCoreStartup`；没有 helper Id 或 `AppListEntry`，包内三个 VCore 文件均为目标架构且 hash 与 artifact manifest 一致。
 7. MSIX 不包含 `allowElevation`，Core 启动不触发 UAC。
 8. Microsoft Store workflow 能从两个架构的 MSIX artifact 生成 MSIX Bundle；实际发布必须另行验证 Partner Center 凭据和受限能力审批。
-9. EXE 安装版和 ZIP 完整解压版均可启动；原生 TUN、UAC 取消、Core 异常退出、停止 / 重连、登录项和旧版数据库升级在 Windows 实机验证。单纯打包成功不代表这些场景通过。
+9. 在未预装 VC++ runtime 的干净 x64 和 ARM64 Windows 上，EXE 安装版和 ZIP 完整解压版的 GUI 均可启动；原生 TUN、UAC 取消、Core 异常退出、停止 / 重连、登录项和旧版数据库升级另行在 Windows 实机验证。单纯打包成功或 Core 帮助命令成功不代表这些场景通过。
 
-当前 macOS 开发主机只做配置、适配器、打包逻辑、工作流和发布凭证的静态 / 单元验证，不编译或运行 Windows，不启动 macOS VPN。上述 Windows 验收由后续 CI 与手动测试完成。
+静态 / 单元测试和已安装开发工具链的主机测试不能替代干净系统、安装包或 VPN 验收；未执行的矩阵项保持待验证。
 
 ## 本地签名包
 
