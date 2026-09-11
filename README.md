@@ -36,8 +36,8 @@ OneXray is an open-source Xray-core client for phones, tablets, and desktops. Im
 | macOS | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) · Microsoft Store |
-| Windows ARM64 | Windows 11 | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) · Microsoft Store |
+| Windows x64 | Windows 10 20H2+ | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
+| Windows ARM64 | Windows 11 | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
 | Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -125,7 +125,7 @@ The App Store is the simplest installation route. An IPA must be re-signed toget
 
 EXE and ZIP use a standalone Core with a native TUN interface; starting VPN requests administrator approval through UAC. Extract the entire ZIP before running it: a ZIP does not register protocol links or create shortcuts automatically.
 
-Microsoft Store uses an MSIX package with a system VPN provider and handles architecture selection and updates. EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](docs/windows-build.md) for development builds and mode selection.
+[Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) uses an MSIX package with a system VPN provider and handles architecture selection and updates. EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](docs/windows-build.md) for development builds and mode selection.
 
 </details>
 
