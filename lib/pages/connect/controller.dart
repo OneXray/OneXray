@@ -329,28 +329,38 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
 
   Future<void> connectionAction(BuildContext context) async {
     final view = connectionView;
-    if (view.canDisconnect) {
-      await run(context, coordinator.disconnect);
-    } else if (view.busy) {
+    if (view.busy) {
       coordinator.cancel();
-    } else {
-      if (expertView && !configuration.connection.expert) {
-        if (raws.isEmpty) {
-          await editRaw(context);
-          return;
-        }
-        ContextAlert.showToast(
-          context,
-          AppLocalizations.of(context)!.prototypeChooseRawConfiguration,
-        );
+      return;
+    }
+    if (pendingChange != null) return;
+    if (!view.canDisconnect && expertView && !configuration.connection.expert) {
+      if (raws.isEmpty) {
+        await editRaw(context);
         return;
       }
-      await run(context, () async {
-        if (view.issue == 'permissionRequired' && view.permission != null) {
-          await AppHostApi().requestPlatformPermission();
-        }
-        await coordinator.connect();
-      });
+      ContextAlert.showToast(
+        context,
+        AppLocalizations.of(context)!.prototypeChooseRawConfiguration,
+      );
+      return;
+    }
+    // A command may await permission, status reads or the serial queue before
+    // publishing a VPN phase. Acknowledge the tap without inventing that phase.
+    pendingChange = 'connection';
+    try {
+      if (view.canDisconnect) {
+        await run(context, coordinator.disconnect);
+      } else {
+        await run(context, () async {
+          if (view.issue == 'permissionRequired' && view.permission != null) {
+            await AppHostApi().requestPlatformPermission();
+          }
+          await coordinator.connect();
+        });
+      }
+    } finally {
+      pendingChange = null;
     }
   }
 

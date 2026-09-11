@@ -7,6 +7,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
@@ -14,6 +15,7 @@ import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
+import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -22,6 +24,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -543,6 +546,132 @@ void main() {
     expect(controller.runningRoute, isNull);
   });
 
+  for (final stop in [false, true]) {
+    for (final width in [390.0, 1160.0]) {
+      testWidgets(
+        'immediate connection action feedback: stop=$stop width=$width',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = Size(width, 900);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          final gate = Completer<void>();
+          final coordinator = _Coordinator(actionGate: gate);
+          final phase = stop
+              ? ConnectionPhase.connected
+              : ConnectionPhase.disconnected;
+          coordinator.state.value = ConnectionView(phase: phase);
+          final controller = ConnectController(
+            database: coordinator.db,
+            coordinator: coordinator,
+          );
+          addTearDown(controller.close);
+          addTearDown(coordinator.dispose);
+          addTearDown(coordinator.db.close);
+          await tester.pumpWidget(_testApp(_connectionScreen(controller)));
+          final action = find.widgetWithText(
+            FilledButton,
+            stop ? 'Disconnect' : 'Connect',
+          );
+          try {
+            // A second tap before rebuilding must not enqueue another command.
+            await tester.tap(action);
+            await tester.tap(action);
+            await tester.pump();
+            expect(find.byType(CircularProgressIndicator), findsWidgets);
+            expect(coordinator.state.value.phase, phase);
+            expect(
+              tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+              isNull,
+            );
+            expect(
+              stop ? coordinator.disconnectCount : coordinator.connectCount,
+              1,
+            );
+          } finally {
+            gate.complete();
+            await tester.pumpAndSettle();
+          }
+          expect(find.byType(CircularProgressIndicator), findsNothing);
+          expect(
+            tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+            isNotNull,
+          );
+        },
+      );
+    }
+  }
+
+  for (final stop in [false, true]) {
+    testWidgets('a rejected connection action clears loading: stop=$stop', (
+      tester,
+    ) async {
+      final gate = Completer<void>();
+      final coordinator = _Coordinator(actionGate: gate);
+      final phase = stop
+          ? ConnectionPhase.connected
+          : ConnectionPhase.disconnected;
+      coordinator.state.value = ConnectionView(phase: phase);
+      final controller = ConnectController(
+        database: coordinator.db,
+        coordinator: coordinator,
+      );
+      addTearDown(controller.close);
+      addTearDown(coordinator.dispose);
+      addTearDown(coordinator.db.close);
+      await tester.pumpWidget(_testApp(_connectionScreen(controller)));
+      await tester.tap(
+        find.widgetWithText(FilledButton, stop ? 'Disconnect' : 'Connect'),
+      );
+      await tester.pump();
+      gate.completeError(const ConnectionHostException('runtimeUnavailable'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(coordinator.state.value.phase, phase);
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('an acknowledged connecting phase still allows cancellation', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final coordinator = _Coordinator(actionGate: gate);
+    coordinator.state.value = const ConnectionView();
+    final controller = ConnectController(
+      database: coordinator.db,
+      coordinator: coordinator,
+    );
+    addTearDown(controller.close);
+    addTearDown(coordinator.dispose);
+    addTearDown(coordinator.db.close);
+    await tester.pumpWidget(_testApp(_connectionScreen(controller)));
+    try {
+      await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+      await tester.pump();
+      coordinator.state.value = const ConnectionView(
+        phase: ConnectionPhase.preparing,
+      );
+      await tester.pump();
+      final cancel = find.widgetWithText(FilledButton, 'Cancel');
+      expect(tester.widget<FilledButton>(cancel).onPressed, isNotNull);
+      await tester.tap(cancel);
+      expect(coordinator.cancelCount, 1);
+      expect(coordinator.connectCount, 1);
+      expect(coordinator.disconnectCount, 0);
+    } finally {
+      coordinator.state.value = const ConnectionView();
+      gate.complete();
+      await tester.pumpAndSettle();
+    }
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   testWidgets('a native stop failure still uses the disconnect action', (
     tester,
   ) async {
@@ -580,22 +709,32 @@ void main() {
 /// Exercises the controller's result handling; native transaction
 /// behavior is covered by service/connect/coordinator_test.dart.
 class _Coordinator extends ConnectionCoordinator {
-  _Coordinator({this.fail = false})
+  _Coordinator({this.fail = false, this.actionGate})
     : super(database: AppDatabase.forTesting(NativeDatabase.memory())) {
     state.value = const ConnectionView(phase: ConnectionPhase.connected);
   }
   final bool fail;
+  final Completer<void>? actionGate;
   int connectCount = 0;
   int disconnectCount = 0;
+  int cancelCount = 0;
+
+  @override
+  void cancel() {
+    cancelCount++;
+    super.cancel();
+  }
 
   @override
   Future<void> connect() async {
     connectCount++;
+    await actionGate?.future;
   }
 
   @override
   Future<void> disconnect() async {
     disconnectCount++;
+    await actionGate?.future;
   }
 
   ConnectionConfiguration saved = ConnectionConfiguration(
@@ -642,6 +781,37 @@ class _Coordinator extends ConnectionCoordinator {
     );
   }
 }
+
+Widget _connectionScreen(ConnectController controller) => ShadTheme(
+  data: AppTheme.shad(Brightness.light),
+  child: ShadToaster(
+    child: Scaffold(
+      body: BlocBuilder<ConnectController, ConnectPageState>(
+        bloc: controller,
+        buildWhen: (previous, next) => !previous.sameContentAs(next),
+        builder: (context, state) => ConnectView(
+          view: state.connectionView,
+          pendingChange: state.pendingChange,
+          hasServers: true,
+          expert: false,
+          raws: const [],
+          activeRawId: null,
+          location: 'Automatic selection',
+          method: 'Smart Routing',
+          onConnection: () => controller.connectionAction(context),
+          onAddServers: () {},
+          onExpert: (_) {},
+          onServer: () {},
+          onMethod: () {},
+          onWhy: () {},
+          onRawAdd: () {},
+          onRawSelect: (_) {},
+          onRawActions: (_) {},
+        ),
+      ),
+    ),
+  ),
+);
 
 Widget _testApp(Widget home) => MaterialApp(
   theme: AppTheme.light,

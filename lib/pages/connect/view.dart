@@ -60,6 +60,9 @@ class ConnectView extends StatelessWidget {
   final ValueChanged<bool> onExpert;
   final ValueChanged<CoreConfigData> onRawSelect, onRawActions;
 
+  bool get _connectionPending => pendingChange == 'connection';
+  bool get _busy => view.busy || _connectionPending;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
@@ -69,7 +72,7 @@ class ConnectView extends StatelessWidget {
         !expert &&
         activeRawId == null &&
         !view.canDisconnect &&
-        !view.busy;
+        !_busy;
     if (empty) {
       return ResponsiveContent(
         child: PageEmptyState(
@@ -338,7 +341,7 @@ class ConnectView extends StatelessWidget {
             side: BorderSide(color: palette.border),
           ),
           child: InkWell(
-            onTap: view.busy ? null : onTap,
+            onTap: _busy ? null : onTap,
             borderRadius: BorderRadius.circular(AppRadii.small),
             child: ConstrainedBox(
               constraints: const BoxConstraints(
@@ -454,7 +457,7 @@ class ConnectView extends StatelessWidget {
             label: l.prototypeExpertMode,
             child: ShadSwitch(
               value: expert,
-              enabled: !view.busy && pendingChange == null,
+              enabled: !_busy && pendingChange == null,
               onChanged: onExpert,
             ),
           ),
@@ -544,11 +547,14 @@ class ConnectView extends StatelessWidget {
         ? palette.destructive
         : connected
         ? palette.running
-        : view.busy
+        : _busy
         ? palette.primary
         : palette.mutedStrong;
+    final waitingForPhase = _connectionPending && !view.busy;
     final button = FilledButton(
-      onPressed: view.phase == ConnectionPhase.disconnecting
+      onPressed:
+          view.phase == ConnectionPhase.disconnecting ||
+              (pendingChange != null && !view.busy)
           ? null
           : onConnection,
       style: desktop
@@ -568,9 +574,11 @@ class ConnectView extends StatelessWidget {
             )
           : AppTheme.connectionButton(context, destructive: canDisconnect),
       child: ButtonProgress(
-        busy: desktop && view.busy,
+        busy: desktop && _busy,
         child: Text(
-          canDisconnect
+          waitingForPhase
+              ? l.prototypePleaseWait
+              : canDisconnect
               ? l.prototypeDisconnect
               : view.phase == ConnectionPhase.disconnecting
               ? l.prototypePleaseWait
@@ -599,7 +607,7 @@ class ConnectView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (view.busy)
+                if (_busy)
                   SizedBox.square(
                     dimension: desktop ? 29 : 24,
                     child: MediaQuery.disableAnimationsOf(context)
@@ -973,7 +981,7 @@ class ConnectView extends StatelessWidget {
             Expanded(
               child: InkWell(
                 onTap:
-                    view.busy ||
+                    _busy ||
                         pendingChange != null ||
                         deletingRawIds.contains(row.id)
                     ? null
