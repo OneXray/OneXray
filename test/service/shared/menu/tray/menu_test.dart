@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
@@ -33,9 +34,13 @@ CoreConfigCompanion _node(String name, {int source = 0, int delay = 10}) =>
         base64Encode(
           utf8.encode(
             jsonEncode({
-              'tag': name,
-              'protocol': 'socks',
-              'settings': {'address': '127.0.0.1', 'port': 1080},
+              'outbounds': [
+                {
+                  'tag': name,
+                  'protocol': 'socks',
+                  'settings': {'address': '127.0.0.1', 'port': 1080},
+                },
+              ],
             }),
           ),
         ),
@@ -44,6 +49,55 @@ CoreConfigCompanion _node(String name, {int source = 0, int delay = 10}) =>
       subId: source,
       countryCode: const Value('JP'),
     );
+
+TrayMenuData _menuData(int count) {
+  final ids = const [12, 3, 11, 4, 10, 5, 9, 6, 8, 7, 2, 1].take(count);
+  final nodes = [
+    for (final id in ids)
+      CoreConfigData(
+        id: id,
+        name: 'Node $id',
+        type: 'outbound',
+        tags: '',
+        data: _node('Node $id').data.value,
+        delay: 10,
+        subId: id == 1 ? 0 : id,
+        countryCode: 'JP',
+        favorite: false,
+      ),
+  ];
+  return TrayMenuData()
+    ..catalog = ServerCatalog(
+      servers: nodes,
+      sources: [
+        for (final id in ids)
+          SubscriptionData(
+            id: id,
+            name: 'Source $id',
+            url: 'https://example.com/$id',
+            hwidEnabled: false,
+            timestamp: DateTime(2026),
+          ),
+      ],
+    )
+    ..raws = [for (final node in nodes) node.copyWith(type: 'raw')]
+    ..routes = [
+      for (final id in ids)
+        RoutingProfileData(id: id, name: 'Route $id', data: 'e30='),
+    ]
+    ..geodata = [
+      for (final id in ids)
+        GeoDataData(
+          id: id,
+          name: 'File $id',
+          type: 'domain',
+          url: 'https://example.com/$id.dat',
+          timestamp: DateTime(2026),
+          categoryCount: 0,
+          ruleCount: 0,
+        ),
+    ];
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +109,182 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
   });
+
+  for (final count in [0, 10, 12]) {
+    test(
+      'tray renders the first ten data rows in input order ($count rows)',
+      () {
+        final data = _menuData(count);
+        final expectedIds = count == 0
+            ? <int>[]
+            : [12, 3, 11, 4, 10, 5, 9, 6, 8, 7];
+        final selections = data.selectionItems(l, busy: false);
+        final updates = data.updateItems(l, {});
+        for (final prefix in [
+          'source:',
+          'server:',
+          'raw:',
+          'custom:',
+          'updateSubscription:',
+          'updateGeodata:',
+        ]) {
+          final items = _descendants([...selections, ...updates])
+              .where((item) => item.key?.startsWith(prefix) ?? false);
+          expect(items.map((item) => item.key), [
+            if (prefix == 'source:' && count == 12) 'source:0',
+            for (final id in expectedIds) '$prefix$id',
+          ], reason: prefix);
+        }
+        expect(_item(selections, 'automatic').checked, isTrue);
+        expect(_item(selections, 'traffic:smart').checked, isTrue);
+        expect(_item(selections, 'traffic:allVpn').disabled, isFalse);
+        expect(
+          _item(updates, 'updateSubscriptions').label,
+          l.prototypeUpdateAll,
+        );
+        expect(
+          _item(updates, 'updateDefaultGeodata').label,
+          l.prototypeDefaultRoutingData,
+        );
+        expect(updates.first.submenu!.items, hasLength(expectedIds.length + 2));
+        expect(updates.last.submenu!.items, hasLength(expectedIds.length + 3));
+        expect(data.catalog.servers, hasLength(count));
+        expect(data.catalog.sources, hasLength(count));
+        expect(data.raws, hasLength(count));
+        expect(data.routes, hasLength(count));
+        expect(data.geodata, hasLength(count));
+      },
+    );
+  }
+
+  test('tray limits locations after deduplication in first-seen order', () {
+    final data = _menuData(1);
+    final node = data.catalog.servers.single;
+    const countries = [
+      null,
+      '',
+      'jp',
+      'JP',
+      'US',
+      'GB',
+      'DE',
+      'FR',
+      'SG',
+      'HK',
+      'TW',
+      'CA',
+      'AU',
+    ];
+    data.catalog = ServerCatalog(
+      servers: [
+        for (final (index, country) in countries.indexed)
+          node.copyWith(id: index + 1, countryCode: Value(country)),
+      ],
+    );
+    data.configuration = ConnectionSettings(
+      selection: const ServerSelection.region('CA'),
+    );
+    final items = data.selectionItems(l, busy: false);
+    expect(
+      _descendants(items)
+          .where((item) => item.key?.startsWith('region:') ?? false)
+          .map((item) => item.key),
+      [
+        'region:',
+        'region:JP',
+        'region:US',
+        'region:GB',
+        'region:DE',
+        'region:FR',
+        'region:SG',
+        'region:HK',
+        'region:TW',
+        'region:CA',
+      ],
+    );
+    expect(_item(items, 'region:').label, '—');
+    expect(_item(items, 'region:CA').checked, isTrue);
+  });
+
+  test(
+    'tray keeps selection, disabled and pending state within the data prefix',
+    () {
+      final data = _menuData(12);
+      data.catalog = data.catalog.copyWith(
+        servers: [
+          data.catalog.servers.first.copyWith(delay: PingDelayConstants.error),
+          ...data.catalog.servers.skip(1),
+        ],
+      );
+      for (final configuration in [
+        ConnectionSettings(selection: const ServerSelection.source(1)),
+        ConnectionSettings(selection: const ServerSelection.server(1)),
+        ConnectionSettings(expert: true, rawId: 1),
+        ConnectionSettings(trafficMode: TrafficMode.custom, customId: 1),
+      ]) {
+        data.configuration = configuration;
+        final items = data.selectionItems(l, busy: false);
+        for (final prefix in ['source:', 'server:', 'raw:', 'custom:']) {
+          final choices = _descendants(items)
+              .where((item) => item.key?.startsWith(prefix) ?? false);
+          expect(choices.any((item) => item.key == '${prefix}1'), isFalse);
+          expect(choices.any((item) => item.checked == true), isFalse);
+        }
+        expect(data.configuration, same(configuration));
+      }
+      data.configuration = ConnectionSettings(
+        selection: const ServerSelection.server(3),
+      );
+      final items = data.selectionItems(l, busy: false);
+      expect(_item(items, 'server:3').checked, isTrue);
+      expect(_item(items, 'server:3').disabled, isFalse);
+      expect(_item(items, 'server:12').disabled, isTrue);
+      expect(
+        _descendants(data.selectionItems(l, busy: true))
+            .every((item) => item.disabled),
+        isTrue,
+      );
+
+      final updates = data.updateItems(l, {
+        'updateSubscription:12',
+        'updateGeodata:12',
+      });
+      expect(_item(updates, 'updateSubscription:12').disabled, isTrue);
+      expect(
+        _item(updates, 'updateSubscription:12').label,
+        contains(l.prototypePleaseWait),
+      );
+      expect(_item(updates, 'updateSubscription:3').disabled, isFalse);
+      expect(_item(updates, 'updateGeodata:12').disabled, isTrue);
+      expect(_item(updates, 'updateGeodata:3').disabled, isFalse);
+      expect(_item(updates, 'updateSubscriptions').disabled, isFalse);
+      expect(_item(updates, 'updateGeodata').disabled, isFalse);
+      expect(_item(updates, 'updateDefaultGeodata').disabled, isFalse);
+    },
+  );
+
+  test(
+    'tray streams retain legacy Raw rows beyond the displayed prefix',
+    () async {
+      for (var i = 0; i < 12; i++) {
+        await db.coreConfigDao.insertRow(
+          _node('Raw $i')
+              .copyWith(type: const Value('raw'), data: const Value('e30=')),
+        );
+      }
+      final data = await TrayMenuData.watch(db)
+          .firstWhere((data) => data.raws.length == 12);
+      final items = data.selectionItems(l, busy: false);
+      expect(
+        _descendants(items)
+            .where((item) => item.key?.startsWith('raw:') ?? false)
+            .map((item) => item.key),
+        [for (var id = 1; id <= 10; id++) 'raw:$id'],
+      );
+      expect(data.raws, hasLength(12));
+      expect(await db.coreConfigDao.allRawRowsWithData, hasLength(12));
+    },
+  );
 
   test('desktop choices retain legacy Raw rows, normal selection and grouped updates', () async {
     final source = await db.subscriptionDao.insertRow(

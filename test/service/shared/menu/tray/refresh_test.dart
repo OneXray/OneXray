@@ -156,6 +156,60 @@ void main() {
     );
   }
 
+  test('data prefix refresh waits for an open menu to close', () async {
+    final ids = <int>[];
+    for (var i = 0; i < 12; i++) {
+      ids.add(
+        await db.subscriptionDao.insertRow(
+          SubscriptionCompanion.insert(
+            name: 'Provider ${12 - i}',
+            url: 'https://example.com/$i',
+            timestamp: DateTime(2026),
+          ),
+        ),
+      );
+    }
+    await pumpEventQueue();
+    Iterable<Object?> sourceKeys(Map<dynamic, dynamic> menu, String prefix) =>
+        _items(menu)
+            .map((item) => item['key'])
+            .where((key) => key is String && key.startsWith(prefix));
+    final oldMenu = menus.last;
+    final published = menus.length;
+    for (final prefix in ['source:', 'updateSubscription:']) {
+      expect(sourceKeys(oldMenu, prefix), [
+        for (final id in ids.sublist(0, 10)) '$prefix$id',
+      ]);
+    }
+    expect(await db.subscriptionDao.allRows, hasLength(12));
+    final choice = _items(oldMenu)
+        .singleWhere((item) => item['key'] == 'source:${ids[9]}');
+    tray.onTrayIconMouseDown();
+    await pumpEventQueue();
+    expect(popups, 1);
+
+    await db.subscriptionDao.deleteRow(ids.first);
+    await pumpEventQueue();
+    await tray.refreshTrayManager();
+    expect(menus, hasLength(published));
+    await click(choice['id'] as int);
+    expect(choices.single, {
+      'expert': false,
+      'selection': {'kind': 'source', 'id': ids[9]},
+    });
+    expect(menus, hasLength(published));
+
+    popupClosed.complete();
+    await pumpEventQueue();
+    expect(menus, hasLength(published + 1));
+    for (final prefix in ['source:', 'updateSubscription:']) {
+      expect(sourceKeys(menus.last, prefix), [
+        for (final id in ids.sublist(1, 11)) '$prefix$id',
+      ]);
+    }
+    expect(await db.subscriptionDao.allRows, hasLength(11));
+  });
+
   test(
     'opening waits for an in-flight publish and queues later refreshes',
     () async {
