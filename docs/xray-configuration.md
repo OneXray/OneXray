@@ -77,10 +77,35 @@ Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bi
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
-智能路由和自定义路由保留两个 `8.8.8.8` server，以独立 tag 分别走 proxy/direct。
+Smart and Custom routing keep two independently tagged DNS servers. Proxy DNS
+remains `8.8.8.8`; direct DNS defaults to that address and is independently
+editable in each routing configuration. Smart retains the saved address when
+its direct-DNS switch is off, but uses the previous default with no direct domain
+matches until the switch is enabled again. Direct-DNS address syntax is validated
+by libXray, not a separate App protocol or reachability check.
 direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
 宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
+
+## Tunnel DNS
+
+The VPN Tunnel page edits IPv4 DNS, IPv6 DNS, and the DNS server name in the
+existing platform-policy JSON. Missing fields retain the previous Google
+defaults. These global settings are independent of per-route direct DNS and
+do not change Raw JSON's own DNS addresses. No database columns or schema
+upgrade are needed.
+
+The existing native TUN request carries the configured addresses to Apple and
+Android; Linux and Windows EXE also use them in the generated Xray TUN inbound.
+Windows MSIX uses them in its network settings and exclusion checks, preserving
+its existing IPv6 handling. Native DNS addresses must be IP literals of the
+corresponding family. Inactive IPv6 values are retained without applying them.
+
+The server name is used only for Apple DNS over TLS, not as a search domain.
+With DoT enabled, the addresses and name must describe the same service and its
+TLS certificate. Changes to effective DNS settings use the existing save and
+confirmed-reconnect workflow; inactive server-name and IPv6 edits do not cause
+a reconnect. Restoring defaults changes only the draft until saved.
 
 ## IPv6 策略
 
@@ -103,6 +128,14 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 保持不变；关闭开关不代表 Xray 的所有 IPv6 流量都被禁止。
 
 ## 自定义路由
+
+Custom routing stores and shares its direct DNS address as
+`dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`.
+The fixed tag identifies the server, not its array position. Only this single
+tagged server's `address` is editable; domains, fallback and query strategy are
+generated during validation and runtime compilation, not stored or exported.
+Existing profiles without DNS use the previous default. Unsupported DNS fields,
+untagged servers and duplicate servers are rejected rather than silently lost.
 
 普通 Custom 的持久化链路固定为 `RoutingProfile` 表 ↔ `XrayJson` ↔
 `RoutingProfileState`：数据库适配层负责 Base64 解码、模型解析和规范化重编码，业务与 UI

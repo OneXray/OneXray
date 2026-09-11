@@ -37,6 +37,27 @@ RoutingProfileState _state(
 );
 
 void main() {
+  test(
+    'direct DNS changes are runtime changes independent of profile naming',
+    () {
+      final before = _state('Route');
+      expect(
+        CustomRoutingEditorService.sameRouting(
+          before,
+          before.copyWith(name: 'Renamed'),
+        ),
+        true,
+      );
+      expect(
+        CustomRoutingEditorService.sameRouting(
+          before,
+          before.copyWith(directDnsAddress: '1.1.1.1'),
+        ),
+        false,
+      );
+    },
+  );
+
   late AppDatabase db;
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());

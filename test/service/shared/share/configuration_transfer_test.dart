@@ -18,6 +18,11 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 String template(String name, {bool assets = false}) => jsonEncode({
   'name': name,
   'outbounds': [{}, {}],
+  'dns': {
+    'servers': [
+      {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+    ],
+  },
   'routing': {
     'rules': [
       {
@@ -47,6 +52,11 @@ void main() {
     expect(content.assets.single.fileName, 'rules.dat');
     expect(content.assets.single.type, GeoDataType.domain);
     expect(json['outbounds'], [{}, {}]);
+    expect(json['dns'], {
+      'servers': [
+        {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+      ],
+    });
     expect(
       (json['routing']['rules'] as List).single['ruleTag'],
       'Local websites',
@@ -125,6 +135,11 @@ void main() {
       expect(link.name, 'Shared');
       expect(jsonDecode(link.xrayJson)['name'], 'Shared');
       expect(jsonDecode(link.xrayJson)['outbounds'], [{}, {}]);
+      expect(jsonDecode(link.xrayJson)['dns'], {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+        ],
+      });
     },
   );
 

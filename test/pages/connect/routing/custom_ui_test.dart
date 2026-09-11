@@ -281,6 +281,13 @@ void main() {
         }),
       );
       final selected = controller.state.selectedRuleKey;
+      controller.setDirectDnsAddress('1.1.1.1');
+      expect(controller.profileState.directDnsAddress, '1.1.1.1');
+      expect(jsonDecode(controller.previewState!.encode())['dns'], {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+        ],
+      });
       controller.reorder(1, 0);
       expect(controller.state.rules.map((rule) => rule.ruleTag), [
         'B',
@@ -293,6 +300,7 @@ void main() {
       expect(controller.state.selectedRuleKey, controller.state.ruleKeys.first);
       controller.setInlineEditing(true);
       expect(controller.inlineRule!.name.text, 'A');
+      expect(controller.profileState.directDnsAddress, '1.1.1.1');
       controller.inlineRule!.name.text = 'A edited';
       controller.inlineRule!.domains.single.text.text = 'edited.example';
       controller.inlineRule!.port.text = '65536';

@@ -6,6 +6,61 @@ import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
 void main() {
+  test('tagged direct DNS round trips with only native editable fields', () {
+    final source = _document();
+    source['dns'] = {
+      'servers': [
+        {'address': '1.1.1.1', 'tag': 'app-dns-direct'},
+      ],
+    };
+    final state = RoutingProfileDocument.parse(jsonEncode(source)).state;
+    expect(state.directDnsAddress, '1.1.1.1');
+    final edited = state.copyWith(directDnsAddress: '9.9.9.9');
+    expect(jsonDecode(edited.encode())['dns'], {
+      'servers': [
+        {'tag': 'app-dns-direct', 'address': '9.9.9.9'},
+      ],
+    });
+    expect(
+      RoutingProfileDocument.parse(
+        edited.encode(),
+        allowMetadata: false,
+      ).state.directDnsAddress,
+      '9.9.9.9',
+    );
+    expect(
+      RoutingProfileDocument.parse(jsonEncode(_document()))
+          .state
+          .directDnsAddress,
+      '8.8.8.8',
+    );
+    for (final servers in [
+      [],
+      ['1.1.1.1'],
+      [
+        {'address': '1.1.1.1'},
+      ],
+      [
+        {'tag': 'app-dns-proxy', 'address': '1.1.1.1'},
+      ],
+      [
+        for (var i = 0; i < 2; i++)
+          {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+      ],
+      [
+        {'tag': 'app-dns-direct', 'address': '1.1.1.1', 'domains': []},
+      ],
+      [
+        {'tag': 'app-dns-direct', 'address': '1.1.1.1', 'port': 53},
+      ],
+    ]) {
+      _reject({
+        ..._document(),
+        'dns': {'servers': servers},
+      });
+    }
+  });
+
   test('projects the supported Xray routing fields into editable state', () {
     final source = _document(2);
     source['name'] = '  My routes  ';
@@ -37,6 +92,11 @@ void main() {
     expect(state.xrayJson.routing!.domainStrategy, 'IPIfNonMatch');
     expect(state.rules.map((rule) => rule.toJson()), [first, second, third]);
     expect(jsonDecode(state.encode()), {
+      'dns': {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+        ],
+      },
       'routing': {
         'domainStrategy': 'IPIfNonMatch',
         'rules': [first, second, third],
@@ -54,6 +114,11 @@ void main() {
     expect(state.rules.single.domain, ['domain:example.com']);
     expect(() => state.rules.add(rule), throwsUnsupportedError);
     expect(XrayJson.fromJson(jsonDecode(state.encode())).toJson(), {
+      'dns': {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+        ],
+      },
       'routing': {
         'domainStrategy': 'IPIfNonMatch',
         'rules': [

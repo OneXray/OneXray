@@ -9,6 +9,7 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/runtime_network_policy.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
@@ -56,6 +57,8 @@ class RuntimeOptions {
   final int metricsPort;
   final int socksPort;
   final bool ipv6;
+  final String tunDnsIpv4Address;
+  final String tunDnsIpv6Address;
   final String interfaceName;
   final bool logEnabled;
   final bool logFilesSupported;
@@ -70,6 +73,8 @@ class RuntimeOptions {
     required this.metricsPort,
     required this.socksPort,
     this.ipv6 = true,
+    this.tunDnsIpv4Address = '8.8.8.8',
+    this.tunDnsIpv6Address = '2001:4860:4860::8888',
     this.interfaceName = '',
     this.logEnabled = false,
     this.logFilesSupported = true,
@@ -132,8 +137,8 @@ class ConnectionCompiler {
     return _rawRuntimeMap(value, options);
   }
 
-  static const dnsProxy = 'app-dns-proxy';
-  static const dnsDirect = 'app-dns-direct';
+  static const dnsProxy = RoutingDns.proxyTag;
+  static const dnsDirect = RoutingDns.directTag;
   static const dnsOutbound = 'dnsOut';
 
   /// The editor and runtime share these exact built-in rules and their order.
@@ -269,7 +274,6 @@ class ConnectionCompiler {
           directDomains.addAll(rule.domain ?? []);
         }
       }
-      final queryStrategy = options.ipv6 ? 'UseIP' : 'UseIPv4';
       final normal = XrayJson(
         env: XrayEnv(
           assetLocation: VpnConstants.datDir,
@@ -282,22 +286,14 @@ class ConnectionCompiler {
         policy: XrayPolicy(system: _runtimeStatsPolicy()),
         outbounds: outbounds,
         observatory: XrayObservatory(subjectSelector: []),
-        dns: XrayDns(
-          servers: [
-            XrayDnsServer(
-              address: '8.8.8.8',
-              tag: dnsProxy,
-              queryStrategy: queryStrategy,
-            ),
-            if (!allVpn)
-              XrayDnsServer(
-                address: '8.8.8.8',
-                tag: dnsDirect,
-                domains: directDomains.toList(),
-                skipFallback: true,
-                queryStrategy: queryStrategy,
-              ),
-          ],
+        dns: RoutingDns.compile(
+          directAddress: switch (settings.trafficMode) {
+            TrafficMode.allVpn => null,
+            TrafficMode.smart => settings.smart.effectiveDirectDnsAddress,
+            TrafficMode.custom => custom!.directDnsAddress.trim(),
+          },
+          directDomains: directDomains,
+          ipv6: options.ipv6,
         ),
         routing: XrayRouting(
           domainStrategy: allVpn ? 'AsIs' : 'IPIfNonMatch',
@@ -394,7 +390,10 @@ class ConnectionCompiler {
           ? ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64']
           : null,
       dns: nativeTun
-          ? ['8.8.8.8', if (options.ipv6) '2001:4860:4860::8888']
+          ? [
+              options.tunDnsIpv4Address,
+              if (options.ipv6) options.tunDnsIpv6Address,
+            ]
           : null,
       autoSystemRoutingTable: nativeTun
           ? ['0.0.0.0/0', if (options.ipv6) '::/0']

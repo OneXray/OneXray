@@ -31,6 +31,8 @@ RuntimeOptions options({
   WindowsMode windowsMode = WindowsMode.exe,
   bool ipv6 = true,
   String interfaceName = '',
+  String tunDnsIpv4Address = '8.8.8.8',
+  String tunDnsIpv6Address = '2001:4860:4860::8888',
 }) => RuntimeOptions(
   platform: platform,
   windowsMode: windowsMode,
@@ -39,6 +41,8 @@ RuntimeOptions options({
   socksPort: 18187,
   ipv6: ipv6,
   interfaceName: interfaceName,
+  tunDnsIpv4Address: tunDnsIpv4Address,
+  tunDnsIpv6Address: tunDnsIpv6Address,
 );
 
 ResolvedServer node(int id, {String? address}) => ResolvedServer(
@@ -52,6 +56,107 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test('routing DNS addresses are independent from proxy and tunnel DNS', () {
+    for (final mode in TrafficMode.values) {
+      final compiled = ConnectionCompiler.compile(
+        settings: ConnectionSettings(
+          trafficMode: mode,
+          smart: SmartRoutingSettings(directDnsAddress: '1.1.1.1'),
+        ),
+        entries: [node(1)],
+        custom: RoutingProfileState(
+          name: 'Custom',
+          directDnsAddress: '9.9.9.9',
+          rules: [
+            RoutingRuleState(
+              domain: ['domain:example.com'],
+              action: RoutingRuleAction.direct,
+            ),
+          ],
+        ),
+        regions: catalog,
+        options: options(ipv6: false, tunDnsIpv4Address: '192.0.2.53'),
+      );
+      final servers = compiled.config['dns']['servers'] as List;
+      expect(servers.first, {
+        'tag': 'app-dns-proxy',
+        'address': '8.8.8.8',
+        'queryStrategy': 'UseIPv4',
+      });
+      expect(servers.length, mode == TrafficMode.allVpn ? 1 : 2);
+      if (mode != TrafficMode.allVpn) {
+        final direct = servers.singleWhere(
+          (server) => server['tag'] == 'app-dns-direct',
+        );
+        expect(
+          direct['address'],
+          mode == TrafficMode.smart ? '1.1.1.1' : '9.9.9.9',
+        );
+        expect(direct['skipFallback'], true);
+        expect(direct['queryStrategy'], 'UseIPv4');
+        expect(direct['domains'], isNotEmpty);
+      }
+      expect(
+        jsonDecode(compiled.validationJson)['dns'],
+        compiled.config['dns'],
+      );
+    }
+    final disabled =
+        ConnectionCompiler.compile(
+              settings: ConnectionSettings(
+                smart: SmartRoutingSettings(
+                  directDns: false,
+                  directDnsAddress: '1.1.1.1',
+                ),
+              ),
+              entries: [node(1)],
+              regions: catalog,
+              options: options(),
+            ).config['dns']['servers']
+            as List;
+    expect(disabled.last['address'], '8.8.8.8');
+    expect(disabled.last['domains'], isEmpty);
+  });
+
+  test('native TUN uses configured DNS in normal and Raw without replacing Raw DNS', () {
+    for (final platform in [
+      ConnectionPlatform.windows,
+      ConnectionPlatform.linux,
+    ]) {
+      for (final ipv6 in [false, true]) {
+        for (final raw in [false, true]) {
+          final compiled = ConnectionCompiler.compile(
+            settings: ConnectionSettings(expert: raw),
+            entries: raw ? [] : [node(1)],
+            raw: raw
+                ? {
+                    'outbounds': [
+                      {'protocol': 'freedom'},
+                    ],
+                    'dns': {
+                      'servers': ['9.9.9.9'],
+                    },
+                  }
+                : null,
+            regions: catalog,
+            options: options(
+              platform: platform,
+              interfaceName: 'Ethernet',
+              ipv6: ipv6,
+              tunDnsIpv4Address: '192.0.2.53',
+              tunDnsIpv6Address: '2001:db8::53',
+            ),
+          );
+          expect(compiled.config['inbounds'].first['settings']['dns'], [
+            '192.0.2.53',
+            if (ipv6) '2001:db8::53',
+          ]);
+          if (raw) expect(compiled.config['dns']['servers'], ['9.9.9.9']);
+        }
+      }
+    }
+  });
+
   test('normal preflight uses real chains, routing and DNS without runtime resources', () {
     final plan = ConnectionCompiler.compile(
       settings: ConnectionSettings(

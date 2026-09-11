@@ -231,13 +231,11 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
     } on FormatException catch (error) {
       emit(
         state.copyWith(
-          error: supportsWindowsSystemVpn
-              ? l.prototypeBypassNetworkInputHint
-              : connectionFailureMessage(
-                  l,
-                  error: error,
-                  operation: l.buttonSaveFailed,
-                ),
+          error: connectionFailureMessage(
+            l,
+            error: error,
+            operation: l.buttonSaveFailed,
+          ),
         ),
       );
       return false;

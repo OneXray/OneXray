@@ -1,4 +1,6 @@
 {
+  "routingLocalDnsAddress": "آدرس DNS محلی",
+  "tunnelDnsServerNameHint": "فقط برای DNS over TLS در پلتفرم‌های Apple استفاده می‌شود. آدرس‌های DNS و نام سرور باید متعلق به یک سرویس باشند و با گواهی TLS آن مطابقت داشته باشند.",
   "menuShortcutChooseConfiguration": "تغییر پیکربندی",
   "menuShortcutUpdateSubscriptions": "به‌روزرسانی اشتراک‌ها",
   "menuBarReconnect": "اتصال مجدد",

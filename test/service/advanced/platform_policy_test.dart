@@ -5,6 +5,94 @@ import 'package:onexray/service/connect/settings.dart';
 
 void main() {
   test(
+    'configured tunnel DNS survives storage and reaches native parameters',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        final policy = PlatformPolicy.fromJson({
+          'xrayOutboundInterfaceName': 'Ethernet',
+          'dnsIpv4Address': ' 1.1.1.1 ',
+          'dnsIpv6Address': '2606:4700:4700::1111',
+          'dnsServerName': 'cloudflare-dns.com',
+          'apple': {'dnsOverTls': true},
+        });
+        final restored = PlatformPolicy.fromJson(policy.toJson());
+        final tun = restored.toTun(platform);
+        expect(tun.tunDnsIPv4, '1.1.1.1');
+        expect(tun.tunDnsIPv6, '2606:4700:4700::1111');
+        expect(tun.dnsServerName, 'cloudflare-dns.com');
+        expect(restored.dnsIpv4Address, '1.1.1.1');
+        expect(tun.tunIPv4, '198.18.0.1');
+      }
+    },
+  );
+
+  test('only effective native DNS fields are validated', () {
+    for (final value in [
+      '',
+      'dns.example.com',
+      '::1',
+      '1.1.1.1:53',
+      'https://1.1.1.1',
+    ]) {
+      final policy = PlatformPolicy.fromJson({'dnsIpv4Address': value});
+      expect(
+        () => policy.toTun(ConnectionPlatform.android),
+        throwsFormatException,
+      );
+    }
+    for (final value in ['', '1.1.1.1', '[2001:db8::1]', 'fe80::1%en0']) {
+      final policy = PlatformPolicy.fromJson({'dnsIpv6Address': value});
+      expect(() => policy.toTun(ConnectionPlatform.ios), throwsFormatException);
+    }
+    final inactive = PlatformPolicy.fromJson({
+      'ipv6Enabled': false,
+      'dnsIpv6Address': '',
+      'dnsServerName': '',
+      'xrayOutboundInterfaceName': 'Ethernet',
+    });
+    expect(inactive.toTun(ConnectionPlatform.ios).tunDnsIPv6, isNull);
+    expect(
+      () => inactive.toTun(
+        ConnectionPlatform.windows,
+        windowsMode: WindowsMode.exe,
+      ),
+      returnsNormally,
+    );
+    expect(() => inactive.toWindowsPolicy(), throwsFormatException);
+    final dot = PlatformPolicy.fromJson({
+      ...inactive.toJson(),
+      'apple': {'dnsOverTls': true},
+    });
+    expect(() => dot.toTun(ConnectionPlatform.ios), throwsFormatException);
+    expect(() => dot.toTun(ConnectionPlatform.android), returnsNormally);
+  });
+
+  test('Windows exclusions protect configured DNS instead of old defaults', () {
+    final value = {
+      'dnsIpv4Address': '1.1.1.1',
+      'dnsIpv6Address': '2606:4700:4700::1111',
+      'windows': {
+        'excludedCidrs': ['8.8.8.8/32', '2001:4860:4860::8888/128'],
+      },
+    };
+    expect(
+      PlatformPolicy.fromJson(value).toWindowsPolicy().excludedCidrs,
+      hasLength(2),
+    );
+    for (final cidr in ['1.1.1.0/24', '2606:4700:4700::/64']) {
+      expect(
+        () => PlatformPolicy.fromJson({
+          ...value,
+          'windows': {
+            'excludedCidrs': [cidr],
+          },
+        }).toWindowsPolicy(),
+        throwsFormatException,
+      );
+    }
+  });
+
+  test(
     'defaults contain no demo selections and compile fixed runtime values',
     () {
       final policy = PlatformPolicy.defaults();
@@ -58,7 +146,7 @@ void main() {
       final tun = policy.toTun(platform);
       expect(tun.enableIPv6, false);
       expect(tun.tunIPv4, PlatformPolicy.tunIpv4Address);
-      expect(tun.tunDnsIPv4, PlatformPolicy.dnsIpv4Address);
+      expect(tun.tunDnsIPv4, policy.dnsIpv4Address);
       expect(tun.tunIPv6, isNull);
       expect(tun.tunDnsIPv6, isNull);
       expect(tun.toJson(), isNot(contains('tunIPv6')));
@@ -247,7 +335,7 @@ void main() {
     for (final platform in [ConnectionPlatform.ios, ConnectionPlatform.macos]) {
       final policy = PlatformPolicy.fromJson(value);
       expect(policy.toTun(platform).excludedRoutes, cidrs);
-      expect(policy.toTun(platform).tunDnsIPv4, PlatformPolicy.dnsIpv4Address);
+      expect(policy.toTun(platform).tunDnsIPv4, policy.dnsIpv4Address);
       expect(policy.toJson()['apple']['excludedCidrs'], cidrs);
     }
     for (final platform in [

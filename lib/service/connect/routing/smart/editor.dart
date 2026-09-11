@@ -1,5 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -7,6 +10,9 @@ import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
+import 'package:onexray/service/connect/routing/dns.dart';
+import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
+import 'package:onexray/service/shared/xray/validation.dart';
 
 class SmartRoutingEditorDraft {
   final ConnectionConfiguration configuration;
@@ -26,11 +32,13 @@ class SmartRoutingEditorService {
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
   final Future<RegionCatalog> Function()? loadRegions;
+  final Future<String> Function(String)? testXray;
 
   SmartRoutingEditorService({
     AppDatabase? database,
     ConnectionCoordinator? coordinator,
     this.loadRegions,
+    this.testXray,
   }) : db = database ?? AppDatabase(),
        coordinator = coordinator ?? ConnectionCoordinator.instance;
 
@@ -70,6 +78,10 @@ class SmartRoutingEditorService {
     required SmartRoutingSettings smart,
     required Future<bool> Function() confirmReconnect,
   }) async {
+    smart = SmartRoutingSettings.fromJson({
+      ...smart.toJson(),
+      'directDnsAddress': smart.directDnsAddress.trim(),
+    });
     await coordinator.initialize();
     await coordinator.refresh();
     if ((await coordinator.configuration).encode() != original.encode()) {
@@ -98,6 +110,12 @@ class SmartRoutingEditorService {
       affectsRuntime: affectsRuntime,
       allowReconnect: allowReconnect,
       expectedConfiguration: original.encode(),
+      validateAssets:
+          smart.directDns &&
+              (!connection.smart.directDns ||
+                  smart.directDnsAddress != connection.smart.directDnsAddress)
+          ? () => _validateDns(smart.directDnsAddress)
+          : null,
       writeAssets: () async {
         if (smart.finalExitId == null) return;
         if ((connection.selection.kind == SelectionKind.server &&
@@ -108,6 +126,24 @@ class SmartRoutingEditorService {
       },
     );
     return true;
+  }
+
+  Future<void> _validateDns(String address) async {
+    final error = await (testXray ?? AppHostApi().testXray)(
+      XrayValidation.normal(
+        XrayJson(
+          dns: RoutingDns.compile(directAddress: address),
+          outbounds: [createFreedomOutbound(tag: 'direct').toJson()],
+        ),
+      ),
+    );
+    if (error.isNotEmpty) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: error,
+      );
+    }
   }
 
   static bool sameRuntime(
@@ -130,6 +166,7 @@ class SmartRoutingEditorService {
                   if (rule.outboundTag == 'direct') ...?rule.domain,
               ]
             : <String>[],
+        'directDnsAddress': value.effectiveDirectDnsAddress,
         'entryCount': original.selection.kind == SelectionKind.server
             ? 1
             : value.entryCount,
