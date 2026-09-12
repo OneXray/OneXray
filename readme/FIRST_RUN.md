@@ -160,7 +160,7 @@ flutter run -d macos
   ```shell
   flutter build linux --debug
   sudo setcap cap_net_admin,cap_net_raw+eip build/linux/x64/debug/bundle/OneXrayCore
-  flutter run -d linux
+  flutter run -d linux --no-enable-impeller
   ```
   Use `arm64` instead of `x64` on ARM64. Reapply capabilities if rebuilding replaces the Core binary.
 - **Windows:** use `flutter run -d windows` for EXE mode; for MSIX, launch the installed development package prepared above.

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -151,14 +150,6 @@ void main() {
       'apiVersion': 3,
       'method': 'generateAgeKeyPair',
       'payload': {'keyType': 'hybrid'},
-    });
-  });
-
-  test('desktop core cleanup record contains minimal process identity', () {
-    const record = DesktopCoreProcessRecord(pid: 42);
-
-    expect(DesktopCoreProcessRecord.fromJson(record.toJson()).toJson(), {
-      'pid': 42,
     });
   });
 }

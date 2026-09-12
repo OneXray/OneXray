@@ -14,6 +14,7 @@ void main() {
         dns: '8.8.8.8',
         interfaceName: 'Ethernet',
         configPath: r'C:\run\xray.json',
+        errorFile: r'C:\run\xray.json.error',
       ),
       <String>[
         'run',
@@ -23,6 +24,8 @@ void main() {
         'Ethernet',
         '-config',
         r'C:\run\xray.json',
+        '-error-file',
+        r'C:\run\xray.json.error',
       ],
     );
     expect(
@@ -77,10 +80,27 @@ void main() {
       expect(await stale.exists(), isFalse);
       expect(await sibling.readAsString(), 'keep');
       expect(await File(first).readAsString(), text);
+      expect(await desktopCoreErrorFile(first).exists(), isFalse);
+      await desktopCoreErrorFile(first).writeAsString('old startup failure');
+      expect(
+        await readDesktopCoreStartError(first, 'Core exited'),
+        'old startup failure',
+      );
       final second = (await api.materializeRunXrayConfig(request))!;
       expect(second, isNot(first));
       expect(await Directory(p.dirname(first)).exists(), isFalse);
       expect(await File(second).readAsString(), text);
+      expect(await desktopCoreErrorFile(second).exists(), isFalse);
+      await desktopCoreErrorFile(second).writeAsString('');
+      expect(
+        await readDesktopCoreStartError(second, 'Core exited'),
+        'Core exited',
+      );
+      await desktopCoreErrorFile(second).delete();
+      expect(
+        await readDesktopCoreStartError(second, 'Core exited'),
+        'Core exited',
+      );
       final arguments = desktopCoreRunArguments(
         dns: '8.8.8.8',
         interfaceName: 'eth0',
@@ -148,8 +168,7 @@ final class _TestFfiApi extends LinuxFfiApi {
     : super.forTesting(
         filesDirectory: directory ?? '',
         executablePath: '',
-        procDirectory: '',
-        signalProcess: (_, _) => false,
+        runCommand: (_, _) => throw UnimplementedError(),
         watchExit: (_) => throw UnimplementedError(),
         notify: (status) async => statuses.add(status),
       );

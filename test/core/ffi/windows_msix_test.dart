@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/windows/msix_ffi_api.dart';
+import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
+import 'package:onexray/core/model/tun_json.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 
@@ -116,4 +119,95 @@ void main() {
       expect(result.status, VpnStatus.disconnected);
     },
   );
+
+  for (final diagnostic in [
+    'failed to load geosite: category TEST-MISSING not found',
+    '',
+    null,
+  ]) {
+    test('MSIX preserves Core startup diagnostics: $diagnostic', () async {
+      final root = await Directory('../references/windows-msix-tests').absolute
+          .create(recursive: true);
+      final directory = await root.createTemp('ffi-');
+      addTearDown(() => directory.delete(recursive: true));
+      final calls = <String>[];
+      final events = <VpnStatus>[];
+      File? errorFile;
+      List<String>? arguments;
+      final api = WindowsMsixFfiApi(
+        native: WindowsNativeApi.forTest((text) async {
+          final request = jsonDecode(text) as Map<String, dynamic>;
+          final method = request['method'] as String;
+          calls.add(method);
+          if (method == 'getEnvironment') {
+            return jsonEncode({
+              'success': true,
+              'error': '',
+              'data': {
+                'packageFamilyName': 'OneXray.Test',
+                'packageLocalDataDir': directory.path,
+              },
+            });
+          }
+          if (method == 'startVpn') {
+            final process =
+                request['payload']['sessionBackend']['processes'].single;
+            expect(process['executableRelativePath'], 'OneXrayCore.exe');
+            arguments = (process['arguments'] as List).cast<String>();
+            final config = arguments![arguments!.indexOf('-config') + 1];
+            errorFile = File('$config.error');
+            // The GUI creates the file before dispatching the managed process.
+            expect(await errorFile!.readAsString(), isEmpty);
+            throw const WindowsNativeException(
+              'Session backend process exited',
+            );
+          }
+          expect(method, 'stopVpn');
+          // Diagnostics may finish writing while the failed session is stopped.
+          if (diagnostic == null) {
+            await errorFile!.delete();
+          } else {
+            await errorFile!.writeAsString(diagnostic);
+          }
+          return response('disconnected');
+        }),
+        readRequest: () async => StartVpnRequest(
+          TunJson.fromJson({'autoOutboundsInterface': 'Ethernet 2'}),
+          '18187',
+          '18186',
+          jsonEncode(
+            LibXrayInvokeRequest(
+              method: LibXrayMethod.runXray,
+              payload: RunXrayRequest('{"inbounds":[]}').toJson(),
+            ).toJson(),
+          ),
+        ),
+        notify: (status) async => events.add(status),
+      );
+      addTearDown(api.stopSharedIsolate);
+      final result = await api.startVpn(
+        configYaml: 'fixture',
+        networkSettings: const WindowsVpnNetworkSettings(
+          ipv4Address: '172.19.0.1',
+          ipv6Address: '',
+          dnsIpv4Address: '8.8.8.8',
+          dnsIpv6Address: '',
+        ),
+      );
+      expect(result.state, NativeVpnCommandState.failed);
+      expect(
+        result.message,
+        diagnostic == null || diagnostic.isEmpty
+            ? 'Session backend process exited'
+            : diagnostic,
+      );
+      expect(arguments, contains('-error-file'));
+      expect(
+        arguments![arguments!.indexOf('-error-file') + 1],
+        errorFile!.path,
+      );
+      expect(calls, ['getEnvironment', 'startVpn', 'stopVpn']);
+      expect(events, [VpnStatus.connecting, VpnStatus.disconnected]);
+    });
+  }
 }

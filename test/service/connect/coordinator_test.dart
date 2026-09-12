@@ -1080,7 +1080,7 @@ void main() {
     });
   }
 
-  test('preparation validation failure never starts the VPN host', () async {
+  test('configuration preparation failure never starts the VPN host', () async {
     var starts = 0;
     final coordinator = await _initialize(
       ConnectionCoordinator(
@@ -1088,7 +1088,7 @@ void main() {
         readRuntime: () async => null,
         inspect: (_) async => const HostConnection(VpnStatus.disconnected),
         prepare: (_, _) async =>
-            throw const FormatException('Xray configuration validation failed'),
+            throw const FormatException('Raw configuration is empty'),
         start: (_) async {
           starts++;
           throw StateError('must not start');
@@ -1289,7 +1289,6 @@ ConnectionRuntime _runtime(
   });
   final compiled = CompiledConnection(
     xrayJson: xrayJson,
-    validationJson: '{}',
     entries: entries,
     finalExit: finalExit,
     nodeTags: const {},

@@ -16,6 +16,7 @@ List<String> desktopCoreRunArguments({
   required String dns,
   required String interfaceName,
   required String configPath,
+  String? errorFile,
 }) {
   if (dns.isEmpty || interfaceName.isEmpty || configPath.isEmpty) {
     throw const FormatException(
@@ -30,7 +31,24 @@ List<String> desktopCoreRunArguments({
     interfaceName,
     '-config',
     configPath,
+    if (errorFile != null) ...['-error-file', errorFile],
   ];
+}
+
+File desktopCoreErrorFile(String configPath) => File('$configPath.error');
+
+Future<String> readDesktopCoreStartError(
+  String configPath,
+  String fallback,
+) async {
+  try {
+    final file = desktopCoreErrorFile(configPath);
+    final error = (await file.readAsString()).trim();
+    if (error.isNotEmpty) return error;
+  } on FileSystemException {
+    // A crash before the CLI starts may leave no diagnostic file.
+  }
+  return fallback;
 }
 
 abstract class BaseFfiApi {

@@ -160,7 +160,7 @@ flutter run -d macos
   ```shell
   flutter build linux --debug
   sudo setcap cap_net_admin,cap_net_raw+eip build/linux/x64/debug/bundle/OneXrayCore
-  flutter run -d linux
+  flutter run -d linux --no-enable-impeller
   ```
   ARM64 将路径中的 `x64` 改为 `arm64`。重新构建替换 Core 文件后，需要重新授予能力。
 - **Windows**：EXE 模式使用 `flutter run -d windows`；MSIX 模式从系统启动前文安装的开发包。

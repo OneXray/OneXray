@@ -11,6 +11,8 @@ import 'package:tray_manager/tray_manager.dart';
 /// Desktop-only menu content. Database streams keep names, selections and
 /// available choices current; native VPN state remains owned by the coordinator.
 class TrayMenuData {
+  static const _maxDataItems = 10;
+
   ServerCatalog catalog = ServerCatalog();
   List<CoreConfigData> raws = [];
   List<RoutingProfileData> routes = [];
@@ -81,7 +83,8 @@ class TrayMenuData {
     final sources = <int, String>{
       if (catalog.servers.any((row) => row.subId == 0))
         0: l.prototypeManualAdditions,
-      for (final source in catalog.sources) source.id: source.name,
+      for (final source in catalog.sources.take(_maxDataItems))
+        source.id: source.name,
     };
     final countries = {
       for (final row in catalog.servers) row.countryCode?.toUpperCase() ?? '',
@@ -102,7 +105,7 @@ class TrayMenuData {
             ),
         ]),
         group(l.prototypeByNodeLocation, [
-          for (final country in countries)
+          for (final country in countries.take(_maxDataItems))
             choice(
               'region:$country',
               country.isEmpty ? '—' : l.countryRegionName(country),
@@ -110,7 +113,7 @@ class TrayMenuData {
             ),
         ]),
         group(l.prototypeServers, [
-          for (final row in catalog.servers)
+          for (final row in catalog.servers.take(_maxDataItems))
             choice(
               'server:${row.id}',
               catalog.display(row).name,
@@ -120,7 +123,7 @@ class TrayMenuData {
         ]),
       ]),
       group('Raw JSON', [
-        for (final row in raws)
+        for (final row in raws.take(_maxDataItems))
           choice(
             'raw:${row.id}',
             row.name,
@@ -139,7 +142,7 @@ class TrayMenuData {
           configuration.trafficMode == TrafficMode.allVpn,
         ),
         group(l.prototypeCustomRouting, [
-          for (final route in routes)
+          for (final route in routes.take(_maxDataItems))
             choice(
               'custom:${route.id}',
               route.name,
@@ -169,7 +172,7 @@ class TrayMenuData {
           items: [
             update('updateSubscriptions', l.prototypeUpdateAll),
             MenuItem.separator(),
-            for (final source in catalog.sources)
+            for (final source in catalog.sources.take(_maxDataItems))
               update(
                 'updateSubscription:${source.id}',
                 source.name,
@@ -189,7 +192,7 @@ class TrayMenuData {
               l.prototypeDefaultRoutingData,
               allKey: 'updateGeodata',
             ),
-            for (final file in geodata)
+            for (final file in geodata.take(_maxDataItems))
               update(
                 'updateGeodata:${file.id}',
                 '${file.name}.dat',

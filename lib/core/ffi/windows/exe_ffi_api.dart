@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:onexray/core/ffi/base_ffi_api.dart';
-import 'package:onexray/core/ffi/desktop_core_process.dart';
 import 'package:onexray/core/ffi/desktop_core_exit.dart';
 import 'package:onexray/core/ffi/windows/core_process.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
@@ -16,28 +15,26 @@ import 'package:path/path.dart' as p;
 
 class WindowsExeFfiApi extends WindowsFfiApi {
   final WindowsCoreProcess _process;
-  final DesktopCoreProcessStore _store;
   final String? _filesDirectory;
   final String _corePath;
   final Future<StartVpnRequest> Function() _readRequest;
   final Future<void> Function(VpnStatus) _notify;
   final void Function(Object) _notifyError;
-  DesktopCoreExitWatch? _exitWatch;
-  DesktopCoreProcessRecord? _watchedRecord;
+  final _exitWatches = <int, DesktopCoreExitWatch>{};
+  // Cancelling waits also invalidates the reads already triggered by their exits.
+  int _watchGeneration = 0;
+  int _queryGeneration = 0;
   bool _observing = false;
-  DesktopCoreProcessRecord? _record;
   VpnStatus? _transition;
 
   WindowsExeFfiApi({
     WindowsCoreProcess? process,
-    String? filesDirectory,
+    this._filesDirectory,
     String? executable,
     Future<StartVpnRequest> Function()? readRequest,
     Future<void> Function(VpnStatus)? notify,
     void Function(Object)? notifyError,
   }) : _process = process ?? WindowsCoreProcess(),
-       _filesDirectory = filesDirectory,
-       _store = DesktopCoreProcessStore(directory: filesDirectory),
        _corePath =
            executable ??
            p.join(p.dirname(Platform.resolvedExecutable), 'OneXrayCore.exe'),
@@ -58,56 +55,95 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   @override
   Future<void> observeVpnStatus() async {
     _observing = true;
-    if (await _running()) _watch(_record!);
+    final query = _findCorePids();
+    final generation = _queryGeneration;
+    try {
+      await query;
+    } catch (_) {
+      if (generation == _queryGeneration) disposeVpnStatus();
+      rethrow;
+    }
   }
 
   @override
   void disposeVpnStatus() {
     _observing = false;
-    _exitWatch?.cancel();
-    _exitWatch = null;
-    _watchedRecord = null;
+    _clearExitWatches();
   }
 
-  void _watch(DesktopCoreProcessRecord record) {
-    if (!_observing || identical(_watchedRecord, record)) return;
-    _exitWatch?.cancel();
-    final watch = _process.watchExit(record, _corePath);
-    _exitWatch = watch;
-    _watchedRecord = record;
-    unawaited(
-      watch.exited
-          .then((exited) async {
-            if (!exited || !identical(_exitWatch, watch)) return;
-            _exitWatch = null;
-            _watchedRecord = null;
-            // Keep the identity on disk until a verified read/stop clears it. An
-            // asynchronous exit must never remove a newer process's record.
-            if (identical(_record, record)) _record = null;
-            if (_transition == null) await _notify(VpnStatus.disconnected);
-          })
-          .catchError((Object error) {
-            if (identical(_exitWatch, watch)) _notifyError(error);
-          }),
-    );
+  void _clearExitWatches() {
+    _watchGeneration++;
+    _queryGeneration++;
+    for (final watch in _exitWatches.values) {
+      watch.cancel();
+    }
+    _exitWatches.clear();
   }
 
-  Future<bool> _running() async {
-    final record = _record ?? await _store.read();
-    if (record == null) return false;
-    _record = record;
-    if (await _process.isRunning(record, _corePath)) return true;
-    await _forget(record);
-    return false;
+  void _syncExitWatches(Set<int> pids) {
+    for (final pid in _exitWatches.keys.toList()) {
+      if (!pids.contains(pid)) _exitWatches.remove(pid)?.cancel();
+    }
+    for (final pid in pids) {
+      if (_exitWatches.containsKey(pid)) continue;
+      final watch = _process.watchExit(pid);
+      final generation = _watchGeneration;
+      int? queryGeneration;
+      _exitWatches[pid] = watch;
+      unawaited(
+        watch.exited
+            .then((exited) async {
+              if (!identical(_exitWatches[pid], watch)) return;
+              _exitWatches.remove(pid);
+              if (!exited || !_observing || _transition != null) return;
+              final query = _findCorePids();
+              queryGeneration = _queryGeneration;
+              final pids = await query;
+              if (_observing &&
+                  _transition == null &&
+                  generation == _watchGeneration &&
+                  queryGeneration == _queryGeneration) {
+                await _notify(
+                  pids.isNotEmpty
+                      ? VpnStatus.connected
+                      : VpnStatus.disconnected,
+                );
+              }
+            })
+            .catchError((Object error) {
+              if (identical(_exitWatches[pid], watch)) {
+                _exitWatches.remove(pid)?.cancel();
+              }
+              if (_observing &&
+                  _transition == null &&
+                  generation == _watchGeneration &&
+                  (queryGeneration == null ||
+                      queryGeneration == _queryGeneration)) {
+                _notifyError(error);
+              }
+            }),
+      );
+    }
   }
+
+  Future<Set<int>> _findCorePids() async {
+    // Claim the query revision before awaiting, including one-shot status reads.
+    final generation = ++_queryGeneration;
+    final pids = await _process.findPids();
+    if (_observing && generation == _queryGeneration) _syncExitWatches(pids);
+    return pids;
+  }
+
+  Future<bool> _running() async => (await _findCorePids()).isNotEmpty;
 
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
     try {
+      final running = await _running();
       return commandSuccess(
         status:
             _transition ??
-            (await _running() ? VpnStatus.connected : VpnStatus.disconnected),
+            (running ? VpnStatus.connected : VpnStatus.disconnected),
       );
     } catch (error, stackTrace) {
       return _failed('read', error, stackTrace);
@@ -116,7 +152,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
 
   @override
   Future<bool?> cleanupStaleCore() async {
-    // Storage upgrade stops a verified running Core via the normal interface.
+    // Discover existing named processes; legacy PID files are not consulted.
     final status = await readVpnStatus();
     return status.state == NativeVpnCommandState.success;
   }
@@ -131,12 +167,11 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       excludedCidrs: [],
     ),
   }) async {
-    if (await _running()) {
-      return commandFailed('Stop the current Windows Core before starting');
-    }
     _transition = VpnStatus.connecting;
+    var launchAttempted = false;
     try {
       await _notify(VpnStatus.connecting);
+      await _stop();
       final request = await _readRequest();
       final config = await materializeRunXrayConfig(
         readRunXrayRequest(request),
@@ -144,28 +179,34 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       if (config == null) {
         throw const FormatException('xrayJson is empty');
       }
-      final record = await _process.start(
+      // Create as the App user before Windows starts an elevated Core.
+      final errorFile = desktopCoreErrorFile(config);
+      await errorFile.writeAsString('', flush: true);
+      launchAttempted = true;
+      final pid = await _process.start(
         _corePath,
         desktopCoreRunArguments(
           dns: request.tun?.tunDnsIPv4 ?? '',
           interfaceName: request.tun?.autoOutboundsInterface ?? '',
           configPath: config,
+          errorFile: errorFile.path,
         ),
-        config,
       );
-      _record = record;
-      await _store.write(record);
-      _watch(record);
       await Future<void>.delayed(const Duration(seconds: 1));
-      if (!await _running()) {
-        throw StateError('Windows Core exited during start');
+      if (!(await _findCorePids()).contains(pid)) {
+        throw StateError(
+          await readDesktopCoreStartError(
+            config,
+            'Windows Core exited during start',
+          ),
+        );
       }
       await _notify(VpnStatus.connected);
       return commandSuccess(status: VpnStatus.connected);
     } catch (error, stackTrace) {
       try {
-        await _stop();
-        await _notify(VpnStatus.disconnected);
+        if (launchAttempted) await _stop();
+        if (!await _running()) await _notify(VpnStatus.disconnected);
       } catch (cleanupError) {
         ygLogger('clean up failed Windows Core start: $cleanupError');
       }
@@ -191,21 +232,10 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   }
 
   Future<void> _stop() async {
-    final record = _record ?? await _store.read();
-    if (record == null) return;
-    _record = record;
-    await _process.stop(record, _corePath);
-    await _forget(record);
-  }
-
-  Future<void> _forget(DesktopCoreProcessRecord record) async {
-    if (identical(_watchedRecord, record)) {
-      _exitWatch?.cancel();
-      _exitWatch = null;
-      _watchedRecord = null;
-    }
-    await _store.clear(pid: record.pid);
-    _record = null;
+    // A denied stop must still retire older queries, but keep live exit watches.
+    _queryGeneration++;
+    await _process.stopAll();
+    _clearExitWatches();
   }
 
   NativeVpnCommandResult _failed(

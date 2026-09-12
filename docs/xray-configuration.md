@@ -31,15 +31,14 @@ Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字
 
 节点测速使用模型封装节点列表；节点编辑、App Link 和手写节点 JSON 的校验使用最小
 `XrayJson`，保留完整 outbound 与本地资源路径，关闭日志，不添加运行入站和 metrics。
-启动编译同时产生运行 JSON 和验证 JSON：普通模式从同一个模型保留实际节点、最终出口链、
-DNS、路由与必要依赖，排除 App 运行资源；实际 `runXray` 使用未裁剪的运行 JSON。
-验证副本不持久化，不重新生成另一套节点或规则。智能路由预览直接消费 `XrayRoutingRule`，
+启动编译只产生实际 `runXray` 使用的运行 JSON，不生成验证副本，也不在 App 中通过
+`testXray` 预先构造 instance。智能路由预览直接消费 `XrayRoutingRule`，
 自定义规则由编辑 State 生成模型；界面预览、验证与运行编译共用规则生成逻辑。
 
 Xray 字段的有效性以 libXray 为准。App 不维护协议、加密算法、端口、网络类型、重复
 tag 等额外校验规则，也不因 VMess 省略 security 而拒绝内核已接受的节点。标准分享解析、
-测速和分享生成采用对应 libXray API 的结果；节点编辑、手写导入、完整配置保存和启动
-预检使用 `testXray`。App 保留自定义名称校验，以及文件/链接安全、资产数量与事务完整性、
+测速和分享生成采用对应 libXray API 的结果；节点编辑、手写导入和完整配置保存使用
+`testXray`，连接启动不再调用该预检。App 保留自定义名称校验，以及文件/链接安全、资产数量与事务完整性、
 编辑器可表达范围和平台网络策略等自身职责内的必要检查。
 
 接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
@@ -145,7 +144,7 @@ Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的�
 规则子页只更新草稿，不在 Dart 中判断域名/IP、端口、网络及空条件是否合法。整份
 Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空接入槽只在最小验证配置中
 替换为本地 freedom 出站，补齐与运行一致的 proxy balancer、所需 Observatory、direct/block
-与资源路径，不选择真实节点、不启动 VPN。连接前再校验实际节点与路由的组合。
+与资源路径，不选择真实节点、不启动 VPN。实际节点与路由的组合交由 Core 启动处理，不再连接前预检。
 依赖的 Geodata 先发布，校验失败
 则回滚且不覆盖原路由。
 
@@ -172,7 +171,7 @@ Swift 仅在 `targetEnvironment(simulator)` 时将请求中的 `tunIn` 改为本
 元数据保持不变。模拟器直接调用 `runXray` / `stopXray`，以 `getXrayState` 为状态来源，
 通过原有原生状态通知更新 App；真机和 macOS 仍使用系统 VPN。
 
-Raw 保存和启动预检共用 `XrayValidation` 的 Map 投影，只处理验证副本：排除 App 管理的
+Raw 保存使用 `XrayValidation` 的 Map 投影，只处理验证副本：排除 App 管理的
 入站、更新任务和运行资源，关闭日志与统计采集，保留用户节点、路由、DNS 和模块依赖。
 统计模块以最小配置保留，避免用户 API 等依赖因裁剪而产生假错误；只处理被 App 接管的
 嵌套项，不删除整个 DNS、policy 或 streamSettings。字段清单以投影与编译代码为准。
@@ -186,7 +185,7 @@ Raw 保存和启动预检共用 `XrayValidation` 的 Map 投影，只处理验�
 
 ## 运行协调与统计
 
-`ConnectionCoordinator` 串行停止并确认旧运行、准备并校验新配置、启动并确认新运行，最后提交数据库
+`ConnectionCoordinator` 串行停止并确认旧运行、准备新配置、启动并确认新运行，最后提交数据库
 设置。`ConnectionRuntime` 不单独序列化；`run/start.json` 是唯一原生启动请求，其中
 `coreInvokeText` 保存实际 Xray 输入，`metadataJson` 只保存重开 App 后显示运行路径和保护
 节点所需的配置、节点信息及启动时间。不另存运行计划、快照或跨进程提交日志。
@@ -198,10 +197,10 @@ Raw 与自定义路由编辑先完成用户确认，再进入连接队列。携�
 停止连接时同样使先前读取回调失效。
 
 当前 VPN 尚未断开时，先停止并确认断开，再进入启动准备；停止失败不执行资产校验、配置准备或启动。
-准备阶段先完成 Windows/Linux 出口网卡存在性检查，再将编译产生的验证 JSON 交给
-`libXray.testXray` 构造 instance；两者均发生在停止旧运行之后、启动新 VPN 之前。
-重连所需的资产校验同样在停止旧运行后执行；不涉及启停的编辑继续独立校验并保存。
-`testXray` 在加载配置前拒绝同进程已有的受管理 Xray instance；模拟器同样遵循先停后校验，
+准备阶段完成 Windows/Linux 出口网卡存在性检查、节点解析、运行端口分配和配置编译，
+不调用 `libXray.testXray`；配置加载、实例构造及启动错误由实际启动路径报告。
+编辑/导入触发重连时，资产保存校验仍在停止旧运行后执行；不涉及启停的编辑继续独立校验并保存。
+这些编辑校验调用的 `testXray` 在加载配置前拒绝同进程已有的受管理 Xray instance；模拟器同样遵循先停后校验，
 不绕过 libXray 的生命周期检查。需要与运行中 Core 同时校验的调用方仍须自行隔离进程。
 
 一旦已请求停止或启动原生 VPN，后续准备、校验、启动、确认、
@@ -214,12 +213,38 @@ libXray，未运行时同样成功；真实 Apple VPN 即使已断开，也仍�
 连接。状态查询或实际停止失败时继续阻止数据替换，不将失败当作空闲。
 
 Windows 和 Linux 每次实际启动桌面 Core 前，在旧运行停止后清理整个 `run/core-inputs`，
-再创建唯一的 `core-inputs/input-*/xray.json`。输入目录不复用，也不保留历史。Windows MSIX 的
+再创建唯一的 `core-inputs/input-*/xray.json`。Linux 和 Windows EXE/MSIX 同时由 App 创建空的
+`xray.json.error`，通过桌面 Core 的 `-error-file` 参数接收实际配置加载、构造或启动错误。
+Core 退出后读取本次文件，保留原始错误；没有诊断时才使用通用退出提示，不重新运行
+`testXray`。该文件独立于 Xray 的日志开关，不是运行状态或流量记录；Windows 提权 Core
+复用 App 预创建文件的读取权限。发布时必须同时打包支持该参数的桌面 Core。
+MSIX 通过已有的 `sessionBackend.processes[].arguments` 传入诊断路径，启动失败并清理
+本次会话后读取；文件为空或不可读时保留原生启动错误。VCore 继续只负责进程生命周期，
+不解析或传输 Core 诊断，MSIX 的连接状态仍由系统 VPN 提供。
+输入目录不复用，也不保留历史。Windows MSIX 的
 `snapshotToken` 仅用于 VCore Session Snapshot 的宿主归属校验，不能删除或当作 App 运行快照。
-Windows EXE 与 Linux 只额外保存验证进程归属所需的 PID、启动时间和本次输入路径。
-EXE 使用 Win32 进程状态，验证路径、创建时间和当前 Windows session 后才停止目标；不按
-进程名批量结束 Core。v26.8.4 的 PID-only 记录仅接管同一安装目录下旧 bin 路径的 Core。
-EXE 的 UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutter UI。
+Windows EXE 使用系统进程列表按精确进程名 `OneXrayCore.exe` 管理所有存活匹配进程，
+按 Windows 名称规则忽略大小写，不匹配完整命令行、名称前缀或其它 `xray` 进程。不保存或
+读取旧 PID 记录，不按安装路径、创建时间、用户、Windows session 或配置参数筛选；重开
+App 同样直接发现匹配进程。启动前先停止全部匹配进程，再准备新输入；启动确认必须找到
+本次新启动的进程，不能由其它同名进程掩盖启动失败。
+EXE 的按名停止也会影响其它安装、用户、session 或 MSIX 启动的同名 Core；MSIX 自身的
+Provider / Session Host 管理和系统 VPN 状态来源保持独立，不以进程名判断 MSIX 已连接。
+停止优先使用匹配进程的句柄终止，权限不足时通过 UAC 提权按名终止，不连带结束其它名称
+的子进程。只有退出得到确认且再次查询没有存活匹配进程，才报告已断开；查询、监测、提权
+取消或部分停止失败均保留错误，不伪装为已断开。PID 和句柄只用于本次操作及可取消的退出
+等待，不作为持久归属记录。进程查询、UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutter UI。
+Linux 使用系统 `procps` 工具按精确进程名 `OneXrayCore` 管理所有匹配进程，不保存或读取
+旧 PID 记录，不校验可执行路径、启动时间、UID 或配置参数。`pgrep -x` 配合存活状态筛选
+查询 PID，不再由 Dart 逐个读取 `/proc`；僵尸和已退出进程不视为已连接，也不依赖受
+capabilities 保护的 `/proc/<pid>/exe`。工具缺失、执行失败或无效输出不等于已断开。
+停止使用 `pkill -TERM -x OneXrayCore`，等待进程退出事件；超时仍存在时才使用
+`pkill -KILL -x OneXrayCore`。发送信号成功不等于停止完成，只有再次查询确认没有存活
+匹配进程才报告已断开。匹配的是进程名而非完整命令行，不处理其它 `xray` 或名称前缀相似的进程。
+每次新进程查询都使之前未完成的查询失效，包括同一监听周期内的一次性状态读取。
+退出监听取消或请求停止旧运行时同样使待完成查询失效，即使停止失败也不接受旧查询。
+过期结果和错误均不发布通知，也不替换后续查询建立的进程监听；停止失败时保留仍有效的
+存活进程监听，不增加轮询或缓存 VPN 状态。
 
 普通运行环境的 `xray.location.asset` 与 `xray.location.cert` 始终指向唯一、平铺的
 `VpnConstants.datDir`，VPN 准备和启动不复制资产。发布事务与 macOS System Extension
@@ -234,8 +259,9 @@ EXE 的 UAC 和有界退出等待在 worker isolate 内执行，不阻塞 Flutte
   System Extension 就绪确认都等待通知，超时仅用于结束无响应的操作，不循环查询。
 - Android 直接向已运行的 VPN Service 查询资源状态，通过生命周期广播及绑定服务的
   进程退出通知同步变化；撤销授权立即断开。桥接层不保存上次 VPN 状态，也不延迟断开通知。
-- Windows EXE 读取经过身份验证的进程状态，使用进程句柄的退出事件；Linux 自行启动的
-  进程使用 `Process.exitCode`，接管旧进程使用 `pidfd` 退出事件。Linux 接管监测要求内核
+- Windows EXE 查询所有同名进程，使用各进程句柄的退出事件；单个退出后重新查询，仍有
+  匹配进程时保持已连接，全部退出才通知已断开。Linux 自行启动的进程使用 `Process.exitCode`，
+  接管旧进程使用 `pidfd` 退出事件。Linux 接管监测要求内核
   5.3 或更新版本，不支持时明确报错，不退回轮询。
 - 仅 Windows MSIX 在自身实现内每 5 秒检查系统 VPN，并在启停期间执行有界的快速确认。
   该监测随 App 进程存活，不随窗口隐藏或失焦停止；必要的去重状态留在 MSIX 内部。
