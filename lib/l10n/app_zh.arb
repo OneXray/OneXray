@@ -346,7 +346,7 @@
   "prototypeDirectAppleServices": "Apple 服务直连",
   "prototypeDirectAppleServicesHint": "App Store、iCloud 等 Apple 服务保持本地连接。",
   "directWindowsServices": "Windows 服务直连",
-  "directWindowsServicesHint": "Microsoft 和 Bing 分类中的域名使用直连。",
+  "directWindowsServicesHint": "Microsoft 和 Bing 分类中的域名使用直连，GitHub 使用 VPN。",
   "windowsServices": "Windows 服务",
   "prototypeBlockAdDomains": "阻止常见广告域名",
   "prototypeBlockAdDomainsHint": "使用内置广告域名列表，个别网站可能受到影响。",

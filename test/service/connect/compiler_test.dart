@@ -562,7 +562,7 @@ void main() {
     }
   });
 
-  test('Windows services share one direct rule and follow direct DNS', () {
+  test('Windows services keep GitHub on proxy ahead of direct rules', () {
     for (final enabled in [false, true]) {
       for (final directDns in [false, true]) {
         final smart = SmartRoutingSettings.fromJson(
@@ -585,6 +585,29 @@ void main() {
           'geosite:CN',
         ];
         final rules = (config['routing']['rules'] as List).cast<Map>();
+        final githubRules = rules.where(
+          (rule) => rule['ruleTag'] == 'app-smart-github',
+        );
+        expect(githubRules, [
+          if (enabled)
+            {
+              'ruleTag': 'app-smart-github',
+              'domain': ['geosite:GITHUB'],
+              'balancerTag': 'proxy',
+            },
+        ]);
+        expect(
+          rules
+              .where(
+                (rule) => (rule['ruleTag'] as String).startsWith('app-smart-'),
+              )
+              .map((rule) => rule['ruleTag']),
+          [
+            if (enabled) 'app-smart-github',
+            'app-smart-direct-domain',
+            'app-smart-direct-ip',
+          ],
+        );
         expect(
           rules
               .where((rule) => rule['outboundTag'] == 'direct')

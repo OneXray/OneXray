@@ -71,8 +71,10 @@ App 生成的所有 rule 均省略可选的 `type: field`，且不增加无条�
 不生成空条件规则；广告阻断仍排在这两条直连规则之前。
 智能路由除广告拦截外，所有开关默认开启；已保存的开关值保持不变。
 Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bing 两类 Geosite
-域名，Windows、Office 的相关域名已包含在 Microsoft 分类中；与其他直连条件共用预览、
-保存和重连逻辑。
+域名，Windows、Office 的相关域名已包含在 Microsoft 分类中。同时在合并的域名/IP 直连
+规则之前生成 `geosite:GITHUB → balancerTag: proxy`，避免 GitHub 被 Microsoft 分类或
+地区直连条件先命中；广告阻断仍在这条代理规则之前。关闭该开关时一并移除 GitHub 代理
+规则。规则生成共用于预览、保存变更比较和运行编译，不增加独立开关，也不影响 Custom 或 Raw。
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。

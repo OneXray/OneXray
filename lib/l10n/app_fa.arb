@@ -346,7 +346,7 @@
     "prototypeDirectAppleServices": "اتصال مستقیم به خدمات Apple",
     "prototypeDirectAppleServicesHint": "App Store، iCloud و سایر خدمات Apple از اتصال محلی استفاده کنند.",
     "directWindowsServices": "اتصال مستقیم به خدمات Windows",
-    "directWindowsServicesHint": "اتصال مستقیم به دامنه‌های دسته‌های Microsoft و Bing.",
+    "directWindowsServicesHint": "اتصال مستقیم به دامنه‌های Microsoft و Bing؛ GitHub از VPN استفاده می‌کند.",
     "windowsServices": "خدمات Windows",
     "prototypeBlockAdDomains": "مسدود کردن دامنه‌های تبلیغاتی رایج",
     "prototypeBlockAdDomainsHint": "استفاده از فهرست داخلی دامنه‌های تبلیغاتی. ممکن است روی برخی سایت‌ها اثر بگذارد.",

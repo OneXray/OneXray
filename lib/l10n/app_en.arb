@@ -1251,9 +1251,9 @@
   "@directWindowsServices": {
     "description": "Smart Routing switch for direct connections to Windows-related services."
   },
-  "directWindowsServicesHint": "Connect directly to domains in the Microsoft and Bing categories.",
+  "directWindowsServicesHint": "Connect directly to Microsoft and Bing domains; route GitHub through the VPN.",
   "@directWindowsServicesHint": {
-    "description": "The Microsoft and Bing Geosite categories covered by the Windows services switch."
+    "description": "Microsoft and Bing use direct routing, with a higher-priority GitHub proxy exception when the Windows services switch is enabled."
   },
   "windowsServices": "Windows services",
   "@windowsServices": {

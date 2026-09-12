@@ -269,11 +269,17 @@ void main() {
     final rules = ConnectionCompiler.smartRules(smart, regions);
     expect(rules.map((rule) => rule.ruleTag), [
       'app-smart-ads',
+      'app-smart-github',
       'app-smart-direct-domain',
       'app-smart-direct-ip',
     ]);
     expect(rules[0].outboundTag, 'block');
     expect(rules[1].toJson(), {
+      'ruleTag': 'app-smart-github',
+      'domain': ['geosite:GITHUB'],
+      'balancerTag': 'proxy',
+    });
+    expect(rules[2].toJson(), {
       'ruleTag': 'app-smart-direct-domain',
       'domain': [
         'geosite:PRIVATE',
@@ -285,7 +291,7 @@ void main() {
       ],
       'outboundTag': 'direct',
     });
-    expect(rules[2].toJson(), {
+    expect(rules[3].toJson(), {
       'ruleTag': 'app-smart-direct-ip',
       'ip': ['geoip:PRIVATE', 'geoip:RU', 'geoip:CN'],
       'outboundTag': 'direct',

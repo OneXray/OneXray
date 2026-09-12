@@ -160,6 +160,12 @@ class ConnectionCompiler {
           domain: ['geosite:CATEGORY-ADS-ALL'],
           outboundTag: 'block',
         ),
+      if (smart.directWindows)
+        XrayRoutingRule(
+          ruleTag: 'app-smart-github',
+          domain: ['geosite:GITHUB'],
+          balancerTag: 'proxy',
+        ),
       if (domains.isNotEmpty)
         XrayRoutingRule(
           ruleTag: 'app-smart-direct-domain',
