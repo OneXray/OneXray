@@ -1,0 +1,105 @@
+name: Bug report
+description: Report a problem with the OneXray app.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please write your report in English and describe one problem per issue.
+        Check the [latest release](https://github.com/OneXray/OneXray/releases/latest) and mention if you cannot test it.
+        Issues and attachments are public. Remove passwords, UUIDs, subscription URLs or tokens, age private keys, and other private data before sharing logs, configurations, or screenshots.
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched open and closed issues and did not find an existing report of this problem.
+          required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: OneXray version
+      description: Enter the exact app version from Settings. For a source build, include the commit. If the app cannot open, use the installed package version.
+    validations:
+      required: true
+  - type: input
+    id: xray-version
+    attributes:
+      label: Xray-core version
+      description: Shown in Settings. Leave blank if unavailable.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS / iPadOS
+        - macOS - OneXray (App Store)
+        - macOS - OneXraySE (System Extension)
+        - Android
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS version and device
+      description: Include the OS version, device model, and CPU architecture if known. For Linux, include the distribution and desktop environment. Mention if you use a simulator or emulator.
+    validations:
+      required: true
+  - type: input
+    id: installation
+    attributes:
+      label: Installation source and package
+      description: For example, App Store, Google Play, Homebrew, winget, Microsoft Store, GitHub release (EXE / ZIP / MSIX / APK / IPA / DEB), or a source build. For source builds, specify the build mode.
+    validations:
+      required: true
+  - type: dropdown
+    id: routing-mode
+    attributes:
+      label: Routing mode
+      description: Select the mode used when the problem occurs, if relevant.
+      options:
+        - Smart Routing
+        - All traffic through VPN
+        - Custom Routing
+        - Expert mode (Raw JSON)
+        - Not applicable / unknown
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the actions and relevant settings. For intermittent problems, describe what happened before the failure and how often it occurs.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include the exact error message, if any.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste the relevant error and surrounding log lines if available. The OneXraySE build has no in-app Xray log viewer; leave this blank if logs are unavailable.
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Screenshots, configuration, and additional context
+      description: Optionally attach screenshots or a minimal configuration with credentials removed. Mention whether this is a fresh install or an upgrade, and the last working version if known. Do not upload live server or subscription credentials.
