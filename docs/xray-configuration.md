@@ -149,9 +149,7 @@ Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空
 则回滚且不覆盖原路由。
 
 分享 JSON 可携带 `geodata.assets: [{"file":"other.dat","url":"https://…"}]`，省略默认
-geoip/geosite。导入先在同级临时目录下载、校验并生成索引，文件名冲突拒绝；资产发布到
-`VpnConstants.datDir` 的平铺根目录且路由成功提交后，持久 JSON 删除导入专用 `geodata`
-字段。详见 [数据管理](data-management.md)。
+geoip/geosite。导入冲突、暂存、发布与回滚见 [Geodata 发布合同](data-management.md#geodata-发布)。
 
 ## Raw JSON
 

@@ -74,46 +74,34 @@ Age 公钥和私钥仅保存在订阅中，不随普通分享发出。分享只�
 解析器严格检查 scheme、host、path、类型、重复/未知参数与 Base64。订阅和 Geodata URL
 只接受 HTTPS。分享生成上述规范格式，不为退休类型生成链接。
 
-Raw/Custom 使用共享完整配置交换服务。根部允许 name；Custom 导出附带需要的
-`geodata.assets` 文件名和 HTTPS 下载地址，省略默认数据。导入在 `VpnConstants.datDir` 的
-同级临时目录下载、校验并生成索引，文件名冲突拒绝；成功后资产只发布到平铺的
-`VpnConstants.datDir`，并与配置提交共用失败回滚边界。存储移除导入专用 geodata 字段，
-prepare 阶段不发布正式文件，完成用户确认后的保存通过统一导入操作发布、提交及回滚，
-文件队列保护整个过程。页面不接触 Geodata 发布句柄，分享只传递依赖声明；未完成发布在
-冷启动时按数据库 manifest 收敛。连接准备和启动不复制这些资产。Raw 保留用户配置原文的运行语义，不能把普通节点导入误认为
-完整 Raw 导入。
+Raw/Custom 使用共享完整配置交换服务，根部允许 `name`。Custom 导出附带所需的
+`geodata.assets` 文件名和 HTTPS 下载地址，省略默认数据；文件名冲突拒绝，存储时移除
+导入专用 `geodata`。下载、确认、发布、回滚及冷启动恢复统一遵循
+[Geodata 发布合同](data-management.md#geodata-发布)。Raw 保留用户原文的运行语义，
+普通节点导入不能代替完整 Raw 导入。
 
 分享或导出前提示敏感数据风险；不要把 Age 私钥、完整配置或解密正文写入日志。
 超额旧 Raw 与升级边界见 [数据管理](data-management.md)。
 
-## Outgoing system sharing
+## 系统分享
 
-`OutgoingShare` dispatches prepared text through `share_plus` on iOS, Android,
-macOS and Windows. Linux uses an explicit clipboard action instead of the
-plugin's mail fallback. Windows EXE and MSIX use the same dispatch policy.
-Text, link ordering and configuration encoding stay with the existing content
-generators; dispatch does not download Geodata, persist data or start a VPN.
-Native title and subject use the display name, falling back to `OneXray` when
-the name is empty. Links remain text, not URI-metadata or temporary-file shares.
+`OutgoingShare` 在 iOS、Android、macOS 和 Windows 通过 `share_plus` 发送已准备的文本；
+Linux 使用明确的复制操作，不使用插件的邮件回退。Windows EXE 与 MSIX 共用分发策略。
+文本、链接顺序和配置编码仍由现有生成器负责；分发不下载 Geodata、不持久化数据或启动 VPN。
+原生标题与主题使用显示名称，空名称回退为 `OneXray`。链接仍作为文本发送，不改为
+URI 元数据或临时文件分享。
 
-The shared page action owns button-local loading, re-entry prevention, the
-existing Raw/custom sensitive-content warning and invocation-error feedback.
-It measures the actual button immediately before dispatch. Missing or unusable
-geometry is omitted so the native plugin can position its own UI. Closing or
-hiding the originating page during preparation prevents a late share dialog;
-leaving during native sharing does not wait for or cancel the OS operation.
-Late results do not navigate or display feedback on an unrelated page.
+共享页面操作负责按钮内 loading、防重复提交、Raw/Custom 敏感数据确认和调用失败提示。
+分发前测量实际按钮位置；位置缺失或不可用时省略，让原生插件定位。准备期间页面已关闭
+或隐藏时，不再弹出分享窗口；原生分享开始后离开页面，不等待或取消系统操作。
+迟到的结果不导航，也不在无关页面显示提示。
 
-Native `success`, `dismissed` and `unavailable` are all quiet completions, not
-delivery receipts. None causes a success/failure toast, clipboard fallback,
-retry or automatic page dismissal. A thrown error retains its concrete cause.
-Explicit Linux copy shows the existing two-second toast only after the write
-succeeds, and keeps the page open. No global share queue, lifecycle polling or
-synthetic native timeout is added.
+原生 `success`、`dismissed` 和 `unavailable` 均静默完成，不代表送达，不触发成功/失败
+toast、复制回退、重试或自动关闭页面。抛出的异常保留具体原因。Linux 仅在复制成功后
+显示两秒 toast，并保留页面。不增加全局分享队列、生命周期轮询或额外的原生超时。
 
-QR image saving and JSON/log/runtime-configuration exports remain explicit
-file-save operations. Incoming App Links and configuration import transactions
-are independent of outgoing system sharing.
+二维码图片保存与 JSON、日志、运行配置导出仍是明确的文件保存操作。
+入站 App Link 与配置导入事务独立于对外系统分享。
 
 ## 实现入口
 
@@ -123,5 +111,5 @@ are independent of outgoing system sharing.
 - 链接：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`
 - Raw/Custom 交换：`lib/service/shared/share/configuration_transfer.dart`
 - 节点/订阅分享页：`lib/pages/shared/share/`
-- Outgoing dispatch: `lib/service/shared/share/outgoing_share.dart`
-- Shared UI action: `lib/pages/shared/share/action.dart`
+- 对外分发：`lib/service/shared/share/outgoing_share.dart`
+- 共享界面操作：`lib/pages/shared/share/action.dart`

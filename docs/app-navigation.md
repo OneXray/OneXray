@@ -14,13 +14,8 @@ Material 控件和主题统一使用 `material_ui`，与 `go_router` 的页面�
 不显示成功提示。恢复默认只修改编辑草稿，提示仍需保存，不隐式写入数据库或重连。
 导航、选项切换、草稿内增删等已有直接视觉反馈的操作不重复提示；系统跳转失败时显示 toast。
 
-Outgoing sharing uses the shared `ShareAction` around the existing buttons.
-Only the active share button shows loading and rejects duplicate activation;
-other page actions remain independent. A native share result never closes the
-share page or claims delivery. Linux shows an explicit copy label and icon with
-the existing two-second copy toast. Raw/custom sharing keeps its sensitive-data
-confirmation. Page departure suppresses late dialogs and feedback; losing window
-focus alone is not cancellation. See [sharing](subscriptions-and-sharing.md#outgoing-system-sharing).
+对外分享统一使用 `ShareAction`；按钮状态、平台差异和迟到结果处理见
+[系统分享](subscriptions-and-sharing.md#系统分享)。
 
 ## 公共主题与布局
 
@@ -60,8 +55,8 @@ Raw 新增最多三份；已有超额旧数据仍完整显示、可编辑和选�
 这是页面操作等待状态，不提前把原生 VPN 标记为已连接或已断开。进入准备/连接阶段后仍可取消，
 命令完成或失败后清除页面等待状态，原生状态和失败结果继续由协调器发布。
 
-涉及当前运行配置的变更通过协调器确认、重连与提交；先停止当前 VPN，再准备并启动新配置。
-停止失败不进入启动流程；已进入原生启停后失败则停在失败状态，不自动重启旧连接。编辑未启用资产或仅改名称不重连。
+当前配置变更通过协调器确认并重连；编辑未启用资产或仅改名称不重连。
+启停顺序与失败处理见 [连接生命周期](xray-configuration.md#运行协调与统计)。
 
 ## 服务器
 
@@ -116,9 +111,7 @@ Linux x64 不应用该回退，继续按支持的语言正常解析。
 波斯语界面 RTL，JSON、URL、IP、端口与日志内容保持 LTR。
 隐私政策使用 HTTPS 链接，App 不内置隐私正文，不收集匿名分析数据。
 
-## 实现入口
-
-### 系统快捷入口
+## 系统快捷入口
 
 移动端仅使用 `quick_actions` 的 App 图标快捷菜单，固定提供启动 VPN、停止 VPN、切换配置、
 更新订阅四项，不接入 App Intents、Siri 或系统自动化。切换配置复用现有页面：普通模式进入
@@ -142,7 +135,7 @@ macOS/Windows 的托盘菜单打开期间不替换菜单，避免后台更新使
 失败保留旧文件，不触发 VPN 重连。托盘使用系统通知反馈结果，不因普通更新失败抢占窗口。
 更新中的菜单项显示等待状态，其他无关操作保持可用。
 
-### 错误反馈
+## 错误反馈
 
 错误保留操作与原始原因，区分输入、配置、网络、权限、本地读写、状态冲突和运行失败；
 未知错误不猜测为网络问题。提示标题复用现有国际化文案，系统与 libXray 的诊断保留来源文本，
@@ -161,7 +154,7 @@ macOS/Windows 的托盘菜单打开期间不替换菜单，避免后台更新使
 - 清理数据在停止 VPN 之前失败时明确尚未删除数据；进入删除阶段后的失败不承诺数据完整保留。
   不增加全局错误弹窗，也不通过全局禁用交互处理失败。
 
-### 目录组织
+## 目录组织
 
 `lib/pages/` 和 `lib/service/` 按相同的业务归属组织：`connect`、`servers`、
 `advanced`、`settings`；`launch` 负责启动与初始化，`shared` 保存跨页面复用的实现。
@@ -169,11 +162,5 @@ macOS/Windows 的托盘菜单打开期间不替换菜单，避免后台更新使
 连接、服务器和最终出口选择页各自持有独立的页面状态，不通过 Controller 继承复用。
 节点展示数据由服务在数据库列表变化时解析；页面只共享展示与分组逻辑，单节点查询仍为一次性读取。
 
-- 路由和响应式外壳：`lib/pages/main/`
-- 连接：`connect/`；智能与自定义路由归 `connect/routing/`，Raw 编辑和运行配置也归连接。
-- 服务器：`servers/`；订阅表单、导入和节点管理集中在该入口，不保留独立订阅根目录。
-- 高级：`advanced/tunnel/` 放平台 VPN 配置；`advanced/xray/` 放路由数据、日志、运行配置、测速设置和数据更新。
-- 设置：`settings/` 放根页、关于、外观、语言及 App 更新。
-- 共享：`lib/pages/shared/` 放公共控件、页面状态和分享页；`lib/service/shared/` 放分享协议、测速执行、事件状态和通用运行支持。
-- 主题：`lib/pages/theme/` 继续作为唯一公共主题入口；对应测试按相同归属组织在 `test/pages/` 和 `test/service/`。
-- 运行与提交：[Xray 配置合同](xray-configuration.md)
+路由与响应式外壳位于 `lib/pages/main/`，公共主题位于 `lib/pages/theme/`；
+测试按相同业务归属组织。配置编译与提交边界见 [Xray 配置合同](xray-configuration.md)。

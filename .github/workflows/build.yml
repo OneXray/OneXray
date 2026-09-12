@@ -70,7 +70,7 @@ concurrency:
 env:
   NDK_VERSION: r29
   LIBXRAY_REF: main
-  VCORE_REPOSITORY: ${{ github.repository_owner }}/VCore
+  VCORE_REPOSITORY: OneVCore/VCore
   VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 

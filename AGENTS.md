@@ -23,7 +23,7 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
 - Current-session traffic and speed come only from Xray metrics HTTP while the
   connection page and app view are visible; input focus is not required. Do not
   persist traffic or maintain device totals.
-  Keep the iOS Debug local proxy separate from normal UI and business state.
+  iOS simulator SOCKS adaptation belongs in Swift, not App UI or business state.
 - Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`
   for AppBar styling, `ThemeData.textTheme`/`AppTypography` for typography, and
   `LucideIcons` for icons. Pages must not hardcode font sizes, families, letter spacing
@@ -43,45 +43,35 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   [data management](docs/data-management.md).
 - Import, links or sharing: [subscriptions and sharing](docs/subscriptions-and-sharing.md);
   for age keys/decryption, also read [age subscriptions](docs/age-encrypted-subscriptions.md).
-- UI/navigation: [navigation](docs/app-navigation.md). For prototype parity,
-  use the approved [product model](../references/onexray-app-prototype/PRODUCT-MODEL.md)
-  and [prototype source](../references/onexray-app-prototype/src/); reuse its
-  approved translations rather than translating again.
+- UI/navigation: [navigation](docs/app-navigation.md). For requested visual parity,
+  consult the relevant [prototype source](../references/onexray-app-prototype/src/)
+  and reuse approved translations for unchanged features. The old
+  [product model](../references/onexray-app-prototype/PRODUCT-MODEL.md) is historical:
+  current App contracts take precedence; do not restore retired features from it.
 - Native contracts: `lib/core/pigeon/`, `pigeon/message.dart`, `swift/`,
   Android's Kotlin bridge, and [libXray API](../libXray/README.md#api).
   Before packaging, read [build scripts](build_scripts/README.md) and, for Windows,
   [Windows builds](docs/windows-build.md). Apple/Android release scripts may
   upload to stores; they are not local validation commands.
 
-## Agent skills
+## GitHub and reviews
 
-### Issue tracker
-
-GitHub Issues for `OneXray/OneXray`. Before issue or PR work, read
-[issue tracker](docs/agents/issue-tracker.md).
-
-### Triage labels
-
-Use the five canonical triage labels. Before triage, read
-[label mapping](docs/agents/triage-labels.md).
-
-### Domain docs
-
-Single-context layout. Before codebase exploration or domain/ADR work,
-read [domain guidance](docs/agents/domain.md).
+- Use explicit `--repo OneXray/OneXray` or repository API endpoints; the Git
+  remote uses an SSH alias. Write issue/PR titles, descriptions and comments in
+  English. Keep PR content self-contained without references to other repos' PRs.
+- Review the PR's actual remote base/head, not unpushed local changes; record
+  the commit IDs without switching the checkout. Report Standards and Spec
+  separately, with severity, location, concrete impact and evidence.
+- A review does not authorize edits, comments, label changes, closure or pushes.
+  Check actual labels when an authorized action needs them; no triage setup is required.
 
 ## Verification
 
 All `flutter` and `dart` commands must run serially across terminals, tool calls
 and agents: they share `.dart_tool` and native-asset state.
 
-- Match generation/checks to the change. Common commands:
-  `flutter gen-l10n`, `dart run build_runner build --delete-conflicting-outputs`,
-  `dart run tool/check_native_model_contract.dart`,
-  `dart run tool/check_layer_dependencies.dart`,
-  `dart format --output=none --set-exit-if-changed <changed Dart files>`,
-  `flutter analyze`, `flutter test`, `flutter build macos --debug`.
-  Regenerate Pigeon outputs from `pigeon/message.dart`; verify changed native
+- Match generation/checks to the change; available checks are in
+  [verification](docs/refactor-validation.md#自动验证). Verify changed native
   contracts with the relevant supported platform build.
 - UI validation follows [platform limits](docs/refactor-validation.md#平台边界):
   Android emulator may start VPN; macOS must not start VPN or take screenshots.
