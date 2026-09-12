@@ -48,6 +48,8 @@ Age 公钥和私钥仅保存在订阅中，不随普通分享发出。分享只�
 
 ## 节点与标准格式
 
+- VMess / VLESS 使用 VMessAEAD / VLESS 分享链接标准，不支持旧版 VMessQrCode
+  （`vmess://Base64(JSON)`）。SS、SOCKS、Trojan 以及 Base64 / Age 订阅封装继续保留。
 - 分享链接与普通 Xray JSON 节点导入只提取 outbounds，不导入其根级路由/DNS。
 - 完整 outbound 映射直接保存，不经过字段表单重建；标准分享是协议白名单投影，可能有损。
 - 节点名称使用 `tag`；仅在键不存在时兼容旧 `name`，已有 tag 优先，无名节点以协议名补齐。
