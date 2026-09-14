@@ -82,8 +82,11 @@ Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bi
 直连 DNS 默认使用该地址，可在各份路由配置中独立修改。智能路由关闭直连 DNS 开关后，
 保留已保存的地址，但运行时使用原默认地址且不匹配直连域名，直到重新开启开关。
 直连 DNS 地址的语法由 libXray 校验，App 不另行检查协议或连通性。
-direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
-宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
+direct server 的 domains 仅从不带其他匹配条件的 direct 域名规则提取，且不作为通用
+fallback。包含目标 IP/端口、网络、协议、操作系统或入站标签的
+组合规则不向该域名列表贡献条目；校验与运行共用同一提取逻辑。DNS 不判断后续连接的条件，
+同一域名若另有纯域名直连规则，仍可能匹配该服务器；连接始终按完整路由规则处理。
+普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
 
 ## 隧道 DNS
@@ -137,11 +140,23 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 `XrayJson.geodata` 只承载导入所需的 `assets`，每项仅含 `file` / `url`；导入完成后保存前
 移除 `geodata`。完整 Raw JSON 使用独立 Map 链路，不经过上述转换。
 
-规则只允许域名、IP、端口、网络四类条件。不同条件为 AND，同类多值为 OR；建议只填
-一种条件。规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
+规则支持域名、目标 IP/端口、网络类型，以及 `protocol`、`localOS`。
+不同条件为 AND；列表和 IP 反选的匹配语义遵循 Xray。建议只填一种条件。
+规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
 动作只允许 `balancerTag: proxy` 或 `outboundTag: direct|block`。
 
-编辑器支持逐条域名/IP 输入及实际安装 Geodata 分类补全。不支持的结构拒绝导入为
+协议指嗅探到的 HTTP/TLS/QUIC/BitTorrent 流量，不是节点的代理协议；不承诺识别全部流量。
+`localOS` 指运行 Xray 的系统，使用内核值 `ios/android/darwin/windows/linux`，空列表不限制系统。
+未设置的新增字段不输出；这些字段仍保存在现有 Base64 JSON 列中，不改变数据库 schema。
+
+编辑器支持逐条域名、目标 IP 输入及实际安装 Geodata 分类补全。新增条件位于折叠的
+“更多匹配条件”中，已有扩展条件的规则自动展示该区域及各条件摘要；协议和系统使用多选。
+移动端规则详情与桌面嵌入表单复用实现。
+当前不开放来源 IP/端口、HTTP 属性、进程匹配、入站选择、本地监听地址/端口、用户、
+VLESS 入站路由或 webhook；`sourceIP`、`sourcePort` 不进入普通模式模型或编辑状态。
+HTTP 属性 `attrs` 的无效正则在当前内核构造配置时可能触发 panic，因此本次不增加模型字段或
+UI，Custom 导入也继续拒绝该字段；Raw JSON 现有通道不变。本次不修改 libXray。
+不支持的结构拒绝导入为
 Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的根部允许 `name`。
 规则子页只更新草稿，不在 Dart 中判断域名/IP、端口、网络及空条件是否合法。整份
 Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空接入槽只在最小验证配置中
@@ -151,7 +166,9 @@ Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空
 则回滚且不覆盖原路由。
 
 分享 JSON 可携带 `geodata.assets: [{"file":"other.dat","url":"https://…"}]`，省略默认
-geoip/geosite。导入冲突、暂存、发布与回滚见 [Geodata 发布合同](data-management.md#geodata-发布)。
+geoip/geosite。依赖扫描包含 IP 反选引用；Raw 另扫描 `sourceIP`（及内核的 `source`
+别名）和 `localIP` 中的外部数据，HTTP 属性值不作为资源声明。导入冲突、暂存、发布与回滚见
+[Geodata 发布合同](data-management.md#geodata-发布)。
 
 ## Raw JSON
 

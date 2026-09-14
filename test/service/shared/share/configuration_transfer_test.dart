@@ -41,6 +41,95 @@ String template(String name, {bool assets = false}) => jsonEncode({
 });
 
 void main() {
+  test(
+    'IP geodata and extended conditions survive Custom JSON and link sharing',
+    () async {
+      final rule = {
+        'ip': ['!ext:rules.dat:private'],
+        'protocol': ['http'],
+        'localOS': ['android', 'darwin'],
+        'balancerTag': 'proxy',
+      };
+      final source = jsonEncode({
+        'outbounds': [{}, {}],
+        'routing': {
+          'rules': [rule],
+        },
+      });
+      final service = ConfigurationTransferService(
+        lookup: (name) async => GeoDataData(
+          id: 1,
+          name: name,
+          type: 'ip',
+          url: 'https://example.com/rules.dat',
+          timestamp: DateTime(2026),
+          categoryCount: 1,
+          ruleCount: 1,
+        ),
+        prepare: (_) async => throw StateError('Sharing must not download'),
+      );
+      final exported = await service.exportJson(
+        kind: ConfigurationKind.custom,
+        name: 'Custom',
+        text: source,
+      );
+      final decoded = jsonDecode(exported);
+      expect(decoded['routing']['rules'], [rule]);
+      expect(decoded['geodata']['assets'], [
+        {'file': 'rules.dat', 'url': 'https://example.com/rules.dat'},
+      ]);
+      final link = await service.shareLinks(
+        kind: ConfigurationKind.custom,
+        name: 'Custom',
+        text: source,
+      );
+      for (final text in [exported, link]) {
+        final imported = ConfigurationTransferService.read(
+          text,
+          ConfigurationKind.custom,
+        );
+        expect(jsonDecode(imported.text)['routing']['rules'], [rule]);
+        expect(jsonDecode(imported.text)['outbounds'], [{}, {}]);
+        expect(jsonDecode(imported.text), isNot(contains('geodata')));
+        expect(imported.assets.single.type, GeoDataType.ip);
+        expect(imported.assets.single.fileName, 'rules.dat');
+      }
+    },
+  );
+
+  test('Raw geodata discovery includes source aliases, local IP and inverse IP rules', () {
+    expect(
+      geoDataReferences({
+        'routing': {
+          'rules': [
+            {
+              'source': ['ext:old-source.dat:private'],
+            },
+            {
+              'sourceIP': ['!ext:source.dat:cn', 'geoip:private'],
+              'source': ['ext:ignored-alias.dat:private'],
+            },
+            {
+              'localIP': ['ext:local.dat:private'],
+            },
+            {
+              'ip': ['!ext:target.dat:cn', 'ext:geoip.dat:cn'],
+            },
+            {
+              'attrs': {':path': 'ext:not-data.dat:cn'},
+            },
+          ],
+        },
+      }),
+      {
+        'old-source.dat': GeoDataType.ip,
+        'source.dat': GeoDataType.ip,
+        'local.dat': GeoDataType.ip,
+        'target.dat': GeoDataType.ip,
+      },
+    );
+  });
+
   test('custom transfer consumes only its manifest and preserves native rule fields', () {
     final content = ConfigurationTransferService.read(
       template('Route', assets: true),
@@ -74,7 +163,9 @@ void main() {
 
   test('Raw source and independent source links round trip without formatting or double encoding', () async {
     const source =
-        '  { "outbounds": [], "dns": {"servers":[{"domains":["ext:rules.dat:cn"]}]}, "future": 123 }\n';
+        '  { "outbounds": [], "dns": {"servers":[{"domains":["ext:rules.dat:cn"]}]}, '
+        '"routing":{"rules":[{"sourceIP":["192.0.2.0/24"],"sourcePort":1024,"outboundTag":"direct"}]}, '
+        '"future": 123 }\n';
     final service = ConfigurationTransferService(
       lookup: (name) async => GeoDataData(
         id: 1,

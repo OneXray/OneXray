@@ -25,13 +25,17 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
 }
 
-Widget _app(Widget child, {Locale locale = const Locale('en')}) => MaterialApp(
-  theme: AppTheme.material(Brightness.light, mobile: true),
+Widget _app(
+  Widget child, {
+  Locale locale = const Locale('en'),
+  bool mobile = true,
+}) => MaterialApp(
+  theme: AppTheme.material(Brightness.light, mobile: mobile),
   locale: locale,
   localizationsDelegates: AppLocalePolicy.localizationsDelegates,
   supportedLocales: AppLocalizations.supportedLocales,
   builder: (context, child) => ShadTheme(
-    data: AppTheme.shad(Brightness.light, mobile: true),
+    data: AppTheme.shad(Brightness.light, mobile: mobile),
     child: child!,
   ),
   home: child,
@@ -42,6 +46,80 @@ Finder _input(TextEditingController controller) => find.byWidgetPredicate(
 );
 
 void main() {
+  for (final mobile in [true, false]) {
+    for (final locale in const [
+      Locale('en'),
+      Locale('zh'),
+      Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      Locale('ru'),
+      Locale('fa'),
+    ]) {
+      testWidgets(
+        'extended conditions are editable without overflow ($locale, mobile=$mobile)',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = mobile
+              ? const Size(390, 844)
+              : const Size(1280, 900);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          final controller = CustomRoutingRuleController(
+            rule: RoutingRuleState(
+              protocol: const ['http'],
+              localOS: const ['darwin'],
+            ),
+          );
+          addTearDown(controller.close);
+          await tester.pumpWidget(
+            _app(
+              Scaffold(
+                body: Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: mobile ? null : 500,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(14),
+                      child: CustomRoutingRuleForm(controller: controller),
+                    ),
+                  ),
+                ),
+              ),
+              locale: locale,
+              mobile: mobile,
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(controller.state.moreConditions, true);
+          for (final condition in [
+            RoutingRuleCondition.protocol,
+            RoutingRuleCondition.localOS,
+          ]) {
+            final header = find
+                .descendant(
+                  of: find.byKey(ValueKey(condition)),
+                  matching: find.byType(InkWell),
+                )
+                .first;
+            await tester.ensureVisible(header);
+            await tester.tap(header);
+            await tester.pumpAndSettle();
+          }
+          final tls = find.widgetWithText(FilterChip, 'TLS');
+          await tester.ensureVisible(tls);
+          await tester.tap(tls);
+          await tester.pumpAndSettle();
+          expect(controller.draftRule.protocol, ['http', 'tls']);
+          final windows = find.widgetWithText(FilterChip, 'Windows');
+          await tester.ensureVisible(windows);
+          await tester.tap(windows);
+          await tester.pumpAndSettle();
+          expect(controller.draftRule.localOS, ['darwin', 'windows']);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
   testWidgets(
     'conditions stay collapsed with summaries and keep real completion',
     (tester) async {

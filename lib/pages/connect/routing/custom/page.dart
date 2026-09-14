@@ -253,6 +253,26 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                                         .setDirectDnsAddress,
                                                   ),
                                                 ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        13,
+                                                        0,
+                                                        13,
+                                                        13,
+                                                      ),
+                                                  child: Text(
+                                                    l.routingCustomDnsHint,
+                                                    style: AppTypography
+                                                        .actionHelp
+                                                        .copyWith(
+                                                          color:
+                                                              ColorManager.palette(
+                                                                context,
+                                                              ).mutedForeground,
+                                                        ),
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),

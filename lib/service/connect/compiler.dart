@@ -266,15 +266,10 @@ class ConnectionCompiler {
           dialerProxy: allVpn ? selector.single : 'direct',
         ).toJson(),
       ]);
-      final directDomains = <String>{};
-      if (settings.trafficMode != TrafficMode.smart ||
-          settings.smart.directDns) {
-        for (final rule in rules.where(
-          (rule) => rule.outboundTag == 'direct',
-        )) {
-          directDomains.addAll(rule.domain ?? []);
-        }
-      }
+      final directDomains =
+          settings.trafficMode == TrafficMode.smart && !settings.smart.directDns
+          ? const <String>[]
+          : RoutingDns.directDomains(rules);
       final normal = XrayJson(
         env: XrayEnv(
           assetLocation: VpnConstants.datDir,

@@ -6,7 +6,7 @@ enum RoutingRuleAction { proxy, direct, block }
 
 /// Editable state for one Custom routing rule.
 ///
-/// It deliberately mirrors only the four conditions and three actions exposed
+/// It deliberately mirrors only the conditions and three actions exposed
 /// by the ordinary UI. Raw JSON never passes through this state.
 final class RoutingRuleState {
   final String ruleTag;
@@ -14,6 +14,8 @@ final class RoutingRuleState {
   final List<String> ip;
   final Object? port;
   final Object? network;
+  final List<String> protocol;
+  final List<String> localOS;
   final RoutingRuleAction action;
 
   RoutingRuleState({
@@ -22,10 +24,14 @@ final class RoutingRuleState {
     Iterable<String> ip = const [],
     Object? port,
     Object? network,
+    Iterable<String> protocol = const [],
+    Iterable<String> localOS = const [],
     this.action = RoutingRuleAction.proxy,
   }) : domain = List.unmodifiable(domain),
        ip = List.unmodifiable(ip),
        port = _copyValue(port),
+       protocol = List.unmodifiable(protocol),
+       localOS = List.unmodifiable(localOS),
        network = _copyValue(network);
 
   factory RoutingRuleState.fromXrayJson(XrayRoutingRule rule) {
@@ -46,6 +52,8 @@ final class RoutingRuleState {
       ip: rule.ip ?? const [],
       port: _copyValue(rule.port),
       network: _copyValue(rule.network),
+      protocol: rule.protocol ?? const [],
+      localOS: rule.localOS ?? const [],
       action: action,
     );
   }
@@ -57,6 +65,8 @@ final class RoutingRuleState {
       ip: ip.isEmpty ? null : List.of(ip),
       port: _copyValue(port),
       network: _copyValue(network),
+      protocol: protocol.isEmpty ? null : List.of(protocol),
+      localOS: localOS.isEmpty ? null : List.of(localOS),
       balancerTag: action == RoutingRuleAction.proxy ? 'proxy' : null,
       outboundTag: action == RoutingRuleAction.proxy ? null : action.name,
     );
@@ -70,6 +80,8 @@ final class RoutingRuleState {
     Iterable<String>? ip,
     Object? port,
     Object? network,
+    Iterable<String>? protocol,
+    Iterable<String>? localOS,
     RoutingRuleAction? action,
   }) => RoutingRuleState(
     ruleTag: ruleTag ?? this.ruleTag,
@@ -77,6 +89,8 @@ final class RoutingRuleState {
     ip: ip ?? this.ip,
     port: port ?? this.port,
     network: network ?? this.network,
+    protocol: protocol ?? this.protocol,
+    localOS: localOS ?? this.localOS,
     action: action ?? this.action,
   );
 }

@@ -443,22 +443,24 @@ class CustomRoutingEditorController
     final rule = state.rules[index];
     final domains = rule.domain;
     final ips = rule.ip;
-    if (domains.isNotEmpty) {
-      return domains.first.startsWith('geosite:')
-          ? '${l10n.prototypeWebsiteSet} · ${domains.first.substring(8)}'
-          : domains.join(', ');
-    }
-    if (ips.isNotEmpty) {
-      return ips.first.startsWith('geoip:')
-          ? '${l10n.prototypeIpSet} · ${ips.first.substring(6)}'
-          : 'IP · ${ips.join(', ')}';
-    }
     final port = rule.port;
     final network = rule.network;
     return [
+      if (domains.isNotEmpty)
+        domains.first.startsWith('geosite:')
+            ? '${l10n.prototypeWebsiteSet} · ${domains.first.substring(8)}'
+            : domains.join(', '),
+      if (ips.isNotEmpty)
+        ips.first.startsWith('geoip:')
+            ? '${l10n.prototypeIpSet} · ${ips.first.substring(6)}'
+            : 'IP · ${ips.join(', ')}',
       if (port != null) '${l10n.prototypeTargetPort} · $port',
       if (network != null)
         '${l10n.prototypeNetworkType} · ${network is List ? network.join(', ') : network}',
+      if (rule.protocol.isNotEmpty)
+        '${l10n.routingRuleProtocol} · ${rule.protocol.join(', ')}',
+      if (rule.localOS.isNotEmpty)
+        '${l10n.routingRuleLocalOS} · ${rule.localOS.join(', ')}',
     ].join(' · ');
   }
 

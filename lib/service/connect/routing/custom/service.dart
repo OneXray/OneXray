@@ -28,10 +28,9 @@ class CustomRoutingService {
     final config = state.xrayJson;
     config.dns = RoutingDns.compile(
       directAddress: state.directDnsAddress.trim(),
-      directDomains: [
-        for (final rule in state.rules)
-          if (rule.action == RoutingRuleAction.direct) ...rule.domain,
-      ],
+      directDomains: RoutingDns.directDomains(
+        config.routing?.rules ?? const [],
+      ),
     );
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
     config.outbounds = [

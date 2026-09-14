@@ -1,4 +1,10 @@
 {
+  "routingRuleMoreConditions": "More matching conditions",
+  "routingRuleProtocol": "Application protocols",
+  "routingRuleProtocolHint": "Match sniffed traffic protocols, not the server's VLESS or VMess protocol. Detection may not identify all traffic.",
+  "routingRuleLocalOS": "Operating systems",
+  "routingRuleLocalOSHint": "Apply this rule only when Xray runs on a selected operating system. Leave empty to apply on all systems.",
+  "routingCustomDnsHint": "The local DNS domain list comes only from direct rules without other conditions. DNS queries do not evaluate the protocol, port or other conditions of a later connection.",
   "routingLocalDnsAddress": "Local DNS address",
   "tunnelDnsServerNameHint": "Used only for DNS over TLS on Apple platforms. The DNS addresses and server name must belong to the same service and match its TLS certificate.",
   "menuShortcutChooseConfiguration": "Switch configuration",
@@ -1389,7 +1395,7 @@
   "@prototypeRuleEditHint": {
     "description": "Approved prototype copy: Choose what this rule matches and what happens next."
   },
-  "prototypeRuleConditionsHint": "We recommend setting one condition type only. If you set more than one, every type must match. Multiple values within one type match any one.",
+  "prototypeRuleConditionsHint": "We recommend setting one condition type only. If you set more than one, every type must match.",
   "@prototypeRuleConditionsHint": {
     "description": "Approved prototype copy: We recommend setting one condition type only. If you set more than one, every type must match. Multiple values within one type match any one."
   },

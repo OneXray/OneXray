@@ -15,7 +15,7 @@ class RuleValueEntry {
   }
 }
 
-enum RoutingRuleCondition { domains, ips, port, network }
+enum RoutingRuleCondition { domains, ips, port, network, protocol, localOS }
 
 class CustomRoutingRuleState {
   final String name;
@@ -23,6 +23,9 @@ class CustomRoutingRuleState {
   final List<String> domains;
   final List<String> ips;
   final String network;
+  final List<String> protocols;
+  final List<String> localOS;
+  final bool moreConditions;
   final RoutingRuleAction action;
   final Set<RoutingRuleCondition> expandedConditions;
 
@@ -32,10 +35,15 @@ class CustomRoutingRuleState {
     Iterable<String> domains = const [''],
     Iterable<String> ips = const [''],
     this.network = 'any',
+    Iterable<String> protocols = const [],
+    Iterable<String> localOS = const [],
+    this.moreConditions = false,
     this.action = RoutingRuleAction.proxy,
     Iterable<RoutingRuleCondition> expandedConditions = const [],
   }) : domains = List.unmodifiable(domains),
        ips = List.unmodifiable(ips),
+       protocols = List.unmodifiable(protocols),
+       localOS = List.unmodifiable(localOS),
        expandedConditions = Set.unmodifiable(expandedConditions);
 
   CustomRoutingRuleState copyWith({
@@ -44,6 +52,9 @@ class CustomRoutingRuleState {
     Iterable<String>? domains,
     Iterable<String>? ips,
     String? network,
+    Iterable<String>? protocols,
+    Iterable<String>? localOS,
+    bool? moreConditions,
     RoutingRuleAction? action,
     Iterable<RoutingRuleCondition>? expandedConditions,
   }) => CustomRoutingRuleState(
@@ -52,6 +63,9 @@ class CustomRoutingRuleState {
     domains: domains ?? this.domains,
     ips: ips ?? this.ips,
     network: network ?? this.network,
+    protocols: protocols ?? this.protocols,
+    localOS: localOS ?? this.localOS,
+    moreConditions: moreConditions ?? this.moreConditions,
     action: action ?? this.action,
     expandedConditions: expandedConditions ?? this.expandedConditions,
   );
@@ -70,6 +84,9 @@ CustomRoutingRuleState _initialRuleState(RoutingRuleState rule) {
     port: rule.port?.toString() ?? '',
     domains: rule.domain.isEmpty ? const [''] : rule.domain,
     ips: rule.ip.isEmpty ? const [''] : rule.ip,
+    protocols: rule.protocol,
+    localOS: rule.localOS,
+    moreConditions: rule.protocol.isNotEmpty || rule.localOS.isNotEmpty,
     network: distinctNetworks?.length == 1 && distinctNetworks!.single is String
         ? distinctNetworks.single as String
         : 'any',
@@ -119,18 +136,25 @@ class CustomRoutingRuleController extends PageCubit<CustomRoutingRuleState> {
     );
   }
 
-  void addValue(bool domain) {
-    (domain ? domains : ips).add(_entry(''));
+  List<RuleValueEntry> entries(RoutingRuleCondition condition) =>
+      switch (condition) {
+        RoutingRuleCondition.domains => domains,
+        RoutingRuleCondition.ips => ips,
+        _ => throw ArgumentError.value(condition),
+      };
+
+  void addValue(RoutingRuleCondition condition) {
+    entries(condition).add(_entry(''));
     _changed();
   }
 
-  void removeValue(bool domain, RuleValueEntry entry) {
-    final entries = domain ? domains : ips;
-    if (entries.length == 1) {
+  void removeValue(RoutingRuleCondition condition, RuleValueEntry entry) {
+    final values = entries(condition);
+    if (values.length == 1) {
       entry.text.clear();
       return;
     }
-    entries.remove(entry);
+    values.remove(entry);
     _changed();
     // The old Autocomplete still references this controller until its unmount.
     WidgetsBinding.instance.addPostFrameCallback((_) => entry.dispose());
@@ -139,6 +163,27 @@ class CustomRoutingRuleController extends PageCubit<CustomRoutingRuleState> {
   void setNetwork(String value) {
     _networkChanged = true;
     emit(state.copyWith(network: value));
+  }
+
+  void toggleMoreConditions() =>
+      emit(state.copyWith(moreConditions: !state.moreConditions));
+
+  void toggleChoice(RoutingRuleCondition condition, String value) {
+    final values = List.of(
+      condition == RoutingRuleCondition.protocol
+          ? state.protocols
+          : state.localOS,
+    );
+    if (values.contains(value)) {
+      values.removeWhere((item) => item == value);
+    } else {
+      values.add(value);
+    }
+    emit(
+      condition == RoutingRuleCondition.protocol
+          ? state.copyWith(protocols: values)
+          : state.copyWith(localOS: values),
+    );
   }
 
   void setAction(RoutingRuleAction value) {
@@ -176,6 +221,8 @@ class CustomRoutingRuleController extends PageCubit<CustomRoutingRuleState> {
       ruleTag: state.name.trim(),
       domain: domain,
       ip: ip,
+      protocol: state.protocols,
+      localOS: state.localOS,
       port: portText.isEmpty
           ? null
           : portText == _original.port?.toString()

@@ -70,6 +70,8 @@ void main() {
       'ip': ['192.0.2.0/24', 'geoip:cn'],
       'port': '80,443,8000-8080',
       'network': 'tcp,udp',
+      'protocol': ['http', 'quic'],
+      'localOS': ['android', 'darwin'],
       'balancerTag': 'proxy',
     };
     final second = <String, dynamic>{
@@ -197,10 +199,16 @@ void main() {
       }
       for (final field in [
         'source',
+        'sourceIP',
         'sourcePort',
-        'inboundTag',
-        'protocol',
         'attrs',
+        'inboundTag',
+        'localIP',
+        'localPort',
+        'process',
+        'user',
+        'vlessRoute',
+        'webhook',
         'enabled',
         'disabled',
         'name',
@@ -210,6 +218,15 @@ void main() {
       ]) {
         _rejectRule({..._rule(), field: 'hidden'});
       }
+      _rejectRule({
+        ..._rule(),
+        'attrs': {':path': '['},
+      });
+      _rejectRule({
+        ..._rule(),
+        'sourceIP': ['192.0.2.0/24'],
+      });
+      _rejectRule({..._rule(), 'sourcePort': 1024});
       _rejectRule({
         'domain': ['example.com'],
       });

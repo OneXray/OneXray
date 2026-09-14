@@ -498,7 +498,7 @@ void main() {
     },
   );
 
-  test('Custom keeps native AND rules/order, maps duplicate names, derives DNS domains only', () {
+  test('Custom keeps all native AND conditions/order and derives DNS only from domain-only rules', () {
     final template = RoutingProfileState(
       name: 'Custom',
       entryCount: 2,
@@ -508,12 +508,18 @@ void main() {
           domain: const ['domain:example.test'],
           port: '443',
           network: 'tcp',
+          protocol: const ['http'],
+          localOS: const ['android', 'darwin'],
           action: RoutingRuleAction.direct,
         ),
         RoutingRuleState(
           ruleTag: 'Same',
           ip: const ['192.0.2.1/32'],
           action: RoutingRuleAction.block,
+        ),
+        RoutingRuleState(
+          domain: const ['domain:direct-only.test'],
+          action: RoutingRuleAction.direct,
         ),
       ],
     );
@@ -540,9 +546,13 @@ void main() {
     expect(first['domain'], ['domain:example.test']);
     expect(first['port'], '443');
     expect(first['network'], 'tcp');
+    expect(first, {
+      ...template.rules.first.toJson(),
+      'ruleTag': 'app-custom-0',
+    });
     final servers = plan.config['dns']['servers'] as List;
     expect(servers.map((server) => server['address']), ['8.8.8.8', '8.8.8.8']);
-    expect(servers.last['domains'], ['domain:example.test']);
+    expect(servers.last['domains'], ['domain:direct-only.test']);
     expect(servers.last['skipFallback'], true);
     expect(template.encode(), original);
     _fixture('custom', plan);

@@ -15,7 +15,14 @@ void main() {
       name: 'Route',
       entryCount: 3,
       directDnsAddress: '1.1.1.1',
-      rules: [RoutingRuleState(port: 0, network: 'TCP')],
+      rules: [
+        RoutingRuleState(
+          port: 0,
+          network: 'TCP',
+          protocol: const ['http'],
+          localOS: const ['android', 'darwin'],
+        ),
+      ],
     );
     final source = state.encode();
     expect(jsonDecode(source)['outbounds'], [{}, {}, {}]);
@@ -86,6 +93,8 @@ void main() {
           RoutingRuleState(
             ruleTag: 'Example',
             domain: const ['domain:example.com'],
+            protocol: const ['http'],
+            localOS: const ['ios', 'android'],
             action: RoutingRuleAction.direct,
           ),
         ],

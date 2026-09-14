@@ -36,6 +36,8 @@ void main() {
             'ip': ['geoip:cn'],
             'port': '80,443',
             'network': ['tcp', 'udp'],
+            'protocol': ['http', 'tls'],
+            'localOS': ['ios', 'android', 'darwin', 'windows', 'linux'],
             'inboundTag': ['tunIn'],
             'outboundTag': 'direct',
             'ruleTag': 'app-smart-cn',

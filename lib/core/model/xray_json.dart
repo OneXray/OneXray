@@ -157,6 +157,8 @@ class XrayRoutingRule {
   List<String>? ip;
   Object? port;
   Object? network;
+  List<String>? protocol;
+  List<String>? localOS;
   List<String>? inboundTag;
   String? outboundTag;
   String? balancerTag;
@@ -167,6 +169,8 @@ class XrayRoutingRule {
     this.ip,
     this.port,
     this.network,
+    this.protocol,
+    this.localOS,
     this.inboundTag,
     this.outboundTag,
     this.balancerTag,
