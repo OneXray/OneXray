@@ -56,6 +56,194 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test(
+    'FakeDNS is opt-in per route and paired with managed inbound recovery',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        for (final mode in TrafficMode.values) {
+          for (final enabled in [false, true]) {
+            for (final ipv6 in [false, true]) {
+              final config = ConnectionCompiler.compile(
+                settings: ConnectionSettings(
+                  trafficMode: mode,
+                  smart: SmartRoutingSettings(fakeDns: enabled),
+                ),
+                custom: RoutingProfileState(
+                  name: 'Custom',
+                  fakeDns: enabled,
+                  directDnsAddress: '1.1.1.1',
+                  rules: [
+                    RoutingRuleState(
+                      domain: ['domain:direct.test'],
+                      action: RoutingRuleAction.direct,
+                    ),
+                  ],
+                ),
+                entries: [node(1)],
+                regions: catalog,
+                options: options(
+                  platform: platform,
+                  ipv6: ipv6,
+                  interfaceName: 'Ethernet',
+                ),
+              ).config;
+              final active = enabled && mode != TrafficMode.allVpn;
+              final servers = config['dns']['servers'] as List;
+              expect(servers.first['address'], active ? 'fakedns' : '8.8.8.8');
+              expect(
+                servers.first['tag'],
+                active ? 'app-dns-fake' : 'app-dns-proxy',
+              );
+              expect(
+                servers.every(
+                  (server) =>
+                      server['queryStrategy'] == (ipv6 ? 'UseIP' : 'UseIPv4'),
+                ),
+                true,
+              );
+              final sniffing = config['inbounds'].single['sniffing'];
+              expect(sniffing, {
+                'enabled': true,
+                'routeOnly': false,
+                'destOverride': ['http', 'tls', 'quic', if (active) 'fakedns'],
+              });
+              expect(config.containsKey('fakedns'), active);
+              if (active) {
+                expect(config['fakedns'], [
+                  {'ipPool': '198.19.0.0/16', 'poolSize': 32768},
+                  {'ipPool': 'fc00:1::/64', 'poolSize': 32768},
+                ]);
+                expect(servers[1]['address'], '8.8.8.8');
+                expect(servers.last['skipFallback'], true);
+                expect(servers.last['domains'], isNotEmpty);
+              }
+              expect(
+                config['routing']['domainStrategy'],
+                mode == TrafficMode.allVpn ? 'AsIs' : 'IPIfNonMatch',
+              );
+            }
+          }
+        }
+      }
+    },
+  );
+
+  test('Windows MSIX SOCKS receives the same FakeDNS recovery', () {
+    final config = ConnectionCompiler.compile(
+      settings: ConnectionSettings(smart: SmartRoutingSettings(fakeDns: true)),
+      entries: [node(1)],
+      regions: catalog,
+      options: options(
+        platform: ConnectionPlatform.windows,
+        windowsMode: WindowsMode.msix,
+        interfaceName: 'Ethernet',
+      ),
+    ).config;
+    expect(config['inbounds'].single['protocol'], 'socks');
+    expect(
+      config['inbounds'].single['sniffing']['destOverride'],
+      contains('fakedns'),
+    );
+  });
+
+  test('explicit FakeDNS address also enables pools and recovery', () {
+    final config = ConnectionCompiler.compile(
+      settings: ConnectionSettings(
+        smart: SmartRoutingSettings(directDnsAddress: 'fakedns'),
+      ),
+      entries: [node(1)],
+      regions: catalog,
+      options: options(),
+    ).config;
+    expect(config['fakedns'], isNotEmpty);
+    expect(
+      config['inbounds'].single['sniffing']['destOverride'],
+      contains('fakedns'),
+    );
+  });
+
+  test('Raw FakeDNS adapts only the managed inbound and preserves source', () {
+    for (final dns in [
+      {
+        'servers': ['fakedns', '9.9.9.9'],
+      },
+      {
+        'servers': [
+          {'address': 'fakedns', 'disableCache': true},
+        ],
+      },
+    ]) {
+      for (final poolKey in [null, 'fakedns', 'fakeDns']) {
+        final source = <String, dynamic>{
+          'dns': dns,
+          ?poolKey: {'ipPool': '198.18.16.0/20', 'poolSize': 1024},
+          'inbounds': [
+            {
+              'tag': 'tunIn',
+              'protocol': 'tun',
+              'sniffing': {'enabled': false},
+            },
+            {
+              'tag': 'extra',
+              'protocol': 'socks',
+              'port': 20000,
+              'sniffing': {'enabled': false},
+            },
+          ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        };
+        final before = jsonEncode(source);
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          raw: source,
+          entries: [],
+          regions: catalog,
+          options: options(ipv6: false),
+        ).config;
+        expect(
+          config['inbounds'].first['sniffing']['destOverride'],
+          contains('fakedns'),
+        );
+        expect(config['inbounds'].last, (source['inbounds'] as List).last);
+        if (poolKey == null) {
+          expect(config.containsKey('fakedns'), false);
+        } else {
+          expect(config[poolKey], source[poolKey]);
+        }
+        expect(config['dns']['queryStrategy'], 'UseIPv4');
+        expect(jsonEncode(source), before);
+      }
+    }
+    for (final pool in [false, true]) {
+      final config = ConnectionCompiler.compile(
+        settings: ConnectionSettings(expert: true),
+        raw: {
+          'dns': {
+            'servers': ['8.8.8.8'],
+          },
+          if (pool)
+            'fakedns': [
+              {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
+            ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        },
+        entries: [],
+        regions: catalog,
+        options: options(),
+      ).config;
+      expect(
+        (config['inbounds'].first['sniffing']['destOverride'] as List).contains(
+          'fakedns',
+        ),
+        pool,
+      );
+    }
+  });
+
   test('routing DNS addresses are independent from proxy and tunnel DNS', () {
     for (final mode in TrafficMode.values) {
       final compiled = ConnectionCompiler.compile(
@@ -498,7 +686,7 @@ void main() {
     },
   );
 
-  test('Custom keeps native AND rules/order, maps duplicate names, derives DNS domains only', () {
+  test('Custom keeps all native AND conditions/order and derives DNS only from domain-only rules', () {
     final template = RoutingProfileState(
       name: 'Custom',
       entryCount: 2,
@@ -508,12 +696,18 @@ void main() {
           domain: const ['domain:example.test'],
           port: '443',
           network: 'tcp',
+          protocol: const ['http'],
+          localOS: const ['android', 'darwin'],
           action: RoutingRuleAction.direct,
         ),
         RoutingRuleState(
           ruleTag: 'Same',
           ip: const ['192.0.2.1/32'],
           action: RoutingRuleAction.block,
+        ),
+        RoutingRuleState(
+          domain: const ['domain:direct-only.test'],
+          action: RoutingRuleAction.direct,
         ),
       ],
     );
@@ -540,9 +734,13 @@ void main() {
     expect(first['domain'], ['domain:example.test']);
     expect(first['port'], '443');
     expect(first['network'], 'tcp');
+    expect(first, {
+      ...template.rules.first.toJson(),
+      'ruleTag': 'app-custom-0',
+    });
     final servers = plan.config['dns']['servers'] as List;
     expect(servers.map((server) => server['address']), ['8.8.8.8', '8.8.8.8']);
-    expect(servers.last['domains'], ['domain:example.test']);
+    expect(servers.last['domains'], ['domain:direct-only.test']);
     expect(servers.last['skipFallback'], true);
     expect(template.encode(), original);
     _fixture('custom', plan);
@@ -562,7 +760,7 @@ void main() {
     }
   });
 
-  test('Windows services share one direct rule and follow direct DNS', () {
+  test('Windows services keep GitHub on proxy ahead of direct rules', () {
     for (final enabled in [false, true]) {
       for (final directDns in [false, true]) {
         final smart = SmartRoutingSettings.fromJson(
@@ -585,6 +783,29 @@ void main() {
           'geosite:CN',
         ];
         final rules = (config['routing']['rules'] as List).cast<Map>();
+        final githubRules = rules.where(
+          (rule) => rule['ruleTag'] == 'app-smart-github',
+        );
+        expect(githubRules, [
+          if (enabled)
+            {
+              'ruleTag': 'app-smart-github',
+              'domain': ['geosite:GITHUB'],
+              'balancerTag': 'proxy',
+            },
+        ]);
+        expect(
+          rules
+              .where(
+                (rule) => (rule['ruleTag'] as String).startsWith('app-smart-'),
+              )
+              .map((rule) => rule['ruleTag']),
+          [
+            if (enabled) 'app-smart-github',
+            'app-smart-direct-domain',
+            'app-smart-direct-ip',
+          ],
+        );
         expect(
           rules
               .where((rule) => rule['outboundTag'] == 'direct')

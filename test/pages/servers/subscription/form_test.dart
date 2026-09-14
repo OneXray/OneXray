@@ -101,7 +101,7 @@ void main() {
     await tester.pumpWidget(app(form()));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Only VLESS / v2rayN'), findsOneWidget);
+    expect(find.textContaining('Only VMessAEAD / VLESS'), findsOneWidget);
     expect(find.text('HTTPS only'), findsOneWidget);
     expect(find.byType(ShadInput), findsNWidgets(4));
     expect(
@@ -186,7 +186,10 @@ void main() {
         final l = AppLocalizations.of(
           tester.element(find.byType(SubscriptionFormView)),
         )!;
-        expect(l.prototypeSubscriptionDescription, contains('VLESS / v2rayN'));
+        expect(
+          l.prototypeSubscriptionDescription,
+          contains('VMessAEAD / VLESS'),
+        );
         final formatNotice = tester.widget<Text>(
           find.text(l.prototypeSubscriptionDescription),
         );

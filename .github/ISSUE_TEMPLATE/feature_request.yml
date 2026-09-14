@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an improvement to OneXray.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please write your request in English and focus on one improvement.
+        Describe the user problem before proposing an implementation. Do not include private credentials.
+  - type: checkboxes
+    id: existing-issues
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched open and closed issues and did not find an existing request for this improvement.
+          required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Relevant platforms
+      multiple: true
+      options:
+        - iOS / iPadOS
+        - macOS
+        - Android
+        - Windows
+        - Linux
+        - All platforms
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what is missing or difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+      description: Describe the behavior or interaction you would like. Note any platform-specific differences.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing settings, workarounds, or other approaches you have tried.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add relevant examples, documentation links, or mockups.

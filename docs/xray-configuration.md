@@ -69,20 +69,49 @@ App 生成的所有 rule 均省略可选的 `type: field`，且不增加无条�
 智能路由将局域网、Apple 服务、Windows 服务和所选地区的直连条件合并：域名与 IP 各输出一条规则，
 同类条件去重后以 OR 匹配，域名和 IP 不合并到同一条规则。没有对应条件时省略该类规则，
 不生成空条件规则；广告阻断仍排在这两条直连规则之前。
-智能路由除广告拦截外，所有开关默认开启；已保存的开关值保持不变。
+智能路由除广告拦截和 FakeDNS 外，所有开关默认开启；已保存的开关值保持不变。
 Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bing 两类 Geosite
-域名，Windows、Office 的相关域名已包含在 Microsoft 分类中；与其他直连条件共用预览、
-保存和重连逻辑。
+域名，Windows、Office 的相关域名已包含在 Microsoft 分类中。同时在合并的域名/IP 直连
+规则之前生成 `geosite:GITHUB → balancerTag: proxy`，避免 GitHub 被 Microsoft 分类或
+地区直连条件先命中；广告阻断仍在这条代理规则之前。关闭该开关时一并移除 GitHub 代理
+规则。规则生成共用于预览、保存变更比较和运行编译，不增加独立开关，也不影响 Custom 或 Raw。
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
-智能路由和自定义路由保留两个使用独立 tag 的 DNS server。代理 DNS 固定为 `8.8.8.8`；
+智能路由和自定义路由保留 proxy/direct 两个使用独立 tag 的真实 DNS server。代理 DNS 固定为 `8.8.8.8`；
 直连 DNS 默认使用该地址，可在各份路由配置中独立修改。智能路由关闭直连 DNS 开关后，
 保留已保存的地址，但运行时使用原默认地址且不匹配直连域名，直到重新开启开关。
 直连 DNS 地址的语法由 libXray 校验，App 不另行检查协议或连通性。
-direct server 的 domains 从当前 direct 规则提取，且不作为通用 fallback；DNS 阶段不
-宣称已判断 IP、端口或网络条件。普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
+direct server 的 domains 仅从不带其他匹配条件的 direct 域名规则提取，且不作为通用
+fallback。包含目标 IP/端口、网络、协议、操作系统或入站标签的
+组合规则不向该域名列表贡献条目；校验与运行共用同一提取逻辑。DNS 不判断后续连接的条件，
+同一域名若另有纯域名直连规则，仍可能匹配该服务器；连接始终按完整路由规则处理。
+普通模式只给每个 server 设置查询策略，不生成根级 `hosts` 或
 `queryStrategy`。直连地区依据安装的官方 Geosite/GeoIP 分类和随包地区映射生成。
+
+## FakeDNS
+
+智能路由和每份自定义路由独立提供“使用 FakeDNS”，默认关闭，与本地 DNS 地址一起编辑；
+“所有流量经过 VPN”不受该开关影响。开启后，在 proxy/direct DNS 之前添加
+`app-dns-fake`（`address: fakedns`）。命中 direct server 域名列表的查询仍优先使用真实
+直连 DNS；其它经 `dnsOut` 处理的 A/AAAA 查询优先返回虚拟 IP。内核路由的
+`IPIfNonMatch` 第二轮真实解析会跳过 FakeDNS，保留 proxy DNS 用于真实 IP 查询。
+连接路由仍遵循完整规则，不把 FakeDNS 等同于强制代理，也不保证拦截应用自带的 DoH/DoT。
+
+普通配置使用固定池 `198.19.0.0/16` 和 `fc00:1::/64`，每池容量 32768，避开隧道自身
+`198.18.0.1` / `fc00::1`。池始终成对生成；是否返回 IPv6 只由已有 DNS 查询策略控制，
+不添加 IPv6 阻断或额外系统路由。`XrayJson.fakedns` 仅包含 `ipPool` / `poolSize`；
+普通校验和运行共用生成逻辑。受管理的 TUN/SOCKS 入站在原 HTTP/TLS/QUIC 嗅探基础上
+增加 `fakedns`，将虚拟目的地址还原为域名后再路由，不关闭内容嗅探。
+
+Raw JSON 的 DNS server 使用 `fakedns`（字符串或对象地址），或声明根级 FakeDNS 池时，
+App 自动为重建的 `tunIn` 启用上述还原。用户原文、DNS 地址、池及额外入站保持不变，
+不以普通模式固定池覆盖 Raw，也不向 Raw 添加新的开关或 DNS server。
+没有显式池时由 Xray 使用自身默认池；其范围与用户系统地址、排除路由的兼容性仍由 Raw 作者负责。
+
+FakeDNS 映射仅随本次 Core 存活，不保存到数据库。停止或重启 Core 后，应用/系统缓存的
+虚拟 IP 可能无法还原；不承诺无缝缓存恢复。界面说明这一限制，App 不自动清理系统 DNS
+缓存，也不擅自覆盖用户排除路由。开启后访问的 Fake IP 必须能通过系统路由进入 VPN。
 
 ## 隧道 DNS
 
@@ -121,8 +150,10 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 ## 自定义路由
 
 自定义路由通过 `dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`
-存储和分享直连 DNS 地址。使用固定 tag 标记服务器，不依赖数组位置；仅允许编辑这一条
-带标签服务器的 `address`。域名匹配、回退和查询策略在校验及运行编译时生成，不存储或
+存储和分享直连 DNS 地址。开启 FakeDNS 时另存
+`{"tag":"app-dns-fake","address":"fakedns"}`，通过该服务器的存在表示启用，不使用自定义字段。
+使用固定 tag 标记服务器，不依赖数组位置；直连服务器编辑 `address`，FakeDNS 仅切换开关。
+池、域名匹配、回退和查询策略在校验及运行编译时生成，不存储或
 导出。已有配置未包含 DNS 时沿用原默认值；不支持的 DNS 字段、无标签服务器和重复
 服务器直接拒绝，不静默丢弃。
 
@@ -135,11 +166,23 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 `XrayJson.geodata` 只承载导入所需的 `assets`，每项仅含 `file` / `url`；导入完成后保存前
 移除 `geodata`。完整 Raw JSON 使用独立 Map 链路，不经过上述转换。
 
-规则只允许域名、IP、端口、网络四类条件。不同条件为 AND，同类多值为 OR；建议只填
-一种条件。规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
+规则支持域名、目标 IP/端口、网络类型，以及 `protocol`、`localOS`。
+不同条件为 AND；列表和 IP 反选的匹配语义遵循 Xray。建议只填一种条件。
+规则顺序决定匹配顺序，名称使用原生 `ruleTag`，没有启用/停用自定义字段。
 动作只允许 `balancerTag: proxy` 或 `outboundTag: direct|block`。
 
-编辑器支持逐条域名/IP 输入及实际安装 Geodata 分类补全。不支持的结构拒绝导入为
+协议指嗅探到的 HTTP/TLS/QUIC/BitTorrent 流量，不是节点的代理协议；不承诺识别全部流量。
+`localOS` 指运行 Xray 的系统，使用内核值 `ios/android/darwin/windows/linux`，空列表不限制系统。
+未设置的新增字段不输出；这些字段仍保存在现有 Base64 JSON 列中，不改变数据库 schema。
+
+编辑器支持逐条域名、目标 IP 输入及实际安装 Geodata 分类补全。新增条件位于折叠的
+“更多匹配条件”中，已有扩展条件的规则自动展示该区域及各条件摘要；协议和系统使用多选。
+移动端规则详情与桌面嵌入表单复用实现。
+当前不开放来源 IP/端口、HTTP 属性、进程匹配、入站选择、本地监听地址/端口、用户、
+VLESS 入站路由或 webhook；`sourceIP`、`sourcePort` 不进入普通模式模型或编辑状态。
+HTTP 属性 `attrs` 的无效正则在当前内核构造配置时可能触发 panic，因此本次不增加模型字段或
+UI，Custom 导入也继续拒绝该字段；Raw JSON 现有通道不变。本次不修改 libXray。
+不支持的结构拒绝导入为
 Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的根部允许 `name`。
 规则子页只更新草稿，不在 Dart 中判断域名/IP、端口、网络及空条件是否合法。整份
 Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空接入槽只在最小验证配置中
@@ -149,9 +192,9 @@ Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空
 则回滚且不覆盖原路由。
 
 分享 JSON 可携带 `geodata.assets: [{"file":"other.dat","url":"https://…"}]`，省略默认
-geoip/geosite。导入先在同级临时目录下载、校验并生成索引，文件名冲突拒绝；资产发布到
-`VpnConstants.datDir` 的平铺根目录且路由成功提交后，持久 JSON 删除导入专用 `geodata`
-字段。详见 [数据管理](data-management.md)。
+geoip/geosite。依赖扫描包含 IP 反选引用；Raw 另扫描 `sourceIP`（及内核的 `source`
+别名）和 `localIP` 中的外部数据，HTTP 属性值不作为资源声明。导入冲突、暂存、发布与回滚见
+[Geodata 发布合同](data-management.md#geodata-发布)。
 
 ## Raw JSON
 

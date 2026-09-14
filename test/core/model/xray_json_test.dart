@@ -28,6 +28,10 @@ void main() {
           },
         ],
       },
+      'fakedns': [
+        {'ipPool': '198.19.0.0/16', 'poolSize': 32768},
+        {'ipPool': 'fc00:1::/64', 'poolSize': 32768},
+      ],
       'routing': {
         'domainStrategy': 'IPIfNonMatch',
         'rules': [
@@ -36,6 +40,8 @@ void main() {
             'ip': ['geoip:cn'],
             'port': '80,443',
             'network': ['tcp', 'udp'],
+            'protocol': ['http', 'tls'],
+            'localOS': ['ios', 'android', 'darwin', 'windows', 'linux'],
             'inboundTag': ['tunIn'],
             'outboundTag': 'direct',
             'ruleTag': 'app-smart-cn',

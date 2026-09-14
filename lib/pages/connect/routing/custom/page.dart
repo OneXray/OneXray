@@ -233,6 +233,13 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.stretch,
                                               children: [
+                                                RoutingFakeDnsRow(
+                                                  value: state.fakeDns,
+                                                  enabled:
+                                                      !state.editingBlocked,
+                                                  onChanged:
+                                                      controller.setFakeDns,
+                                                ),
                                                 _dns(context, mobile),
                                                 Padding(
                                                   padding:
@@ -251,6 +258,26 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                                         !state.editingBlocked,
                                                     onChanged: controller
                                                         .setDirectDnsAddress,
+                                                  ),
+                                                ),
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        13,
+                                                        0,
+                                                        13,
+                                                        13,
+                                                      ),
+                                                  child: Text(
+                                                    l.routingCustomDnsHint,
+                                                    style: AppTypography
+                                                        .actionHelp
+                                                        .copyWith(
+                                                          color:
+                                                              ColorManager.palette(
+                                                                context,
+                                                              ).mutedForeground,
+                                                        ),
                                                   ),
                                                 ),
                                               ],

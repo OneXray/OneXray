@@ -257,7 +257,10 @@ Map<String, GeoDataType> geoDataReferences(Map<String, dynamic> json) {
   void add(Object? values, GeoDataType type) {
     if (values is! List) return;
     for (final value in values.whereType<String>()) {
-      final match = RegExp(r'^ext:([^:]+\.dat):.+$').firstMatch(value);
+      final reference = type == GeoDataType.ip && value.startsWith('!')
+          ? value.substring(1)
+          : value;
+      final match = RegExp(r'^ext:([^:]+\.dat):.+$').firstMatch(reference);
       if (match == null) continue;
       final file = match.group(1)!;
       if (file == 'geosite.dat' || file == 'geoip.dat') continue;
@@ -274,7 +277,8 @@ Map<String, GeoDataType> geoDataReferences(Map<String, dynamic> json) {
     for (final rule in (routing['rules'] as List).whereType<Map>()) {
       add(rule['domain'], GeoDataType.domain);
       add(rule['ip'], GeoDataType.ip);
-      add(rule['source'], GeoDataType.ip);
+      add(rule['sourceIP'] ?? rule['source'], GeoDataType.ip);
+      add(rule['localIP'], GeoDataType.ip);
     }
   }
   final dns = json['dns'];

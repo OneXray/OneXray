@@ -92,6 +92,8 @@ void _checkEditableFields(Map<String, dynamic> document) {
       'ip',
       'port',
       'network',
+      'protocol',
+      'localOS',
       'balancerTag',
       'outboundTag',
     }, 'routing.rules[$index]');

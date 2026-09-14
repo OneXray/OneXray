@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: OneXray documentation
+    url: https://onexray.com
+    about: Read installation, routing, and platform-specific guidance.
+  - name: OneXray releases
+    url: https://github.com/OneXray/OneXray/releases
+    about: Check available versions and release notes before reporting a problem.

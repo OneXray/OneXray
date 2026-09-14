@@ -4,6 +4,33 @@ import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart'
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
 void main() {
+  test('extended conditions survive edits and can be removed without changing the original', () {
+    final original = RoutingRuleState(
+      protocol: const ['http', 'future-protocol'],
+      localOS: const ['darwin', 'future-os'],
+    );
+    final controller = CustomRoutingRuleController(rule: original);
+    addTearDown(controller.close);
+    expect(controller.state.moreConditions, true);
+    controller.name.text = 'Renamed';
+    expect(controller.draftRule.toJson(), {
+      ...original.toJson(),
+      'ruleTag': 'Renamed',
+    });
+    for (final value in [...controller.state.protocols]) {
+      controller.toggleChoice(RoutingRuleCondition.protocol, value);
+    }
+    for (final value in [...controller.state.localOS]) {
+      controller.toggleChoice(RoutingRuleCondition.localOS, value);
+    }
+    expect(controller.draftRule.toJson(), {
+      'ruleTag': 'Renamed',
+      'balancerTag': 'proxy',
+    });
+    expect(original.protocol, ['http', 'future-protocol']);
+    expect(original.localOS, ['darwin', 'future-os']);
+  });
+
   test(
     'four-condition editor cleans entries and emits only native rule fields',
     () {
@@ -15,7 +42,7 @@ void main() {
       addTearDown(controller.close);
       controller.name.text = ' Renamed ';
       controller.domains.single.text.text = ' geosite:CN ';
-      controller.addValue(true);
+      controller.addValue(RoutingRuleCondition.domains);
       controller.ips.single.text.text = ' 10.0.0.0/8 ';
       controller.port.text = '443,1000-2000';
       controller.setNetwork('udp');

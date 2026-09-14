@@ -19,6 +19,9 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   dns: json['dns'] == null
       ? null
       : XrayDns.fromJson(json['dns'] as Map<String, dynamic>),
+  fakedns: (json['fakedns'] as List<dynamic>?)
+      ?.map((e) => XrayFakeDns.fromJson(e as Map<String, dynamic>))
+      .toList(),
   routing: json['routing'] == null
       ? null
       : XrayRouting.fromJson(json['routing'] as Map<String, dynamic>),
@@ -47,6 +50,7 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'geodata': ?instance.geodata?.toJson(),
   'log': ?instance.log?.toJson(),
   'dns': ?instance.dns?.toJson(),
+  'fakedns': ?instance.fakedns?.map((e) => e.toJson()).toList(),
   'routing': ?instance.routing?.toJson(),
   'inbounds': ?instance.inbounds?.map((e) => e.toJson()).toList(),
   'outbounds': ?instance.outbounds,
@@ -112,6 +116,17 @@ Map<String, dynamic> _$XrayDnsToJson(XrayDns instance) => <String, dynamic>{
   'servers': ?instance.servers?.map((e) => e.toJson()).toList(),
 };
 
+XrayFakeDns _$XrayFakeDnsFromJson(Map<String, dynamic> json) => XrayFakeDns(
+  ipPool: json['ipPool'] as String?,
+  poolSize: (json['poolSize'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$XrayFakeDnsToJson(XrayFakeDns instance) =>
+    <String, dynamic>{
+      'ipPool': ?instance.ipPool,
+      'poolSize': ?instance.poolSize,
+    };
+
 XrayDnsServer _$XrayDnsServerFromJson(Map<String, dynamic> json) =>
     XrayDnsServer(
       address: json['address'] as String?,
@@ -157,6 +172,12 @@ XrayRoutingRule _$XrayRoutingRuleFromJson(Map<String, dynamic> json) =>
       ip: (json['ip'] as List<dynamic>?)?.map((e) => e as String).toList(),
       port: json['port'],
       network: json['network'],
+      protocol: (json['protocol'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      localOS: (json['localOS'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
       inboundTag: (json['inboundTag'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -171,6 +192,8 @@ Map<String, dynamic> _$XrayRoutingRuleToJson(XrayRoutingRule instance) =>
       'ip': ?instance.ip,
       'port': ?instance.port,
       'network': ?instance.network,
+      'protocol': ?instance.protocol,
+      'localOS': ?instance.localOS,
       'inboundTag': ?instance.inboundTag,
       'outboundTag': ?instance.outboundTag,
       'balancerTag': ?instance.balancerTag,

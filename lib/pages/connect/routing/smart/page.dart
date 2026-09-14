@@ -191,6 +191,11 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
                   )
                 : null,
           ),
+          RoutingFakeDnsRow(
+            value: smart.fakeDns,
+            enabled: state.original != null,
+            onChanged: (value) => controller.update('fakeDns', value),
+          ),
           _switch(
             l.prototypeBlockAdDomains,
             l.prototypeBlockAdDomainsHint,

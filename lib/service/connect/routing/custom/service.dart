@@ -8,6 +8,7 @@ import 'package:onexray/service/connect/routing/custom/state_db.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
+import 'package:onexray/service/shared/xray/fake_dns.dart';
 
 /// Persists validated Custom-routing state. Applying a currently used profile
 /// remains the connection coordinator's responsibility.
@@ -28,11 +29,12 @@ class CustomRoutingService {
     final config = state.xrayJson;
     config.dns = RoutingDns.compile(
       directAddress: state.directDnsAddress.trim(),
-      directDomains: [
-        for (final rule in state.rules)
-          if (rule.action == RoutingRuleAction.direct) ...rule.domain,
-      ],
+      fakeDns: state.fakeDns,
+      directDomains: RoutingDns.directDomains(
+        config.routing?.rules ?? const [],
+      ),
     );
+    config.fakedns = FakeDns.poolsFor(config.dns);
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
     config.outbounds = [
       for (final tag in tags) createFreedomOutbound(tag: tag).toJson(),

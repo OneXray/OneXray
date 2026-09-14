@@ -7,6 +7,7 @@ XrayInbound createTunInbound({
   List<String>? dns,
   List<String>? autoSystemRoutingTable,
   String? autoOutboundsInterface,
+  bool fakeDns = false,
 }) => XrayInbound(
   listen: NetConstants.proxyHost,
   protocol: 'tun',
@@ -19,20 +20,21 @@ XrayInbound createTunInbound({
     autoOutboundsInterface: autoOutboundsInterface,
   ).toJson(),
   tag: 'tunIn',
-  sniffing: _createSniffing(),
+  sniffing: _createSniffing(fakeDns),
 );
 
-XrayInbound createSocksInbound(String port) => XrayInbound(
-  listen: NetConstants.proxyHost,
-  port: port,
-  protocol: 'socks',
-  settings: XrayInboundSocksSettings(auth: 'noauth', udp: true).toJson(),
-  tag: 'tunIn',
-  sniffing: _createSniffing(),
-);
+XrayInbound createSocksInbound(String port, {bool fakeDns = false}) =>
+    XrayInbound(
+      listen: NetConstants.proxyHost,
+      port: port,
+      protocol: 'socks',
+      settings: XrayInboundSocksSettings(auth: 'noauth', udp: true).toJson(),
+      tag: 'tunIn',
+      sniffing: _createSniffing(fakeDns),
+    );
 
-XrayInboundSniffing _createSniffing() => XrayInboundSniffing(
+XrayInboundSniffing _createSniffing(bool fakeDns) => XrayInboundSniffing(
   enabled: true,
   routeOnly: false,
-  destOverride: ['http', 'tls', 'quic'],
+  destOverride: ['http', 'tls', 'quic', if (fakeDns) 'fakedns'],
 );
