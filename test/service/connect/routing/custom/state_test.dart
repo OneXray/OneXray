@@ -6,6 +6,64 @@ import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 
 void main() {
+  test('FakeDNS round trips as an optional standard tagged DNS server', () {
+    final base = RoutingProfileState(name: 'Route');
+    expect(base.fakeDns, false);
+    expect(
+      RoutingProfileDocument.parse(jsonEncode(_document())).state.fakeDns,
+      false,
+    );
+    final enabled = base.copyWith(fakeDns: true);
+    final document = jsonDecode(enabled.encode()) as Map<String, dynamic>;
+    expect(document['dns'], {
+      'servers': [
+        {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+        {'tag': 'app-dns-fake', 'address': 'fakedns'},
+      ],
+    });
+    expect(document.containsKey('fakedns'), false);
+    expect(document.containsKey('fakeDns'), false);
+    (document['dns'] as Map)['servers'] = (document['dns']['servers'] as List)
+        .reversed
+        .toList();
+    final decoded = RoutingProfileDocument.parse(
+      jsonEncode({...document, 'name': 'Shared route'}),
+    ).state;
+    expect(decoded.fakeDns, true);
+    expect(decoded.name, 'Shared route');
+    expect(decoded.copyWith(name: 'Edited').fakeDns, true);
+    expect(
+      decoded.copyWith(fakeDns: false).xrayJson.dns!.servers,
+      hasLength(1),
+    );
+    for (final extra in [
+      {'tag': 'app-dns-fake', 'address': '9.9.9.9'},
+      {'tag': 'unknown', 'address': 'fakedns'},
+      {'tag': 'app-dns-fake', 'address': 'fakedns', 'domains': []},
+    ]) {
+      _reject({
+        ...document,
+        'dns': {
+          'servers': [
+            {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+            extra,
+          ],
+        },
+      });
+    }
+    _reject({
+      ...document,
+      'dns': {
+        'servers': [
+          {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+          for (var i = 0; i < 2; i++)
+            {'tag': 'app-dns-fake', 'address': 'fakedns'},
+        ],
+      },
+    });
+    _reject({...document, 'fakedns': []});
+  });
+
   test('tagged direct DNS round trips with only native editable fields', () {
     final source = _document();
     source['dns'] = {

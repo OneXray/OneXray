@@ -343,9 +343,16 @@ void main() {
       expect(controller.routeCount, 2);
       expect(controller.name.text, 'Custom Routing 2');
       expect(controller.state.rules, isEmpty);
+      expect(controller.state.fakeDns, false);
       controller.replaceTemplate(
         jsonEncode({
           'outbounds': [{}],
+          'dns': {
+            'servers': [
+              {'tag': 'app-dns-direct', 'address': '8.8.8.8'},
+              {'tag': 'app-dns-fake', 'address': 'fakedns'},
+            ],
+          },
           'routing': {
             'rules': [
               for (final name in ['A', 'B', 'C'])
@@ -359,11 +366,16 @@ void main() {
         }),
       );
       final selected = controller.state.selectedRuleKey;
+      expect(controller.state.fakeDns, true);
+      controller.setFakeDns(false);
+      expect(controller.profileState.fakeDns, false);
+      controller.setFakeDns(true);
       controller.setDirectDnsAddress('1.1.1.1');
       expect(controller.profileState.directDnsAddress, '1.1.1.1');
       expect(jsonDecode(controller.previewState!.encode())['dns'], {
         'servers': [
           {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+          {'tag': 'app-dns-fake', 'address': 'fakedns'},
         ],
       });
       controller.reorder(1, 0);
@@ -379,6 +391,7 @@ void main() {
       controller.setInlineEditing(true);
       expect(controller.inlineRule!.name.text, 'A');
       expect(controller.profileState.directDnsAddress, '1.1.1.1');
+      expect(controller.profileState.fakeDns, true);
       controller.inlineRule!.name.text = 'A edited';
       controller.inlineRule!.domains.single.text.text = 'edited.example';
       controller.inlineRule!.port.text = '65536';

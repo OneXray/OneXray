@@ -6,8 +6,70 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadSwitch, ShadTheme;
 
 void main() {
+  for (final mobile in [true, false]) {
+    for (final locale in AppLocalizations.supportedLocales) {
+      testWidgets(
+        'FakeDNS row toggles without overflow ($locale, mobile=$mobile)',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = Size(mobile ? 390 : 1200, 900);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          var selected = false;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.material(Brightness.light, mobile: mobile),
+              locale: locale,
+              supportedLocales: AppLocalizations.supportedLocales,
+              localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+              builder: (context, child) => ShadTheme(
+                data: AppTheme.shad(Brightness.light, mobile: mobile),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: mobile ? 362 : 440,
+                    child: StatefulBuilder(
+                      builder: (context, setState) => RoutingCard(
+                        child: RoutingFakeDnsRow(
+                          value: selected,
+                          onChanged: (value) =>
+                              setState(() => selected = value),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final l = AppLocalizations.of(
+            tester.element(find.byType(RoutingFakeDnsRow)),
+          )!;
+          expect(find.text(l.routingFakeDns), findsOneWidget);
+          expect(find.text(l.routingFakeDnsHint), findsOneWidget);
+          expect(
+            tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+            false,
+          );
+          await tester.tap(find.byType(ShadSwitch));
+          await tester.pumpAndSettle();
+          expect(selected, true);
+          expect(
+            tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
+            true,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
   for (final locale in const [Locale('en'), Locale('fa')]) {
     testWidgets('entry count remains draft-only with scaled text ($locale)', (
       tester,

@@ -32,6 +32,35 @@ RegionCatalog _regions() => RegionCatalog.fromJson(
 
 void main() {
   test(
+    'FakeDNS defaults off, persists and affects Smart runtime comparison',
+    () {
+      final before = SmartRoutingSettings.fromJson({});
+      expect(before.fakeDns, false);
+      final after = SmartRoutingSettings.fromJson({
+        ...before.toJson(),
+        'fakeDns': true,
+      });
+      expect(SmartRoutingSettings.fromJson(after.toJson()).fakeDns, true);
+      expect(
+        SmartRoutingEditorService.sameRuntime(
+          ConnectionSettings(smart: before),
+          after,
+          _regions(),
+        ),
+        false,
+      );
+      expect(
+        SmartRoutingEditorService.sameRuntime(
+          ConnectionSettings(smart: after),
+          after,
+          _regions(),
+        ),
+        true,
+      );
+    },
+  );
+
+  test(
     'Smart keeps legacy defaults and reconnects only for effective DNS changes',
     () {
       expect(SmartRoutingSettings.fromJson({}).directDnsAddress, '8.8.8.8');
@@ -62,6 +91,50 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
   });
+
+  test(
+    'saving FakeDNS validates the same pools and persists without servers',
+    () async {
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        ),
+      );
+      final original = await coordinator.configuration;
+      var validations = 0;
+      final service = SmartRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        loadRegions: () async => _regions(),
+        testXray: (text) async {
+          validations++;
+          final config = jsonDecode(text);
+          expect(config['dns']['servers'].first['address'], 'fakedns');
+          expect(config['fakedns'], [
+            {'ipPool': '198.19.0.0/16', 'poolSize': 32768},
+            {'ipPool': 'fc00:1::/64', 'poolSize': 32768},
+          ]);
+          expect(config.containsKey('inbounds'), false);
+          return '';
+        },
+      );
+      expect(
+        await service.save(
+          original: original,
+          smart: SmartRoutingSettings.fromJson({
+            ...original.connection.smart.toJson(),
+            'fakeDns': true,
+          }),
+          confirmReconnect: () async =>
+              throw StateError('Unexpected reconnect'),
+        ),
+        true,
+      );
+      expect(validations, 1);
+      expect((await coordinator.configuration).connection.smart.fakeDns, true);
+    },
+  );
 
   test(
     'Smart validates an edited DNS address with libXray before saving',

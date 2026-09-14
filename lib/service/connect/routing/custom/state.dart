@@ -1,6 +1,7 @@
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/core/tools/json.dart';
+import 'package:onexray/service/shared/xray/fake_dns.dart';
 
 enum RoutingRuleAction { proxy, direct, block }
 
@@ -101,6 +102,7 @@ final class RoutingProfileState {
   final String name;
   final int entryCount;
   final String directDnsAddress;
+  final bool fakeDns;
   final List<RoutingRuleState> rules;
 
   RoutingProfileState({
@@ -108,6 +110,7 @@ final class RoutingProfileState {
     required this.name,
     this.entryCount = 1,
     this.directDnsAddress = RoutingDns.defaultAddress,
+    this.fakeDns = false,
     Iterable<RoutingRuleState> rules = const [],
   }) : rules = List.unmodifiable(rules);
 
@@ -119,6 +122,7 @@ final class RoutingProfileState {
     if (xrayJson.env != null ||
         xrayJson.geodata != null ||
         xrayJson.log != null ||
+        xrayJson.fakedns != null ||
         xrayJson.inbounds != null ||
         xrayJson.policy != null ||
         xrayJson.stats != null ||
@@ -138,11 +142,13 @@ final class RoutingProfileState {
         'outbounds must contain 1–3 empty object slots',
       );
     }
+    final dns = _dnsSettings(xrayJson.dns);
     final state = RoutingProfileState(
       id: id,
       name: name,
       entryCount: outbounds.length,
-      directDnsAddress: _directDnsAddress(xrayJson.dns),
+      directDnsAddress: dns.directAddress,
+      fakeDns: dns.fakeDns,
       rules: [
         for (final rule in xrayJson.routing?.rules ?? const [])
           RoutingRuleState.fromXrayJson(rule),
@@ -161,6 +167,8 @@ final class RoutingProfileState {
             tag: RoutingDns.directTag,
             address: directDnsAddress.trim(),
           ),
+          if (fakeDns)
+            XrayDnsServer(tag: FakeDns.tag, address: FakeDns.address),
         ],
       ),
       outbounds: [
@@ -181,12 +189,14 @@ final class RoutingProfileState {
     String? name,
     int? entryCount,
     String? directDnsAddress,
+    bool? fakeDns,
     Iterable<RoutingRuleState>? rules,
   }) => RoutingProfileState(
     id: clearId ? null : id ?? this.id,
     name: name ?? this.name,
     entryCount: entryCount ?? this.entryCount,
     directDnsAddress: directDnsAddress ?? this.directDnsAddress,
+    fakeDns: fakeDns ?? this.fakeDns,
     rules: rules ?? this.rules,
   );
 
@@ -203,27 +213,36 @@ final class RoutingProfileState {
   }
 }
 
-String _directDnsAddress(XrayDns? dns) {
-  if (dns == null) return RoutingDns.defaultAddress;
+({String directAddress, bool fakeDns}) _dnsSettings(XrayDns? dns) {
+  if (dns == null) {
+    return (directAddress: RoutingDns.defaultAddress, fakeDns: false);
+  }
   final servers = dns.servers;
-  if (servers == null || servers.length != 1) {
+  if (servers == null) {
     throw const FormatException(
       'Custom routing requires one tagged direct DNS server',
     );
   }
-  final server = servers
+  final direct = servers
       .where((server) => server.tag == RoutingDns.directTag)
-      .firstOrNull;
-  if (server == null ||
-      server.address == null ||
-      server.domains != null ||
-      server.skipFallback != null ||
-      server.queryStrategy != null) {
+      .toList();
+  final fake = servers.where((server) => server.tag == FakeDns.tag).toList();
+  if (direct.length != 1 ||
+      fake.length > 1 ||
+      servers.length != direct.length + fake.length ||
+      servers.any(
+        (server) =>
+            server.address == null ||
+            server.domains != null ||
+            server.skipFallback != null ||
+            server.queryStrategy != null,
+      ) ||
+      (fake.isNotEmpty && !FakeDns.isAddress(fake.single.address))) {
     throw const FormatException(
-      'Custom DNS supports only app-dns-direct with an address',
+      'Custom DNS supports app-dns-direct and an optional app-dns-fake server',
     );
   }
-  return server.address!;
+  return (directAddress: direct.single.address!, fakeDns: fake.isNotEmpty);
 }
 
 Object? _copyValue(Object? value) =>

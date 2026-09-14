@@ -4,6 +4,35 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadSwitch;
+
+class RoutingFakeDnsRow extends StatelessWidget {
+  final bool value;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const RoutingFakeDnsRow({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return RoutingSettingRow(
+      icon: LucideIcons.network,
+      title: l.routingFakeDns,
+      description: l.routingFakeDnsHint,
+      enabled: enabled,
+      trailing: Semantics(
+        label: l.routingFakeDns,
+        child: ShadSwitch(value: value, enabled: enabled, onChanged: onChanged),
+      ),
+    );
+  }
+}
 
 class RoutingCard extends StatelessWidget {
   final Widget child;

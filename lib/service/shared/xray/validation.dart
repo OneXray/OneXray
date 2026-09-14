@@ -28,6 +28,7 @@ abstract final class XrayValidation {
       outbounds: config.outbounds?.map(_outbound).toList(),
       routing: config.routing,
       dns: config.dns,
+      fakedns: config.fakedns,
       observatory: config.observatory,
     ).toJson(),
   );

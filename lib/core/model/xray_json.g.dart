@@ -19,6 +19,9 @@ XrayJson _$XrayJsonFromJson(Map<String, dynamic> json) => XrayJson(
   dns: json['dns'] == null
       ? null
       : XrayDns.fromJson(json['dns'] as Map<String, dynamic>),
+  fakedns: (json['fakedns'] as List<dynamic>?)
+      ?.map((e) => XrayFakeDns.fromJson(e as Map<String, dynamic>))
+      .toList(),
   routing: json['routing'] == null
       ? null
       : XrayRouting.fromJson(json['routing'] as Map<String, dynamic>),
@@ -47,6 +50,7 @@ Map<String, dynamic> _$XrayJsonToJson(XrayJson instance) => <String, dynamic>{
   'geodata': ?instance.geodata?.toJson(),
   'log': ?instance.log?.toJson(),
   'dns': ?instance.dns?.toJson(),
+  'fakedns': ?instance.fakedns?.map((e) => e.toJson()).toList(),
   'routing': ?instance.routing?.toJson(),
   'inbounds': ?instance.inbounds?.map((e) => e.toJson()).toList(),
   'outbounds': ?instance.outbounds,
@@ -111,6 +115,17 @@ XrayDns _$XrayDnsFromJson(Map<String, dynamic> json) => XrayDns(
 Map<String, dynamic> _$XrayDnsToJson(XrayDns instance) => <String, dynamic>{
   'servers': ?instance.servers?.map((e) => e.toJson()).toList(),
 };
+
+XrayFakeDns _$XrayFakeDnsFromJson(Map<String, dynamic> json) => XrayFakeDns(
+  ipPool: json['ipPool'] as String?,
+  poolSize: (json['poolSize'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$XrayFakeDnsToJson(XrayFakeDns instance) =>
+    <String, dynamic>{
+      'ipPool': ?instance.ipPool,
+      'poolSize': ?instance.poolSize,
+    };
 
 XrayDnsServer _$XrayDnsServerFromJson(Map<String, dynamic> json) =>
     XrayDnsServer(

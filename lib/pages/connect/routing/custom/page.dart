@@ -233,6 +233,13 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.stretch,
                                               children: [
+                                                RoutingFakeDnsRow(
+                                                  value: state.fakeDns,
+                                                  enabled:
+                                                      !state.editingBlocked,
+                                                  onChanged:
+                                                      controller.setFakeDns,
+                                                ),
                                                 _dns(context, mobile),
                                                 Padding(
                                                   padding:

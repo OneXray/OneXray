@@ -13,6 +13,7 @@ import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
+import 'package:onexray/service/shared/xray/fake_dns.dart';
 
 class SmartRoutingEditorDraft {
   final ConnectionConfiguration configuration;
@@ -111,10 +112,12 @@ class SmartRoutingEditorService {
       allowReconnect: allowReconnect,
       expectedConfiguration: original.encode(),
       validateAssets:
-          smart.directDns &&
-              (!connection.smart.directDns ||
-                  smart.directDnsAddress != connection.smart.directDnsAddress)
-          ? () => _validateDns(smart.directDnsAddress)
+          smart.fakeDns != connection.smart.fakeDns ||
+              (smart.directDns &&
+                  (!connection.smart.directDns ||
+                      smart.directDnsAddress !=
+                          connection.smart.directDnsAddress))
+          ? () => _validateDns(smart)
           : null,
       writeAssets: () async {
         if (smart.finalExitId == null) return;
@@ -128,11 +131,16 @@ class SmartRoutingEditorService {
     return true;
   }
 
-  Future<void> _validateDns(String address) async {
+  Future<void> _validateDns(SmartRoutingSettings smart) async {
+    final dns = RoutingDns.compile(
+      directAddress: smart.effectiveDirectDnsAddress,
+      fakeDns: smart.fakeDns,
+    );
     final error = await (testXray ?? AppHostApi().testXray)(
       XrayValidation.normal(
         XrayJson(
-          dns: RoutingDns.compile(directAddress: address),
+          dns: dns,
+          fakedns: FakeDns.poolsFor(dns),
           outbounds: [createFreedomOutbound(tag: 'direct').toJson()],
         ),
       ),
@@ -167,6 +175,7 @@ class SmartRoutingEditorService {
               ]
             : <String>[],
         'directDnsAddress': value.effectiveDirectDnsAddress,
+        'fakeDns': value.fakeDns,
         'entryCount': original.selection.kind == SelectionKind.server
             ? 1
             : value.entryCount,

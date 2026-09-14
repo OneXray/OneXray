@@ -12,6 +12,7 @@ class XrayJson {
   XrayGeoData? geodata;
   XrayLog? log;
   XrayDns? dns;
+  List<XrayFakeDns>? fakedns;
   XrayRouting? routing;
   List<XrayInbound>? inbounds;
   List<Map<String, dynamic>>? outbounds;
@@ -25,6 +26,7 @@ class XrayJson {
     this.geodata,
     this.log,
     this.dns,
+    this.fakedns,
     this.routing,
     this.inbounds,
     this.outbounds,
@@ -113,6 +115,19 @@ class XrayDns {
       _$XrayDnsFromJson(json);
 
   Map<String, dynamic> toJson() => _$XrayDnsToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true, includeIfNull: false)
+class XrayFakeDns {
+  String? ipPool;
+  int? poolSize;
+
+  XrayFakeDns({this.ipPool, this.poolSize});
+
+  factory XrayFakeDns.fromJson(Map<String, dynamic> json) =>
+      _$XrayFakeDnsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$XrayFakeDnsToJson(this);
 }
 
 @JsonSerializable(explicitToJson: true, includeIfNull: false)

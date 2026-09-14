@@ -35,6 +35,7 @@ class CustomRoutingEditorState {
   final Object? selectedRuleKey;
   final int entryCount;
   final String directDnsAddress;
+  final bool fakeDns;
   final bool processing;
   final bool transferBusy;
   final bool saving;
@@ -52,6 +53,7 @@ class CustomRoutingEditorState {
     this.selectedRuleKey,
     this.entryCount = 1,
     this.directDnsAddress = RoutingDns.defaultAddress,
+    this.fakeDns = false,
     this.processing = true,
     this.transferBusy = false,
     this.saving = false,
@@ -77,6 +79,7 @@ class CustomRoutingEditorState {
     Object? selectedRuleKey = _unchangedCustomRoutingValue,
     int? entryCount,
     String? directDnsAddress,
+    bool? fakeDns,
     bool? processing,
     bool? transferBusy,
     bool? saving,
@@ -97,6 +100,7 @@ class CustomRoutingEditorState {
         : selectedRuleKey,
     entryCount: entryCount ?? this.entryCount,
     directDnsAddress: directDnsAddress ?? this.directDnsAddress,
+    fakeDns: fakeDns ?? this.fakeDns,
     processing: processing ?? this.processing,
     transferBusy: transferBusy ?? this.transferBusy,
     saving: saving ?? this.saving,
@@ -208,6 +212,7 @@ class CustomRoutingEditorController
           selectedRuleKey: selected,
           entryCount: value.entryCount,
           directDnsAddress: value.directDnsAddress,
+          fakeDns: value.fakeDns,
           processing: false,
           transferBusy: transfer.state.busy,
           inlineEditing: state.inlineEditing,
@@ -247,6 +252,7 @@ class CustomRoutingEditorController
     name: state.name.trim(),
     entryCount: state.entryCount,
     directDnsAddress: state.directDnsAddress.trim(),
+    fakeDns: state.fakeDns,
     rules: state.rules,
   );
 
@@ -270,6 +276,7 @@ class CustomRoutingEditorController
         name: nextName,
         entryCount: value.entryCount,
         directDnsAddress: value.directDnsAddress,
+        fakeDns: value.fakeDns,
         rules: value.rules,
         ruleKeys: keys,
         selectedRuleKey: selected,
@@ -353,6 +360,10 @@ class CustomRoutingEditorController
 
   void setDirectDnsAddress(String value) {
     emit(state.copyWith(directDnsAddress: value, error: null));
+  }
+
+  void setFakeDns(bool value) {
+    emit(state.copyWith(fakeDns: value, error: null));
   }
 
   Future<void> editRule(

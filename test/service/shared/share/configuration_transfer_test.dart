@@ -21,6 +21,7 @@ String template(String name, {bool assets = false}) => jsonEncode({
   'dns': {
     'servers': [
       {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+      {'tag': 'app-dns-fake', 'address': 'fakedns'},
     ],
   },
   'routing': {
@@ -144,6 +145,7 @@ void main() {
     expect(json['dns'], {
       'servers': [
         {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+        {'tag': 'app-dns-fake', 'address': 'fakedns'},
       ],
     });
     expect(
@@ -229,6 +231,7 @@ void main() {
       expect(jsonDecode(link.xrayJson)['dns'], {
         'servers': [
           {'tag': 'app-dns-direct', 'address': '1.1.1.1'},
+          {'tag': 'app-dns-fake', 'address': 'fakedns'},
         ],
       });
     },

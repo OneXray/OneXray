@@ -1,4 +1,6 @@
 {
+  "routingFakeDns": "使用 FakeDNS",
+  "routingFakeDnsHint": "傳回虛擬 IP，並在路由前還原網域。符合本機 DNS 規則的網域仍使用真實 IP。中斷或重新連線後，DNS 快取可能暫時影響存取。",
   "routingRuleMoreConditions": "更多比對條件",
   "routingRuleProtocol": "應用層協定",
   "routingRuleProtocolHint": "比對嗅探到的流量協定，不是伺服器的 VLESS 或 VMess 協定。嗅探不一定能識別所有流量。",

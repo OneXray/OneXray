@@ -14,6 +14,7 @@ import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
+import 'package:onexray/service/shared/xray/fake_dns.dart';
 
 class ResolvedServer {
   final int id;
@@ -270,27 +271,34 @@ class ConnectionCompiler {
           settings.trafficMode == TrafficMode.smart && !settings.smart.directDns
           ? const <String>[]
           : RoutingDns.directDomains(rules);
+      final dns = RoutingDns.compile(
+        directAddress: switch (settings.trafficMode) {
+          TrafficMode.allVpn => null,
+          TrafficMode.smart => settings.smart.effectiveDirectDnsAddress,
+          TrafficMode.custom => custom!.directDnsAddress.trim(),
+        },
+        fakeDns: switch (settings.trafficMode) {
+          TrafficMode.allVpn => false,
+          TrafficMode.smart => settings.smart.fakeDns,
+          TrafficMode.custom => custom!.fakeDns,
+        },
+        directDomains: directDomains,
+        ipv6: options.ipv6,
+      );
       final normal = XrayJson(
         env: XrayEnv(
           assetLocation: VpnConstants.datDir,
           certLocation: VpnConstants.datDir,
         ),
-        inbounds: [_runtimeInbound(options)],
+        inbounds: [_runtimeInbound(options, fakeDns: FakeDns.usesServer(dns))],
         log: _runtimeLog(options),
         stats: XrayStats(),
         metrics: XrayMetrics(listen: '127.0.0.1:${options.metricsPort}'),
         policy: XrayPolicy(system: _runtimeStatsPolicy()),
         outbounds: outbounds,
         observatory: XrayObservatory(subjectSelector: []),
-        dns: RoutingDns.compile(
-          directAddress: switch (settings.trafficMode) {
-            TrafficMode.allVpn => null,
-            TrafficMode.smart => settings.smart.effectiveDirectDnsAddress,
-            TrafficMode.custom => custom!.directDnsAddress.trim(),
-          },
-          directDomains: directDomains,
-          ipv6: options.ipv6,
-        ),
+        dns: dns,
+        fakedns: FakeDns.poolsFor(dns),
         routing: XrayRouting(
           domainStrategy: allVpn ? 'AsIs' : 'IPIfNonMatch',
           balancers: [
@@ -372,14 +380,18 @@ class ConnectionCompiler {
     return value.cast<Map<String, dynamic>>().toList();
   }
 
-  static XrayInbound _runtimeInbound(RuntimeOptions options) {
+  static XrayInbound _runtimeInbound(
+    RuntimeOptions options, {
+    bool fakeDns = false,
+  }) {
     if (options.usesWindowsSystemVpn) {
-      return createSocksInbound('${options.socksPort}');
+      return createSocksInbound('${options.socksPort}', fakeDns: fakeDns);
     }
     final nativeTun =
         options.platform == ConnectionPlatform.linux ||
         options.platform == ConnectionPlatform.windows;
     return createTunInbound(
+      fakeDns: fakeDns,
       gateway: nativeTun
           ? ['198.18.0.1/15', if (options.ipv6) 'fc00::1/64']
           : null,
@@ -442,7 +454,10 @@ class ConnectionCompiler {
       }
     }
     inbounds.removeWhere((inbound) => inbound['tag'] == 'tunIn');
-    config['inbounds'] = [_runtimeInbound(options).toJson(), ...inbounds];
+    config['inbounds'] = [
+      _runtimeInbound(options, fakeDns: FakeDns.usedByRaw(config)).toJson(),
+      ...inbounds,
+    ];
     final env = _object(config, 'env');
     env['xray.location.asset'] = VpnConstants.datDir;
     env['xray.location.cert'] = VpnConstants.datDir;

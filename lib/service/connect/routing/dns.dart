@@ -1,4 +1,5 @@
 import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/service/shared/xray/fake_dns.dart';
 
 abstract final class RoutingDns {
   static const defaultAddress = '8.8.8.8';
@@ -22,10 +23,17 @@ abstract final class RoutingDns {
     String? directAddress,
     Iterable<String> directDomains = const [],
     bool ipv6 = true,
+    bool fakeDns = false,
   }) {
     final queryStrategy = ipv6 ? 'UseIP' : 'UseIPv4';
     return XrayDns(
       servers: [
+        if (fakeDns)
+          XrayDnsServer(
+            address: FakeDns.address,
+            tag: FakeDns.tag,
+            queryStrategy: queryStrategy,
+          ),
         XrayDnsServer(
           address: defaultAddress,
           tag: proxyTag,

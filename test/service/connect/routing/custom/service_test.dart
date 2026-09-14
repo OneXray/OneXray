@@ -8,8 +8,48 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/core/model/xray_json.dart';
+import 'package:onexray/service/connect/routing/custom/editor.dart';
 
 void main() {
+  test('FakeDNS persists in Base64 DNS settings and is generated for validation only', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    final service = CustomRoutingService(db);
+    final disabled = RoutingProfileState(name: 'FakeDNS');
+    final state = disabled.copyWith(fakeDns: true);
+    expect(CustomRoutingEditorService.sameRouting(disabled, state), false);
+    final id = await service.save(state);
+    final row = (await db.routingProfileDao.searchRow(id))!;
+    final stored = jsonDecode(utf8.decode(base64Decode(row.data)));
+    expect(stored.containsKey('fakedns'), false);
+    expect(stored['dns']['servers'].last, {
+      'tag': 'app-dns-fake',
+      'address': 'fakedns',
+    });
+    expect(CustomRoutingService.read(row).fakeDns, true);
+    await CustomRoutingService.validate(
+      state,
+      testXray: (text) async {
+        final config = jsonDecode(text) as Map<String, dynamic>;
+        expect(config['dns']['servers'].first['address'], 'fakedns');
+        expect(config['fakedns'], [
+          {'ipPool': '198.19.0.0/16', 'poolSize': 32768},
+          {'ipPool': 'fc00:1::/64', 'poolSize': 32768},
+        ]);
+        expect(XrayJson.fromJson(config).toJson(), config);
+        expect(config.containsKey('inbounds'), false);
+        return '';
+      },
+    );
+    await service.save(state.copyWith(id: id, fakeDns: false));
+    expect(
+      CustomRoutingService.read((await db.routingProfileDao.searchRow(id))!)
+          .fakeDns,
+      false,
+    );
+  });
+
   test('routing validation passes native fields to libXray with local entry placeholders', () async {
     final state = RoutingProfileState(
       name: 'Route',

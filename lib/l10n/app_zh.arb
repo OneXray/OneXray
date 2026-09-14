@@ -1,4 +1,6 @@
 {
+  "routingFakeDns": "使用 FakeDNS",
+  "routingFakeDnsHint": "返回虚拟 IP，并在路由前还原域名。命中本地 DNS 的域名仍使用真实 IP。断开或重连后，DNS 缓存可能暂时影响访问。",
   "routingRuleMoreConditions": "更多匹配条件",
   "routingRuleProtocol": "应用层协议",
   "routingRuleProtocolHint": "匹配嗅探到的流量协议，不是服务器的 VLESS 或 VMess 协议。嗅探不一定能识别所有流量。",

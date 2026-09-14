@@ -1,4 +1,6 @@
 {
+  "routingFakeDns": "Use FakeDNS",
+  "routingFakeDnsHint": "Return virtual IPs and restore domains before routing. Domains matched by local DNS still use real IPs. Cached DNS results may temporarily affect access after disconnecting or reconnecting.",
   "routingRuleMoreConditions": "More matching conditions",
   "routingRuleProtocol": "Application protocols",
   "routingRuleProtocolHint": "Match sniffed traffic protocols, not the server's VLESS or VMess protocol. Detection may not identify all traffic.",

@@ -56,6 +56,194 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test(
+    'FakeDNS is opt-in per route and paired with managed inbound recovery',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        for (final mode in TrafficMode.values) {
+          for (final enabled in [false, true]) {
+            for (final ipv6 in [false, true]) {
+              final config = ConnectionCompiler.compile(
+                settings: ConnectionSettings(
+                  trafficMode: mode,
+                  smart: SmartRoutingSettings(fakeDns: enabled),
+                ),
+                custom: RoutingProfileState(
+                  name: 'Custom',
+                  fakeDns: enabled,
+                  directDnsAddress: '1.1.1.1',
+                  rules: [
+                    RoutingRuleState(
+                      domain: ['domain:direct.test'],
+                      action: RoutingRuleAction.direct,
+                    ),
+                  ],
+                ),
+                entries: [node(1)],
+                regions: catalog,
+                options: options(
+                  platform: platform,
+                  ipv6: ipv6,
+                  interfaceName: 'Ethernet',
+                ),
+              ).config;
+              final active = enabled && mode != TrafficMode.allVpn;
+              final servers = config['dns']['servers'] as List;
+              expect(servers.first['address'], active ? 'fakedns' : '8.8.8.8');
+              expect(
+                servers.first['tag'],
+                active ? 'app-dns-fake' : 'app-dns-proxy',
+              );
+              expect(
+                servers.every(
+                  (server) =>
+                      server['queryStrategy'] == (ipv6 ? 'UseIP' : 'UseIPv4'),
+                ),
+                true,
+              );
+              final sniffing = config['inbounds'].single['sniffing'];
+              expect(sniffing, {
+                'enabled': true,
+                'routeOnly': false,
+                'destOverride': ['http', 'tls', 'quic', if (active) 'fakedns'],
+              });
+              expect(config.containsKey('fakedns'), active);
+              if (active) {
+                expect(config['fakedns'], [
+                  {'ipPool': '198.19.0.0/16', 'poolSize': 32768},
+                  {'ipPool': 'fc00:1::/64', 'poolSize': 32768},
+                ]);
+                expect(servers[1]['address'], '8.8.8.8');
+                expect(servers.last['skipFallback'], true);
+                expect(servers.last['domains'], isNotEmpty);
+              }
+              expect(
+                config['routing']['domainStrategy'],
+                mode == TrafficMode.allVpn ? 'AsIs' : 'IPIfNonMatch',
+              );
+            }
+          }
+        }
+      }
+    },
+  );
+
+  test('Windows MSIX SOCKS receives the same FakeDNS recovery', () {
+    final config = ConnectionCompiler.compile(
+      settings: ConnectionSettings(smart: SmartRoutingSettings(fakeDns: true)),
+      entries: [node(1)],
+      regions: catalog,
+      options: options(
+        platform: ConnectionPlatform.windows,
+        windowsMode: WindowsMode.msix,
+        interfaceName: 'Ethernet',
+      ),
+    ).config;
+    expect(config['inbounds'].single['protocol'], 'socks');
+    expect(
+      config['inbounds'].single['sniffing']['destOverride'],
+      contains('fakedns'),
+    );
+  });
+
+  test('explicit FakeDNS address also enables pools and recovery', () {
+    final config = ConnectionCompiler.compile(
+      settings: ConnectionSettings(
+        smart: SmartRoutingSettings(directDnsAddress: 'fakedns'),
+      ),
+      entries: [node(1)],
+      regions: catalog,
+      options: options(),
+    ).config;
+    expect(config['fakedns'], isNotEmpty);
+    expect(
+      config['inbounds'].single['sniffing']['destOverride'],
+      contains('fakedns'),
+    );
+  });
+
+  test('Raw FakeDNS adapts only the managed inbound and preserves source', () {
+    for (final dns in [
+      {
+        'servers': ['fakedns', '9.9.9.9'],
+      },
+      {
+        'servers': [
+          {'address': 'fakedns', 'disableCache': true},
+        ],
+      },
+    ]) {
+      for (final poolKey in [null, 'fakedns', 'fakeDns']) {
+        final source = <String, dynamic>{
+          'dns': dns,
+          ?poolKey: {'ipPool': '198.18.16.0/20', 'poolSize': 1024},
+          'inbounds': [
+            {
+              'tag': 'tunIn',
+              'protocol': 'tun',
+              'sniffing': {'enabled': false},
+            },
+            {
+              'tag': 'extra',
+              'protocol': 'socks',
+              'port': 20000,
+              'sniffing': {'enabled': false},
+            },
+          ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        };
+        final before = jsonEncode(source);
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          raw: source,
+          entries: [],
+          regions: catalog,
+          options: options(ipv6: false),
+        ).config;
+        expect(
+          config['inbounds'].first['sniffing']['destOverride'],
+          contains('fakedns'),
+        );
+        expect(config['inbounds'].last, (source['inbounds'] as List).last);
+        if (poolKey == null) {
+          expect(config.containsKey('fakedns'), false);
+        } else {
+          expect(config[poolKey], source[poolKey]);
+        }
+        expect(config['dns']['queryStrategy'], 'UseIPv4');
+        expect(jsonEncode(source), before);
+      }
+    }
+    for (final pool in [false, true]) {
+      final config = ConnectionCompiler.compile(
+        settings: ConnectionSettings(expert: true),
+        raw: {
+          'dns': {
+            'servers': ['8.8.8.8'],
+          },
+          if (pool)
+            'fakedns': [
+              {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
+            ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        },
+        entries: [],
+        regions: catalog,
+        options: options(),
+      ).config;
+      expect(
+        (config['inbounds'].first['sniffing']['destOverride'] as List).contains(
+          'fakedns',
+        ),
+        pool,
+      );
+    }
+  });
+
   test('routing DNS addresses are independent from proxy and tunnel DNS', () {
     for (final mode in TrafficMode.values) {
       final compiled = ConnectionCompiler.compile(
