@@ -16,8 +16,9 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
 - Route connection actions, shortcuts and tray actions through
   `ConnectionCoordinator`. Native VPN state is authoritative. After a failed
   stop/start transition, do not restart the previous connection.
-- Normal configuration uses `XrayJson`; Raw JSON retains its source and uses
-  a separate Map compilation path. Database JSON stays Base64; preserve legacy
+- Smart and ordinary Custom configuration use `XrayJson`; Advanced Custom
+  templates and full Raw retain user JSON through separate Map compilation.
+  Database JSON stays Base64; preserve legacy
   Raw rows above the new-item limit and keep retired Profile/Multi-node rows
   outside product flows.
 - Current-session traffic and speed come only from Xray metrics HTTP while the

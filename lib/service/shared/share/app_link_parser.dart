@@ -42,6 +42,7 @@ abstract final class OneXrayAppLinkParser {
       'outbound' => OneXrayConfigLinkType.outbound,
       'raw' => OneXrayConfigLinkType.raw,
       'custom' => OneXrayConfigLinkType.custom,
+      'custom-advanced' => OneXrayConfigLinkType.customAdvanced,
       _ => null,
     };
     if (type == null) {

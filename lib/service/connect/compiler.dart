@@ -9,6 +9,8 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/runtime_network_policy.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/servers/outbound/map.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
@@ -187,7 +189,7 @@ class ConnectionCompiler {
     required List<ResolvedServer> entries,
     ResolvedServer? finalExit,
     Map<String, dynamic>? raw,
-    RoutingProfileState? custom,
+    RoutingConfiguration? custom,
     required RegionCatalog regions,
     required RuntimeOptions options,
   }) {
@@ -219,12 +221,43 @@ class ConnectionCompiler {
       if (settings.trafficMode == TrafficMode.custom && custom == null) {
         throw const FormatException('Custom route is required');
       }
+      if (settings.trafficMode == TrafficMode.custom &&
+          custom is AdvancedRoutingProfile) {
+        final outbounds = <Map<String, dynamic>>[];
+        for (final (index, entry) in entries.indexed) {
+          final tag = 'app-entry-$index';
+          outbounds.add(_node(entry, tag));
+          nodeTags[tag] = entry.id;
+        }
+        _applyOutboundPolicy(outbounds, options, raw: false);
+        final template = custom.fillSlots(outbounds);
+        final inbounds = _objects(template, 'inbounds');
+        for (var index = 0; index < inbounds.length; index++) {
+          if (inbounds[index]['tag'] == 'tunIn') {
+            inbounds[index] = {
+              ..._runtimeInbound(
+                options,
+                fakeDns: FakeDns.usedByRaw(template),
+              ).toJson(),
+              ...inbounds[index],
+            };
+          }
+        }
+        template['inbounds'] = inbounds;
+        return CompiledConnection(
+          xrayJson: jsonEncode(_rawRuntimeMap(template, options)),
+          entries: entries,
+          finalExit: null,
+          nodeTags: nodeTags,
+        );
+      }
+      final ordinary = custom is RoutingProfileState ? custom : null;
       final allVpn = settings.trafficMode == TrafficMode.allVpn;
       final rules = <XrayRoutingRule>[];
       if (settings.trafficMode == TrafficMode.smart) {
         rules.addAll(smartRules(settings.smart, regions));
       } else if (settings.trafficMode == TrafficMode.custom) {
-        for (final (index, rule) in custom!.rules.indexed) {
+        for (final (index, rule) in ordinary!.rules.indexed) {
           rules.add(rule.xrayJson..ruleTag = 'app-custom-$index');
         }
       }
@@ -275,12 +308,12 @@ class ConnectionCompiler {
         directAddress: switch (settings.trafficMode) {
           TrafficMode.allVpn => null,
           TrafficMode.smart => settings.smart.effectiveDirectDnsAddress,
-          TrafficMode.custom => custom!.directDnsAddress.trim(),
+          TrafficMode.custom => ordinary!.directDnsAddress.trim(),
         },
         fakeDns: switch (settings.trafficMode) {
           TrafficMode.allVpn => false,
           TrafficMode.smart => settings.smart.fakeDns,
-          TrafficMode.custom => custom!.fakeDns,
+          TrafficMode.custom => ordinary!.fakeDns,
         },
         directDomains: directDomains,
         ipv6: options.ipv6,
@@ -453,11 +486,50 @@ class ConnectionCompiler {
         );
       }
     }
-    inbounds.removeWhere((inbound) => inbound['tag'] == 'tunIn');
-    config['inbounds'] = [
-      _runtimeInbound(options, fakeDns: FakeDns.usedByRaw(config)).toJson(),
-      ...inbounds,
-    ];
+    final managed = inbounds.where((value) => value['tag'] == 'tunIn').toList();
+    if (managed.length > 1) {
+      throw const FormatException('Only one App-managed tunIn is allowed');
+    }
+    final generated = _runtimeInbound(
+      options,
+      fakeDns: FakeDns.usedByRaw(config),
+    ).toJson();
+    if (managed.isEmpty) {
+      inbounds.insert(0, generated);
+    } else {
+      final inbound = managed.single;
+      if (options.usesWindowsSystemVpn) {
+        final settings = inbound['protocol'] == 'socks'
+            ? _object(inbound, 'settings')
+            : <String, dynamic>{};
+        settings.addAll(generated['settings'] as Map<String, dynamic>);
+        for (final key in ['protocol', 'listen', 'port']) {
+          inbound[key] = generated[key];
+        }
+        inbound['settings'] = settings;
+      } else {
+        if (inbound['protocol'] != 'tun') {
+          throw const FormatException('tunIn must use the tun protocol');
+        }
+        final settings = _object(inbound, 'settings');
+        final platform = generated['settings'] as Map<String, dynamic>;
+        for (final key in const [
+          'name',
+          'mtu',
+          'gateway',
+          'dns',
+          'autoSystemRoutingTable',
+          'autoOutboundsInterface',
+        ]) {
+          if (platform.containsKey(key)) {
+            settings[key] = platform[key];
+          } else {
+            settings.remove(key);
+          }
+        }
+      }
+    }
+    config['inbounds'] = inbounds;
     final env = _object(config, 'env');
     env['xray.location.asset'] = VpnConstants.datDir;
     env['xray.location.cert'] = VpnConstants.datDir;

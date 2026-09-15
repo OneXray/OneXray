@@ -19,6 +19,7 @@ import '../../../../support/fake_geodata_import.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
 
 RoutingProfileState _state(
   String name, {
@@ -62,6 +63,93 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
+  });
+
+  test('advanced active edits preserve the template on rejected changes and compare full JSON', () async {
+    final state = AdvancedRoutingDocument.parse(
+      AdvancedRoutingProfile.defaultText,
+      name: 'Advanced',
+    ).state;
+    final id = await CustomRoutingService(db).save(state);
+    final configuration = ConnectionConfiguration(
+      connection: ConnectionSettings(
+        trafficMode: TrafficMode.custom,
+        customId: id,
+      ),
+    );
+    await db.connectionConfigDao.commit(
+      configurationJson: configuration.encode(),
+    );
+    final runtime = _runtime('advanced', configuration);
+    var host = HostConnection(VpnStatus.connected, runtime: runtime);
+    final actions = <String>[];
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => host,
+        start: (_) async {
+          actions.add('start');
+          throw const ConnectionHostException('startFailed');
+        },
+        stop: () async {
+          actions.add('stop');
+          return host = const HostConnection(VpnStatus.disconnected);
+        },
+      ),
+    );
+    final service = CustomRoutingEditorService(
+      database: db,
+      coordinator: coordinator,
+      testXray: (_) async => '',
+      prepare: (next, _, _) async => _runtime('new', next),
+    );
+    final draft = await service.load(id);
+    await service.save(
+      CustomRoutingEditorDraft(
+        original: draft.original,
+        state: draft.state.copyWith(name: 'Renamed'),
+      ),
+      confirmReconnect: () async =>
+          throw StateError('Name is not a runtime edit'),
+    );
+    expect(actions, isEmpty);
+    final renamed = await service.load(id);
+    final json = renamed.state.toJson();
+    json['inbounds'][0]['sniffing']['routeOnly'] = false;
+    json['routing']['rules'][0]['ruleTag'] = 'User label';
+    final changed = CustomRoutingEditorDraft(
+      original: renamed.original,
+      state: AdvancedRoutingDocument.parse(
+        jsonEncode(json),
+        name: renamed.state.name,
+      ).state,
+    );
+    expect(
+      CustomRoutingEditorService.sameRouting(renamed.state, changed.state),
+      isFalse,
+    );
+    expect(
+      await service.save(changed, confirmReconnect: () async => false),
+      isNull,
+    );
+    expect(actions, isEmpty);
+    await expectLater(
+      service.save(changed, confirmReconnect: () async => true),
+      throwsA(isA<ConnectionHostException>()),
+    );
+    expect(actions, [
+      'stop',
+      'start',
+      'stop',
+    ]); // Failed-start cleanup, never restart old.
+    final stored = (await db.routingProfileDao.searchRow(id))!;
+    expect(stored, renamed.original);
+    expect(stored.advanced, isTrue);
+    expect(
+      CustomRoutingService.readConfiguration(stored).toJson(),
+      state.toJson(),
+    );
+    expect(coordinator.state.value.phase, ConnectionPhase.failed);
   });
 
   test(

@@ -4,6 +4,7 @@ import 'package:onexray/core/pigeon/model.dart';
 enum OneXrayConfigLinkType {
   outbound('outbound'),
   custom('custom'),
+  customAdvanced('custom-advanced'),
   raw('raw');
 
   const OneXrayConfigLinkType(this.wireName);

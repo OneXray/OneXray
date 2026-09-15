@@ -14,7 +14,7 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
-import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:path/path.dart' as p;
 
 Future<List<int>> allocateRuntimePorts(
@@ -62,7 +62,7 @@ class ConnectionPreparation {
     ConnectionConfiguration input, {
     Future<void>? cancelled,
     String? rawDraft,
-    RoutingProfileState? customDraft,
+    RoutingConfiguration? customDraft,
     Map<int, ResolvedServer> serverDrafts = const {},
     void Function(Set<int>)? onResolved,
   }) async {
@@ -74,7 +74,7 @@ class ConnectionPreparation {
         .ensureOutboundInterface(policy.xrayOutboundInterfaceName);
     final tun = policy.toTun(platform);
     String? raw = rawDraft;
-    RoutingProfileState? custom = customDraft;
+    RoutingConfiguration? custom = customDraft;
     if (settings.expert && raw == null) {
       final row = settings.rawId == null
           ? null
@@ -95,7 +95,7 @@ class ConnectionPreparation {
       if (row == null) {
         throw const FormatException('Custom route is unavailable');
       }
-      custom = CustomRoutingService.read(row);
+      custom = CustomRoutingService.readConfiguration(row);
     }
     String? notice;
     List<ResolvedServer> entries;
@@ -154,13 +154,14 @@ class ConnectionPreparation {
       );
     }
     final rawConfig = raw == null ? null : ConnectionCompiler.parseRawJson(raw);
-    final rawInbounds = rawConfig?['inbounds'] ?? [];
-    if (rawInbounds is! List ||
-        rawInbounds.any((entry) => entry is! Map<String, dynamic>)) {
+    final userInbounds =
+        rawConfig?['inbounds'] ?? custom?.toJson()['inbounds'] ?? [];
+    if (userInbounds is! List ||
+        userInbounds.any((entry) => entry is! Map<String, dynamic>)) {
       throw const FormatException('inbounds must be an object array');
     }
     final ports = await allocateRuntimePorts(
-      rawInbounds.cast<Map<String, dynamic>>(),
+      userInbounds.cast<Map<String, dynamic>>(),
     );
     final compiled = ConnectionCompiler.compile(
       settings: settings,

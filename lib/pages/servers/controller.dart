@@ -10,7 +10,7 @@ import 'package:onexray/pages/shared/connection_action.dart';
 import 'package:onexray/pages/servers/catalog.dart';
 import 'package:onexray/service/servers/catalog.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
-import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/shared/share/params.dart';
@@ -51,7 +51,7 @@ class ServersPageState {
     ConnectionConfiguration? configuration,
     this.connectionView = const ConnectionView(),
     ServerCatalog? catalog,
-    List<RoutingProfileState> customRoutes = const [],
+    List<RoutingConfiguration> customRoutes = const [],
     this.ready = false,
     this.failed = false,
     this.failure,
@@ -76,7 +76,7 @@ class ServersPageState {
   List<CoreConfigData> get servers => catalog.servers;
   List<SubscriptionData> get sources => catalog.sources;
   final ServerCatalog catalog;
-  final List<RoutingProfileState> customRoutes;
+  final List<RoutingConfiguration> customRoutes;
   final bool ready;
   final bool failed;
   final Object? failure;
@@ -94,7 +94,7 @@ class ServersPageState {
     ConnectionConfiguration? configuration,
     ConnectionView? connectionView,
     ServerCatalog? catalog,
-    List<RoutingProfileState>? customRoutes,
+    List<RoutingConfiguration>? customRoutes,
     bool? ready,
     bool? failed,
     Object? failure,
@@ -161,8 +161,8 @@ class ServersController extends PageCubit<ServersPageState>
   ConnectionConfiguration get configuration => state.configuration;
   set configuration(ConnectionConfiguration value) =>
       emit(state.copyWith(configuration: value));
-  List<RoutingProfileState> get customRoutes => state.customRoutes;
-  set customRoutes(List<RoutingProfileState> value) =>
+  List<RoutingConfiguration> get customRoutes => state.customRoutes;
+  set customRoutes(List<RoutingConfiguration> value) =>
       emit(state.copyWith(customRoutes: value));
   ConnectionView get connectionView => state.connectionView;
   bool get ready => state.ready;
@@ -199,7 +199,9 @@ class ServersController extends PageCubit<ServersPageState>
         _subscriptions.add(
           db.routingProfileDao.allRowsStream.listen((rows) {
             try {
-              customRoutes = rows.map(CustomRoutingService.read).toList();
+              customRoutes = rows
+                  .map(CustomRoutingService.readConfiguration)
+                  .toList();
             } catch (error) {
               _readFailed(error);
             }

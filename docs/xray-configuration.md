@@ -1,6 +1,7 @@
 # Xray 配置合同
 
 普通模式使用节点、智能/自定义路由和 App 平台策略；专家模式使用完整 Raw JSON。
+自定义路由分为常规表单和独立的高级 JSON 模板，两者都复用 App 已导入节点。
 旧 Profile（`setting`）和多节点出站（`full`）不参与新业务，不是新配置的运行依赖。
 
 ## 持久数据
@@ -18,7 +19,7 @@
 ## 普通配置编译
 
 `ConnectionCompiler` 接收不可变输入，在副本中产生配置，不自行读库、分配端口或启动 Core。
-`XrayJson` 是普通模式配置生成的唯一结构。运行编译直接构造模型及嵌套模型，完成运行设置后
+`XrayJson` 是智能与常规自定义配置生成的唯一结构。运行编译直接构造模型及嵌套模型，完成运行设置后
 一次序列化；不能先拼完整 Map，再经过 `fromJson → toJson` 筛选或重新组装。`fromJson` 用于
 外部输入和数据库读取，不作为内部构造器。模型不解析 Raw JSON；outbounds 的元素保持
 `Map<String, dynamic>`，便于完整保留代理协议字段。
@@ -27,7 +28,8 @@
 `runtime_outbounds.dart` 返回类型模型，只在模型声明的 Map 字段处序列化对应 payload；系统出站的最小
 `streamSettings.sockopt` 只包含实际生成的 `dialerProxy` 和 `interface`。
 运行设置直接填入模型字段，不得向普通配置注入模型外字段。
-Raw 使用独立的 Map 编译路径，未由 App 管理的根字段和嵌套字段原样保留。
+高级自定义模板和完整 Raw 使用独立的 Map 编译路径，未由 App 管理的允许字段原样保留。
+高级模板先经过自身字段边界检查；完整 Raw 不受该白名单限制。
 
 节点测速使用模型封装节点列表；节点编辑、App Link 和手写节点 JSON 的校验使用最小
 `XrayJson`，保留完整 outbound 与本地资源路径，关闭日志，不添加运行入站和 metrics。
@@ -59,9 +61,9 @@ selector 填写生成节点完整 tag，采用 round-robin，回退出站为 `di
 `streamSettings.sockopt` 中写入 `domainStrategy`；完整 Raw JSON 中的用户字段不属于此
 简化范围。
 
-智能路由和自定义路由的 `routing.domainStrategy` 固定为 `IPIfNonMatch`，不提供开关：
-域名首轮未命中才解析为 IP 重新匹配。自定义路由的导入、读取不保留该字段的定制值，
-保存、导出、校验及运行编译统一输出固定值；Raw JSON 保留用户设置，全部使用 VPN 仍为 `AsIs`。
+智能路由和常规自定义路由的 `routing.domainStrategy` 固定为 `IPIfNonMatch`，不提供开关：
+域名首轮未命中才解析为 IP 重新匹配。常规自定义的导入、读取不保留该字段的定制值，
+保存、导出、校验及运行编译统一输出固定值；高级自定义和 Raw JSON 保留用户设置，全部使用 VPN 仍为 `AsIs`。
 App 生成的所有 rule 均省略可选的 `type: field`，且不增加无条件 catch-all 提前截断 IP
 第二轮匹配。Custom 导入将 `type` 视为不支持的字段并直接拒绝；完整 Raw JSON 保留用户
 原文，包括用户自行填写的 `type`。
@@ -78,7 +80,7 @@ Windows 服务直连开关在所有平台显示；开启后使用 Microsoft、Bi
 
 “所有流量经过 VPN”只生成一个走 proxy 的 `8.8.8.8` DNS server，不生成直连 DNS server
 及其路由规则；`dnsOut` 对非 A/AAAA 查询的转发也走当前代理节点。
-智能路由和自定义路由保留 proxy/direct 两个使用独立 tag 的真实 DNS server。代理 DNS 固定为 `8.8.8.8`；
+智能路由和常规自定义路由保留 proxy/direct 两个使用独立 tag 的真实 DNS server。代理 DNS 固定为 `8.8.8.8`；
 直连 DNS 默认使用该地址，可在各份路由配置中独立修改。智能路由关闭直连 DNS 开关后，
 保留已保存的地址，但运行时使用原默认地址且不匹配直连域名，直到重新开启开关。
 直连 DNS 地址的语法由 libXray 校验，App 不另行检查协议或连通性。
@@ -91,7 +93,7 @@ fallback。包含目标 IP/端口、网络、协议、操作系统或入站标�
 
 ## FakeDNS
 
-智能路由和每份自定义路由独立提供“使用 FakeDNS”，默认关闭，与本地 DNS 地址一起编辑；
+智能路由和每份常规自定义路由独立提供“使用 FakeDNS”，默认关闭，与本地 DNS 地址一起编辑；
 “所有流量经过 VPN”不受该开关影响。开启后，在 proxy/direct DNS 之前添加
 `app-dns-fake`（`address: fakedns`）。命中 direct server 域名列表的查询仍优先使用真实
 直连 DNS；其它经 `dnsOut` 处理的 A/AAAA 查询优先返回虚拟 IP。内核路由的
@@ -105,7 +107,8 @@ fallback。包含目标 IP/端口、网络、协议、操作系统或入站标�
 增加 `fakedns`，将虚拟目的地址还原为域名后再路由，不关闭内容嗅探。
 
 Raw JSON 的 DNS server 使用 `fakedns`（字符串或对象地址），或声明根级 FakeDNS 池时，
-App 自动为重建的 `tunIn` 启用上述还原。用户原文、DNS 地址、池及额外入站保持不变，
+App 只为新建的 `tunIn` 启用上述还原；已有 Raw 入站的 sniffing 原样保留，不因 FakeDNS 自动修改。
+高级模板没有提供 sniffing 时也使用 App 默认值，显式提供则按整对象保留。用户原文、DNS 地址、池及额外入站保持不变，
 不以普通模式固定池覆盖 Raw，也不向 Raw 添加新的开关或 DNS server。
 没有显式池时由 Xray 使用自身默认池；其范围与用户系统地址、排除路由的兼容性仍由 Raw 作者负责。
 
@@ -147,7 +150,7 @@ Apple 的排除网段作为独立平台策略保存，只在关闭 `includeAllNe
 IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts、出站解析策略和地址
 保持不变；关闭开关不代表 Xray 的所有 IPv6 流量都被禁止。
 
-## 自定义路由
+## 常规自定义路由
 
 自定义路由通过 `dns.servers: [{"tag":"app-dns-direct","address":"8.8.8.8"}]`
 存储和分享直连 DNS 地址。开启 FakeDNS 时另存
@@ -178,12 +181,13 @@ IPv6 而拒绝 IPv6 节点或 DNS 地址。Raw 中用户自带的路由、hosts�
 编辑器支持逐条域名、目标 IP 输入及实际安装 Geodata 分类补全。新增条件位于折叠的
 “更多匹配条件”中，已有扩展条件的规则自动展示该区域及各条件摘要；协议和系统使用多选。
 移动端规则详情与桌面嵌入表单复用实现。
-当前不开放来源 IP/端口、HTTP 属性、进程匹配、入站选择、本地监听地址/端口、用户、
+常规自定义当前不开放来源 IP/端口、HTTP 属性、进程匹配、入站选择、本地监听地址/端口、用户、
 VLESS 入站路由或 webhook；`sourceIP`、`sourcePort` 不进入普通模式模型或编辑状态。
 HTTP 属性 `attrs` 的无效正则在当前内核构造配置时可能触发 panic，因此本次不增加模型字段或
 UI，Custom 导入也继续拒绝该字段；Raw JSON 现有通道不变。本次不修改 libXray。
 不支持的结构拒绝导入为
-Custom，不静默丢字段；完整高级配置使用 Raw。导入、导出的根部允许 `name`。
+常规 Custom，不静默丢字段；更多路由能力使用下节的高级模板，自带节点的完整配置使用 Raw。
+导入、导出的根部允许 `name`。
 规则子页只更新草稿，不在 Dart 中判断域名/IP、端口、网络及空条件是否合法。整份
 Custom 保存或导入提交前，由 libXray 构造临时 instance 校验；空接入槽只在最小验证配置中
 替换为本地 freedom 出站，补齐与运行一致的 proxy balancer、所需 Observatory、direct/block
@@ -196,12 +200,48 @@ geoip/geosite。依赖扫描包含 IP 反选引用；Raw 另扫描 `sourceIP`（
 别名）和 `localIP` 中的外部数据，HTTP 属性值不作为资源声明。导入冲突、暂存、发布与回滚见
 [Geodata 发布合同](data-management.md#geodata-发布)。
 
+## 高级自定义路由
+
+高级模板使用 `AdvancedRoutingProfile` 独立保存 Map，与常规 State 仅共享 `RoutingConfiguration`
+身份、名称、节点数量和保存流程。类型保存在 `RoutingProfile.advanced`，不嵌入 JSON；
+两种类型共用三份限额，不支持修改已有记录的类型。Base64 不变。
+
+`outbounds` 必须以 1–3 个连续空槽开头，随后仅支持 freedom/blackhole/dns 辅助出站。
+固定单节点选择替换整个槽区域；自动、订阅、地区保持所需数量。实际节点位于运行出站最顶部，
+随后保留用户辅助出站顺序，最后补 direct/block。App 生成 proxy roundRobin balancer、
+完整 selector、direct 回退及 Observatory；用户不得定义 direct/block/proxy，不能引用内部
+app-entry-*/app-exit-*。dnsOut 由模板需要时自行定义，dialerProxy 不支持 balancer。
+
+用户完整管理 DNS、routing.domainStrategy、rules 顺序与 ruleTag。不调用普通 DNS/规则
+生成器，不隐式补 DNS server、直连域名、53/853 规则或兜底规则。未命中仍走第一个 outbound。
+根级及 server queryStrategy 为 App 托管字段，模板拒绝填写；运行按全局 IPv6 处理。
+日志、metrics、统计、policy、env、balancers、observatory、出口网卡同样不作为模板输入。
+
+额外入站支持 socks/http/tunnel，各有独立监听、多个用户账户和 sniffing；不新增 TUN。
+模板中的 tunIn 只接受 tag/sniffing，平台部分由 App 生成。sniffing 支持 enabled、routeOnly、
+destOverride、metadataOnly、domainsExcluded、ipsExcluded，提供时不隐式修正，省略时使用 App 默认值。
+规则在普通范围外支持 inboundTag、localIP、localPort；不开放 process、source/sourceIP/sourcePort、
+attrs、user 或 HTTP allowTransparent。辅助出站仅开放 tag/protocol/settings 和 sockopt.dialerProxy。
+DNS 使用当前内核字段，FakeDNS 池保留用户配置，省略池遵循 Core 默认值。
+
+保存与导入复用原有协调器、Geodata 事务和冲突保护。校验通过同一填槽逻辑加入本地 freedom
+占位，保留 DNS/辅助出站/额外入站/规则；用户 TUN sniffing 由安全 SOCKS 入站承载校验。
+不 Start、不测速、不增加启动预检。编译与端口分配复用 Raw 平台策略，但不向完整 Raw 施加模板字段白名单。
+导出仅含槽和用户字段，geodata.assets 仅为交换元数据，依赖扫描覆盖 DNS/嗅探等语义位置。
+
 ## Raw JSON
 
 Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校验改写原始 inbounds。
 运行时直接解析为 Map 并在深副本上应用 App 策略。运行副本保留用户
 额外入站，但 App 接管 `tunIn`、metrics、统计、日志、DNS 查询策略、运行路径及适用
 平台的出口网卡；额外 TUN、保留端口冲突或无法满足平台网络策略的配置明确失败。
+
+已有 tunIn 不再整体重建：保持数组位置、sniffing（包括缺省或关闭）及非托管内容。
+仅合并 settings 的 name、mtu、gateway、dns、autoSystemRoutingTable、autoOutboundsInterface。
+Windows EXE/Linux 按平台生成六项；Apple/Android 移除不适用的后四项，只更新 name/mtu，
+保留 desc、userLevel 等其他设置。settings 格式无效、重复 tunIn 或 TUN 平台协议不符时报错。
+整条 tunIn 缺失时才创建默认入站。MSIX/iOS 模拟器明确转换 protocol/listen/port/settings 为
+内部 SOCKS，仍保留用户 sniffing 和其他无需转换的内容。数据库及源 JSON 不变。
 
 Windows 默认 EXE 模式的 `tunIn` 使用 Xray 原生 TUN 和 Wintun，网关、DNS、系统路由及
 出口网卡由 App 生成；MSIX 模式的 `tunIn` 是私有 loopback SOCKS，系统流量由 VCore
@@ -215,7 +255,9 @@ Swift 仅在 `targetEnvironment(simulator)` 时将请求中的 `tunIn` 改为本
 通过原有原生状态通知更新 App；真机和 macOS 仍使用系统 VPN。
 
 Raw 保存使用 `XrayValidation` 的 Map 投影，只处理验证副本：排除 App 管理的
-入站、更新任务和运行资源，关闭日志与统计采集，保留用户节点、路由、DNS 和模块依赖。
+更新任务和运行资源，关闭日志与统计采集，保留用户节点、路由、DNS 和模块依赖。
+tunIn 替换为无 TUN 副作用的最小 SOCKS 入站，同时保留用户 sniffing 等待检字段；
+不能因为位于托管入站下就跳过嗅探和相关 Geodata 的校验。
 统计模块以最小配置保留，避免用户 API 等依赖因裁剪而产生假错误；只处理被 App 接管的
 嵌套项，不删除整个 DNS、policy 或 streamSettings。字段清单以投影与编译代码为准。
 数据库原文和真实运行配置不受验证裁剪影响，未检查的 App 管理项仍由运行策略负责。

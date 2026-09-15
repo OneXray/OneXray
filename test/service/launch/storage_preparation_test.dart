@@ -124,7 +124,7 @@ void main() {
       expect(
         (await AppDatabase().customSelect('PRAGMA user_version').getSingle())
             .read<int>('user_version'),
-        4,
+        5,
       );
       expect(
         directory.listSync().where((entry) => entry.path.contains('.pre-v3-')),

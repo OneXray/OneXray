@@ -1,4 +1,9 @@
 {
+  "routingNormalConfiguration": "Normal configuration",
+  "routingAdvancedJson": "Advanced JSON",
+  "routingAdvancedSummary": "Edit DNS, inbounds and routing in JSON; use servers already imported into OneXray.",
+  "routingAdvancedTemplate": "Advanced routing template",
+  "routingAdvancedNotice": "Start outbounds with 1–3 empty objects for entry nodes. OneXray supplies the selected servers, proxy balancer, direct/block and platform settings. You control DNS and rule order; no DNS rules or catch-all are added. Unmatched traffic uses the first entry node. See the documentation before editing.",
   "routingFakeDns": "Use FakeDNS",
   "routingFakeDnsHint": "Return virtual IPs and restore domains before routing. Domains matched by local DNS still use real IPs. Cached DNS results may temporarily affect access after disconnecting or reconnecting.",
   "routingRuleMoreConditions": "More matching conditions",
@@ -629,9 +634,9 @@
   "@prototypeRawManagedSettingsNotice": {
     "description": "Approved prototype copy: This complete configuration controls servers, routing, and Xray DNS when selected. TUN, interface, and logging remain managed by OneXray."
   },
-  "prototypeRawAdditionalSettingsNotice": "Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and other App-managed runtime settings cannot be overridden.",
+  "prototypeRawAdditionalSettingsNotice": "Configure additional inbounds, DNS, FakeDNS, and advanced routing here. OneXray manages platform tunIn settings; other tunIn fields are preserved.",
   "@prototypeRawAdditionalSettingsNotice": {
-    "description": "Approved prototype copy: Additional inbounds, DNS, FakeDNS, and advanced routing belong in this JSON. Reserved tunIn and other App-managed runtime settings cannot be overridden."
+    "description": "Raw JSON editor guidance: user tunIn fields are preserved except for platform-managed settings."
   },
   "prototypeRawJsonLimit": "You can save up to 3 Raw JSON configurations",
   "@prototypeRawJsonLimit": {
@@ -686,9 +691,9 @@
   "@prototypeCompleteXrayConfiguration": {
     "description": "Approved prototype copy: Complete Xray configuration"
   },
-  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect.",
+  "prototypeRawRuntimeOverrideNotice": "A complete configuration controls servers, routing, and Xray DNS. OneXray manages logs, traffic statistics, and platform tunIn settings; other tunIn fields are preserved.",
   "@prototypeRawRuntimeOverrideNotice": {
-    "description": "A complete configuration controls servers, routing, and Xray DNS. Settings for Log, traffic statistics, tunIn, and related runtime features in Raw JSON do not take effect."
+    "description": "Raw JSON runtime ownership notice, including the limited platform tunIn override."
   },
   "prototypeAddServersToOneXray": "Add servers to OneXray",
   "@prototypeAddServersToOneXray": {

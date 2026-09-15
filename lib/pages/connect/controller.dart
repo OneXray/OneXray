@@ -21,7 +21,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
-import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 import 'package:onexray/service/servers/catalog.dart';
 import 'package:onexray/pages/servers/catalog.dart';
@@ -36,7 +36,7 @@ class ConnectPageState {
     this.connectedMinutes = 0,
     ServerCatalog? catalog,
     List<CoreConfigData> raws = const [],
-    List<RoutingProfileState> customRoutes = const [],
+    List<RoutingConfiguration> customRoutes = const [],
     this.expertView = false,
     this.ready = false,
     this.failed = false,
@@ -54,7 +54,7 @@ class ConnectPageState {
   final ServerCatalog catalog;
   List<CoreConfigData> get servers => catalog.servers;
   final List<CoreConfigData> raws;
-  final List<RoutingProfileState> customRoutes;
+  final List<RoutingConfiguration> customRoutes;
   List<SubscriptionData> get sources => catalog.sources;
   final bool expertView;
   final bool ready;
@@ -68,7 +68,7 @@ class ConnectPageState {
     int? connectedMinutes,
     ServerCatalog? catalog,
     List<CoreConfigData>? raws,
-    List<RoutingProfileState>? customRoutes,
+    List<RoutingConfiguration>? customRoutes,
     bool? expertView,
     bool? ready,
     bool? failed,
@@ -93,7 +93,7 @@ class ConnectPageState {
       configuration == other.configuration &&
       catalog == other.catalog &&
       const ListEquality<CoreConfigData>().equals(raws, other.raws) &&
-      const ListEquality<RoutingProfileState>().equals(
+      const ListEquality<RoutingConfiguration>().equals(
         customRoutes,
         other.customRoutes,
       ) &&
@@ -137,8 +137,8 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
       emit(state.copyWith(catalog: catalog.copyWith(servers: value)));
   List<CoreConfigData> get raws => state.raws;
   set raws(List<CoreConfigData> value) => emit(state.copyWith(raws: value));
-  List<RoutingProfileState> get customRoutes => state.customRoutes;
-  set customRoutes(List<RoutingProfileState> value) =>
+  List<RoutingConfiguration> get customRoutes => state.customRoutes;
+  set customRoutes(List<RoutingConfiguration> value) =>
       emit(state.copyWith(customRoutes: value));
   List<SubscriptionData> get sources => state.sources;
   set sources(List<SubscriptionData> value) =>
@@ -205,7 +205,9 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
         _subscriptions.add(
           db.routingProfileDao.allRowsStream.listen((rows) {
             try {
-              customRoutes = rows.map(CustomRoutingService.read).toList();
+              customRoutes = rows
+                  .map(CustomRoutingService.readConfiguration)
+                  .toList();
             } catch (error) {
               _readFailed(error);
               return;
@@ -276,7 +278,7 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
       ? l10n.prototypeSmartRoutingRecommended
       : methodTitle(l10n);
 
-  int _ruleCount(RoutingProfileState profile) => profile.rules.length;
+  int _ruleCount(RoutingConfiguration profile) => profile.ruleCount;
 
   String methodDescription(AppLocalizations l10n) {
     switch (configuration.connection.trafficMode) {
@@ -552,18 +554,27 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
               id: profile.id!,
               name: profile.name,
               ruleCount: _ruleCount(profile),
+              advanced: profile.advanced,
             ),
         ],
       ),
     );
     if (selected != null && context.mounted) {
       if (selected.edit) {
-        await context.pushScoped(
-          selected.mode == TrafficMode.smart
-              ? AppSecondaryDestination.smartRouting
-              : AppSecondaryDestination.customRouting,
-          extra: selected.id,
-        );
+        var destination = AppSecondaryDestination.smartRouting;
+        if (selected.mode == TrafficMode.custom) {
+          final advanced = selected.id == null
+              ? await showCustomRoutingModeDialog(context)
+              : customRoutes
+                    .firstWhere((profile) => profile.id == selected.id)
+                    .advanced;
+          if (advanced == null || !context.mounted) return;
+          destination = advanced
+              ? AppSecondaryDestination.advancedRouting
+              : AppSecondaryDestination.customRouting;
+        }
+        if (!context.mounted) return;
+        await context.pushScoped(destination, extra: selected.id);
         return;
       }
       await change(context, {

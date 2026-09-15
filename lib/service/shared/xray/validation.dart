@@ -43,9 +43,20 @@ abstract final class XrayValidation {
 
     final inbounds = config['inbounds'];
     if (inbounds is List) {
-      config['inbounds'] = inbounds
-          .where((value) => value is! Map || value['tag'] != 'tunIn')
-          .toList();
+      config['inbounds'] = [
+        for (final value in inbounds)
+          if (value is Map<String, dynamic> && value['tag'] == 'tunIn')
+            {
+              ...value,
+              // Validate user sniffing without constructing a platform TUN.
+              'protocol': 'socks',
+              'listen': '127.0.0.1',
+              'port': 1080,
+              'settings': {'auth': 'noauth', 'udp': true},
+            }
+          else
+            value,
+      ];
     }
     final env = config['env'];
     if (env == null || env is Map<String, dynamic>) {

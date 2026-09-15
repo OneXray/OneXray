@@ -1534,6 +1534,21 @@ class $RoutingProfileTable extends RoutingProfile
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _advancedMeta = const VerificationMeta(
+    'advanced',
+  );
+  @override
+  late final GeneratedColumn<bool> advanced = GeneratedColumn<bool>(
+    'advanced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("advanced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _dataMeta = const VerificationMeta('data');
   @override
   late final GeneratedColumn<String> data = GeneratedColumn<String>(
@@ -1544,7 +1559,7 @@ class $RoutingProfileTable extends RoutingProfile
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, data];
+  List<GeneratedColumn> get $columns => [id, name, advanced, data];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1567,6 +1582,12 @@ class $RoutingProfileTable extends RoutingProfile
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('advanced')) {
+      context.handle(
+        _advancedMeta,
+        advanced.isAcceptableOrUnknown(data['advanced']!, _advancedMeta),
+      );
     }
     if (data.containsKey('data')) {
       context.handle(
@@ -1593,6 +1614,10 @@ class $RoutingProfileTable extends RoutingProfile
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      advanced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}advanced'],
+      )!,
       data: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}data'],
@@ -1610,10 +1635,12 @@ class RoutingProfileData extends DataClass
     implements Insertable<RoutingProfileData> {
   final int id;
   final String name;
+  final bool advanced;
   final String data;
   const RoutingProfileData({
     required this.id,
     required this.name,
+    required this.advanced,
     required this.data,
   });
   @override
@@ -1621,6 +1648,7 @@ class RoutingProfileData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
+    map['advanced'] = Variable<bool>(advanced);
     map['data'] = Variable<String>(data);
     return map;
   }
@@ -1629,6 +1657,7 @@ class RoutingProfileData extends DataClass
     return RoutingProfileCompanion(
       id: Value(id),
       name: Value(name),
+      advanced: Value(advanced),
       data: Value(data),
     );
   }
@@ -1641,6 +1670,7 @@ class RoutingProfileData extends DataClass
     return RoutingProfileData(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      advanced: serializer.fromJson<bool>(json['advanced']),
       data: serializer.fromJson<String>(json['data']),
     );
   }
@@ -1650,20 +1680,27 @@ class RoutingProfileData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
+      'advanced': serializer.toJson<bool>(advanced),
       'data': serializer.toJson<String>(data),
     };
   }
 
-  RoutingProfileData copyWith({int? id, String? name, String? data}) =>
-      RoutingProfileData(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        data: data ?? this.data,
-      );
+  RoutingProfileData copyWith({
+    int? id,
+    String? name,
+    bool? advanced,
+    String? data,
+  }) => RoutingProfileData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    advanced: advanced ?? this.advanced,
+    data: data ?? this.data,
+  );
   RoutingProfileData copyWithCompanion(RoutingProfileCompanion data) {
     return RoutingProfileData(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      advanced: data.advanced.present ? data.advanced.value : this.advanced,
       data: data.data.present ? data.data.value : this.data,
     );
   }
@@ -1673,45 +1710,52 @@ class RoutingProfileData extends DataClass
     return (StringBuffer('RoutingProfileData(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('advanced: $advanced, ')
           ..write('data: $data')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, data);
+  int get hashCode => Object.hash(id, name, advanced, data);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is RoutingProfileData &&
           other.id == this.id &&
           other.name == this.name &&
+          other.advanced == this.advanced &&
           other.data == this.data);
 }
 
 class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
   final Value<int> id;
   final Value<String> name;
+  final Value<bool> advanced;
   final Value<String> data;
   const RoutingProfileCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.advanced = const Value.absent(),
     this.data = const Value.absent(),
   });
   RoutingProfileCompanion.insert({
     this.id = const Value.absent(),
     required String name,
+    this.advanced = const Value.absent(),
     required String data,
   }) : name = Value(name),
        data = Value(data);
   static Insertable<RoutingProfileData> custom({
     Expression<int>? id,
     Expression<String>? name,
+    Expression<bool>? advanced,
     Expression<String>? data,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (advanced != null) 'advanced': advanced,
       if (data != null) 'data': data,
     });
   }
@@ -1719,11 +1763,13 @@ class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
   RoutingProfileCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
+    Value<bool>? advanced,
     Value<String>? data,
   }) {
     return RoutingProfileCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      advanced: advanced ?? this.advanced,
       data: data ?? this.data,
     );
   }
@@ -1737,6 +1783,9 @@ class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (advanced.present) {
+      map['advanced'] = Variable<bool>(advanced.value);
+    }
     if (data.present) {
       map['data'] = Variable<String>(data.value);
     }
@@ -1748,6 +1797,7 @@ class RoutingProfileCompanion extends UpdateCompanion<RoutingProfileData> {
     return (StringBuffer('RoutingProfileCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('advanced: $advanced, ')
           ..write('data: $data')
           ..write(')'))
         .toString();
@@ -2784,12 +2834,14 @@ typedef $$RoutingProfileTableCreateCompanionBuilder =
     RoutingProfileCompanion Function({
       Value<int> id,
       required String name,
+      Value<bool> advanced,
       required String data,
     });
 typedef $$RoutingProfileTableUpdateCompanionBuilder =
     RoutingProfileCompanion Function({
       Value<int> id,
       Value<String> name,
+      Value<bool> advanced,
       Value<String> data,
     });
 
@@ -2809,6 +2861,11 @@ class $$RoutingProfileTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get advanced => $composableBuilder(
+    column: $table.advanced,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2837,6 +2894,11 @@ class $$RoutingProfileTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get advanced => $composableBuilder(
+    column: $table.advanced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get data => $composableBuilder(
     column: $table.data,
     builder: (column) => ColumnOrderings(column),
@@ -2857,6 +2919,9 @@ class $$RoutingProfileTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<bool> get advanced =>
+      $composableBuilder(column: $table.advanced, builder: (column) => column);
 
   GeneratedColumn<String> get data =>
       $composableBuilder(column: $table.data, builder: (column) => column);
@@ -2897,16 +2962,30 @@ class $$RoutingProfileTableTableManager
               $$RoutingProfileTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$RoutingProfileTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-            Value<String> data = const Value.absent(),
-          }) => RoutingProfileCompanion(id: id, name: name, data: data),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            required String name,
-            required String data,
-          }) => RoutingProfileCompanion.insert(id: id, name: name, data: data),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<bool> advanced = const Value.absent(),
+                Value<String> data = const Value.absent(),
+              }) => RoutingProfileCompanion(
+                id: id,
+                name: name,
+                advanced: advanced,
+                data: data,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<bool> advanced = const Value.absent(),
+                required String data,
+              }) => RoutingProfileCompanion.insert(
+                id: id,
+                name: name,
+                advanced: advanced,
+                data: data,
+              ),
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (

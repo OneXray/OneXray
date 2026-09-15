@@ -37,6 +37,7 @@ enum AppSecondaryDestination {
   smartRouting("smart-routing"),
   directRegions("direct-regions"),
   customRouting("custom-routing"),
+  advancedRouting("advanced-routing"),
   customRule("custom-rule"),
   appleVpn("apple-vpn"),
   appleWifi("apple-wifi"),

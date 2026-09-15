@@ -17,6 +17,7 @@ import 'package:onexray/pages/advanced/xray/geodata/page.dart';
 import 'package:onexray/pages/advanced/xray/geodata/detail.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/pages/shared/share/page.dart';
 import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
@@ -34,7 +35,7 @@ import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/servers/editor/page.dart';
 import 'package:onexray/pages/servers/subscription/page.dart';
-import 'package:onexray/pages/connect/raw_editor/page.dart';
+import 'package:onexray/pages/connect/json_editor/page.dart';
 import 'package:onexray/pages/connect/routing/smart/page.dart';
 import 'package:onexray/pages/connect/routing/smart/regions.dart';
 import 'package:onexray/pages/connect/routing/custom/page.dart';
@@ -272,7 +273,8 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
   ),
   _route(
     AppSecondaryDestination.rawEditor,
-    (_, state) => RawEditorPage(rawId: state.extra as int?),
+    (_, state) =>
+        JsonConfigurationEditorPage(configurationId: state.extra as int?),
   ),
   _route(
     AppSecondaryDestination.smartRouting,
@@ -301,6 +303,13 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
         AppSecondaryDestination.customRule,
         extra: rule,
       ),
+    ),
+  ),
+  _route(
+    AppSecondaryDestination.advancedRouting,
+    (_, state) => JsonConfigurationEditorPage(
+      configurationId: state.extra as int?,
+      kind: ConfigurationKind.customAdvanced,
     ),
   ),
   _route(
