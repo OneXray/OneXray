@@ -5,7 +5,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/ping/service.dart';
-import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 enum ConnectionResolutionFailure {
   selectionUnavailable,
@@ -54,13 +54,13 @@ class ConnectionResolver {
   /// candidate caches and cannot change resolved inputs or a running VPN.
   Future<List<ResolvedServer>> resolve(
     ConnectionSettings settings, {
-    RoutingProfileState? custom,
+    RoutingConfiguration? custom,
     Future<void>? cancelled,
   }) => _resolve(settings, custom, cancelled);
 
   Future<List<ResolvedServer>> _resolve(
     ConnectionSettings settings,
-    RoutingProfileState? custom,
+    RoutingConfiguration? custom,
     Future<void>? cancelled,
   ) async {
     if (settings.expert) return const [];

@@ -83,7 +83,12 @@ TrayMenuData _menuData(int count) {
     ..raws = [for (final node in nodes) node.copyWith(type: 'raw')]
     ..routes = [
       for (final id in ids)
-        RoutingProfileData(id: id, name: 'Route $id', data: 'e30='),
+        RoutingProfileData(
+          id: id,
+          name: 'Route $id',
+          data: 'e30=',
+          advanced: false,
+        ),
     ]
     ..geodata = [
       for (final id in ids)

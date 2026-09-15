@@ -11,6 +11,32 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
+  test(
+    'schema 4 adds routing mode without rewriting any configuration',
+    () async {
+      final file = await _legacyDatabase(4);
+      final old = sqlite.sqlite3.open(file.path);
+      final before = _snapshotV3(old);
+      old.close();
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      final routes = await database.routingProfileDao.allRows;
+      expect(routes.single.id, 9);
+      expect(routes.single.advanced, false);
+      expect((await database.coreConfigDao.allRawRowsWithData).length, 4);
+      final sub = (await database.subscriptionDao.allRows).single;
+      expect(sub.hwidEnabled, true);
+      expect(sub.hwid, 'keep-hwid');
+      await database.close();
+      final upgraded = sqlite.sqlite3.open(file.path);
+      expect(upgraded.userVersion, 5);
+      expect(_snapshotV3(upgraded), before);
+      upgraded.close();
+      final reopened = AppDatabase.forTesting(NativeDatabase(file));
+      addTearDown(reopened.close);
+      expect((await reopened.routingProfileDao.allRows).single, routes.single);
+    },
+  );
+
   test('an interrupted empty first creation retries', () async {
     final directory = await _fixtureDirectory('onexray-empty-db-test-');
     addTearDown(() => directory.delete(recursive: true));
@@ -23,7 +49,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      4,
+      5,
     );
   });
 
@@ -83,7 +109,7 @@ void main() {
             .read<String>('name'),
         'WAL-only name',
       );
-      expect(writer.userVersion, 4);
+      expect(writer.userVersion, 5);
       expect(_snapshot(writer, hasAgeKeys: true), _afterUpgrade(before));
       expect(
         file.parent.listSync().where(
@@ -94,7 +120,7 @@ void main() {
     },
   );
 
-  test('new installation creates schema 4 with empty assets and default connection configuration', () async {
+  test('new installation creates schema 5 with empty assets and default connection configuration', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -131,7 +157,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      4,
+      5,
     );
   });
 
@@ -197,7 +223,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            4,
+            5,
           );
           final subId = await reopened.subscriptionDao.insertRow(
             SubscriptionCompanion.insert(
@@ -326,7 +352,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 4);
+    expect(check.userVersion, 5);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(_columnNames(check, 'connection_config'), [
       'id',
@@ -378,7 +404,7 @@ void main() {
     await database.close();
 
     final upgraded = sqlite.sqlite3.open(file.path);
-    expect(upgraded.userVersion, 4);
+    expect(upgraded.userVersion, 5);
     expect(_snapshotV3(upgraded), before);
     upgraded.close();
 
@@ -527,7 +553,7 @@ Future<File> _legacyDatabase(int version) async {
         (id, name, type, url, timestamp, category_count, rule_count)
       VALUES (5, 'legacy-geosite', 'domain', 'https://example.com/geo', 123, 2, 3)
     ''');
-    if (version == 3) {
+    if (version >= 3) {
       database.execute('''
         ALTER TABLE subscription DROP COLUMN count;
         ALTER TABLE subscription DROP COLUMN expanded;
@@ -545,6 +571,15 @@ Future<File> _legacyDatabase(int version) async {
         );
         INSERT INTO connection_config VALUES (1, '{"connection":{"selection":{"kind":"server","id":12}}}');
       ''');
+    }
+    if (version >= 4) {
+      database.execute(
+        'ALTER TABLE subscription ADD COLUMN hwid_enabled INTEGER NOT NULL DEFAULT 0',
+      );
+      database.execute('ALTER TABLE subscription ADD COLUMN hwid TEXT');
+      database.execute(
+        "UPDATE subscription SET hwid_enabled = 1, hwid = 'keep-hwid'",
+      );
     }
     database.execute('PRAGMA user_version = $version');
   } finally {
@@ -565,6 +600,8 @@ Map<String, List<List<Object?>>> _snapshotV3(sqlite.Database database) => {
         .select(
           table == 'subscription'
               ? 'SELECT id, name, url, timestamp, age_secret_key, age_public_key FROM subscription ORDER BY id'
+              : table == 'routing_profile'
+              ? 'SELECT id, name, data FROM routing_profile ORDER BY id'
               : 'SELECT * FROM $table ORDER BY id',
         )
         .map((row) => row.values.toList())

@@ -2,15 +2,23 @@ import 'dart:convert';
 
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
-import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/shared/share/app_link_generator.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/shared/share/app_link_parser.dart';
 
-enum ConfigurationKind { raw, custom }
+enum ConfigurationKind {
+  raw(OneXrayConfigLinkType.raw),
+  custom(OneXrayConfigLinkType.custom),
+  customAdvanced(OneXrayConfigLinkType.customAdvanced);
+
+  const ConfigurationKind(this.linkType);
+  final OneXrayConfigLinkType linkType;
+}
 
 class ConfigurationContent {
   final ConfigurationKind kind;
@@ -40,6 +48,32 @@ class ConfigurationImportDraft {
 /// Editor transfers preserve Raw source and never save a configuration. Custom
 /// manifests are consumed into a staged Geodata transaction, not persisted JSON.
 class ConfigurationTransferService {
+  static ({RoutingConfiguration state, List<Map<String, String>> assets})
+  routingDocument(
+    String text,
+    ConfigurationKind kind, {
+    String? name,
+    bool allowMetadata = true,
+  }) {
+    if (kind == ConfigurationKind.customAdvanced) {
+      final doc = AdvancedRoutingDocument.parse(
+        text,
+        name: name,
+        allowMetadata: allowMetadata,
+      );
+      return (state: doc.state, assets: doc.assets);
+    }
+    if (kind != ConfigurationKind.custom) {
+      throw const FormatException('Expected Custom routing');
+    }
+    final doc = RoutingProfileDocument.parse(
+      text,
+      name: name,
+      allowMetadata: allowMetadata,
+    );
+    return (state: doc.state, assets: doc.assets);
+  }
+
   final Future<GeoDataImport> Function(List<GeoDataInput>) _prepare;
   final Future<GeoDataData?> Function(String) _lookup;
   ConfigurationTransferService({
@@ -77,9 +111,7 @@ class ConfigurationTransferService {
         final uri = Uri.tryParse(line.trim());
         final link = uri == null ? null : OneXrayAppLinkParser.parse(uri);
         if (link is OneXrayConfigLink && configuration == null) {
-          final expected = kind == ConfigurationKind.raw
-              ? OneXrayConfigLinkType.raw
-              : OneXrayConfigLinkType.custom;
+          final expected = kind.linkType;
           if (link.type != expected) {
             throw const FormatException('Unexpected configuration type');
           }
@@ -104,9 +136,10 @@ class ConfigurationTransferService {
     if (name.isEmpty && json['name'] is String) name = json['name'] as String;
     final references = geoDataReferences(json);
     final assets = <GeoDataInput>[];
-    if (kind == ConfigurationKind.custom) {
-      final document = RoutingProfileDocument.parse(
+    if (kind != ConfigurationKind.raw) {
+      final document = routingDocument(
         text,
+        kind,
         name: name.isEmpty ? null : name,
       );
       text = document.state.encode();
@@ -163,19 +196,19 @@ class ConfigurationTransferService {
     List<GeoDataInput> assets = const [],
   }) async {
     if (kind == ConfigurationKind.raw) return text;
-    final state = RoutingProfileDocument.parse(text, name: name).state;
-    final dependencies = await _dependencies(state.xrayJson.toJson(), assets);
-    final xrayJson = state.xrayJson;
+    final state = routingDocument(text, kind, name: name).state;
+    final dependencies = await _dependencies(state.toJson(), assets);
+    final json = state.toJson();
     if (dependencies.isNotEmpty) {
-      xrayJson.geodata = XrayGeoData(
-        assets: [
+      json['geodata'] = {
+        'assets': [
           for (final asset in dependencies)
-            XrayGeoDataAsset(file: asset.fileName, url: asset.url),
+            {'file': asset.fileName, 'url': asset.url},
         ],
-      );
+      };
     }
     return const JsonEncoder.withIndent('  ')
-        .convert({...xrayJson.toJson(), 'name': name.trim()});
+        .convert({...json, 'name': name.trim()});
   }
 
   Future<String> shareLinks({
@@ -207,9 +240,7 @@ class ConfigurationTransferService {
     }
     links.add(
       OneXrayAppLinkGenerator.configurationText(
-        kind == ConfigurationKind.raw
-            ? OneXrayConfigLinkType.raw
-            : OneXrayConfigLinkType.custom,
+        kind.linkType,
         name,
         json,
       ).toString(),
@@ -255,6 +286,7 @@ class ConfigurationTransferService {
 Map<String, GeoDataType> geoDataReferences(Map<String, dynamic> json) {
   final result = <String, GeoDataType>{};
   void add(Object? values, GeoDataType type) {
+    if (values is String) values = [values];
     if (values is! List) return;
     for (final value in values.whereType<String>()) {
       final reference = type == GeoDataType.ip && value.startsWith('!')
@@ -282,11 +314,38 @@ Map<String, GeoDataType> geoDataReferences(Map<String, dynamic> json) {
     }
   }
   final dns = json['dns'];
+  if (dns is Map && dns['hosts'] is Map) {
+    add((dns['hosts'] as Map).keys.toList(), GeoDataType.domain);
+  }
   if (dns is Map && dns['servers'] is List) {
     for (final server in (dns['servers'] as List).whereType<Map>()) {
       add(server['domains'], GeoDataType.domain);
       add(server['expectedIPs'], GeoDataType.ip);
+      add(server['expectIPs'], GeoDataType.ip);
       add(server['unexpectedIPs'], GeoDataType.ip);
+    }
+  }
+  final inbounds = json['inbounds'];
+  if (inbounds is List) {
+    for (final inbound in inbounds.whereType<Map>()) {
+      final sniffing = inbound['sniffing'];
+      if (sniffing is Map) {
+        add(sniffing['domainsExcluded'], GeoDataType.domain);
+        add(sniffing['ipsExcluded'], GeoDataType.ip);
+      }
+    }
+  }
+  final outbounds = json['outbounds'];
+  if (outbounds is List) {
+    for (final outbound in outbounds.whereType<Map>()) {
+      if (outbound['protocol'] != 'dns') continue;
+      final settings = outbound['settings'];
+      final rules = settings is Map ? settings['rules'] : null;
+      if (rules is List) {
+        for (final rule in rules.whereType<Map>()) {
+          add(rule['domain'], GeoDataType.domain);
+        }
+      }
     }
   }
   return result;

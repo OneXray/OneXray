@@ -21,7 +21,6 @@ import 'package:onexray/service/shared/share/app_link_parser.dart';
 import 'package:onexray/service/shared/share/service.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
-import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
@@ -336,11 +335,10 @@ class ServerImportService {
             }
             rows.add(outboundCompanion(outbound));
           } else if (link is OneXrayConfigLink &&
-              (link.type == OneXrayConfigLinkType.raw ||
-                  link.type == OneXrayConfigLinkType.custom)) {
-            final kind = link.type == OneXrayConfigLinkType.raw
-                ? ConfigurationKind.raw
-                : ConfigurationKind.custom;
+              link.type != OneXrayConfigLinkType.outbound) {
+            final kind = ConfigurationKind.values.singleWhere(
+              (kind) => kind.linkType == link.type,
+            );
             final dependencies = <String>[];
             if (kind == ConfigurationKind.raw) {
               final references = geoDataReferences(
@@ -435,7 +433,7 @@ class ServerImportService {
     List<OneXrayGeoDataLink> standalone,
   ) async {
     final custom = contents
-        .where((item) => item.kind == ConfigurationKind.custom)
+        .where((item) => item.kind != ConfigurationKind.raw)
         .toList();
     if (custom.length > 3 || contents.any((item) => item.name.trim().isEmpty)) {
       throw const FormatException('Invalid configuration name or count');
@@ -446,8 +444,9 @@ class ServerImportService {
       if (draft == null) {
         for (final route in custom) {
           await CustomRoutingService.validate(
-            RoutingProfileDocument.parse(
+            ConfigurationTransferService.routingDocument(
               route.text,
+              route.kind,
               allowMetadata: false,
             ).state,
             testXray: _validate,
@@ -492,8 +491,9 @@ class ServerImportService {
       if (preview._dependencies != null) {
         for (final route in preview.customRoutes) {
           await CustomRoutingService.validate(
-            RoutingProfileDocument.parse(
+            ConfigurationTransferService.routingDocument(
               route.text,
+              route.kind,
               allowMetadata: false,
             ).state,
             testXray: _validate,
@@ -519,8 +519,9 @@ class ServerImportService {
         }
         for (final custom in preview.customRoutes) {
           await CustomRoutingService(db).save(
-            RoutingProfileDocument.parse(
+            ConfigurationTransferService.routingDocument(
               custom.text,
+              custom.kind,
               name: custom.name,
               allowMetadata: false,
             ).state,

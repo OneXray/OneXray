@@ -69,7 +69,18 @@ void main() {
     final source = <String, dynamic>{
       'env': {'xray.tun.fd': '7', 'XRAY_TUN_FD': '8', 'custom': 'retained'},
       'inbounds': [
-        {'tag': 'tunIn', 'protocol': 'invalid'},
+        {
+          'tag': 'tunIn',
+          'protocol': 'tun',
+          'settings': {
+            'gateway': ['platform-owned'],
+          },
+          'sniffing': {
+            'enabled': true,
+            'routeOnly': true,
+            'domainsExcluded': ['ext:missing.dat:cn'],
+          },
+        },
         {'tag': 'local', 'protocol': 'socks', 'port': 1080},
       ],
       'outbounds': [
@@ -147,7 +158,15 @@ void main() {
     expect(actual.containsKey('metrics'), false);
     expect(actual['stats'], {});
     expect(actual['log']['loglevel'], 'none');
-    expect(actual['inbounds'], [source['inbounds'][1]]);
+    expect(actual['inbounds'][0], {
+      'tag': 'tunIn',
+      'protocol': 'socks',
+      'listen': '127.0.0.1',
+      'port': 1080,
+      'settings': {'auth': 'noauth', 'udp': true},
+      'sniffing': source['inbounds'][0]['sniffing'],
+    });
+    expect(actual['inbounds'][1], source['inbounds'][1]);
     expect(actual['env'], {
       'xray.location.asset': VpnConstants.datDir,
       'xray.location.cert': VpnConstants.datDir,

@@ -9,6 +9,8 @@ import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
 
 /// Persists validated Custom-routing state. Applying a currently used profile
 /// remains the connection coordinator's responsibility.
@@ -20,12 +22,33 @@ class CustomRoutingService {
   static RoutingProfileState read(RoutingProfileData row) =>
       RoutingProfileStateDb.read(row);
 
+  static RoutingConfiguration readConfiguration(RoutingProfileData row) =>
+      RoutingProfileStateDb.readConfiguration(row);
+
   /// Empty entry slots are editor metadata, not runnable Xray outbounds.
   /// Use local placeholders for validation; never resolve or connect a server.
   static Future<void> validate(
-    RoutingProfileState state, {
+    RoutingConfiguration state, {
     Future<String> Function(String)? testXray,
   }) => GeoDataService().withFiles(() async {
+    if (state is AdvancedRoutingProfile) {
+      final config = state.fillSlots([
+        for (var i = 0; i < state.entryCount; i++)
+          createFreedomOutbound(tag: 'app-entry-$i').toJson(),
+      ]);
+      final error = await (testXray ?? AppHostApi().testXray)(
+        XrayValidation.raw(config),
+      );
+      if (error.isNotEmpty) {
+        throw AppFailure(
+          FailureCategory.configuration,
+          'xrayValidation',
+          cause: error,
+        );
+      }
+      return;
+    }
+    state as RoutingProfileState;
     final config = state.xrayJson;
     config.dns = RoutingDns.compile(
       directAddress: state.directDnsAddress.trim(),
@@ -63,7 +86,7 @@ class CustomRoutingService {
     }
   });
 
-  Future<int> save(RoutingProfileState state) async {
+  Future<int> save(RoutingConfiguration state) async {
     final name = state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const FormatException(
@@ -85,6 +108,9 @@ class CustomRoutingService {
       }
       final previous = await database.routingProfileDao.searchRow(value.id!);
       if (previous == null) throw StateError('Custom route no longer exists');
+      if (previous.advanced != value.advanced) {
+        throw const FormatException('Custom routing mode cannot be changed');
+      }
       await database.routingProfileDao.updateRow(value.updateData(previous));
       return value.id!;
     });

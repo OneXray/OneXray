@@ -56,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA user_version = $schemaVersion');
     }),
     onUpgrade: (migrator, from, to) => transaction(() async {
-      if (from < 1 || from > 3 || to != 4) {
+      if (from < 1 || from > 4 || to != 5) {
         throw StateError('Unsupported database schema upgrade');
       }
 
@@ -94,8 +94,13 @@ class AppDatabase extends _$AppDatabase {
           const CoreConfigCompanion(delay: Value(PingDelayConstants.unknown)),
         );
       }
-      await migrator.addColumn(subscription, subscription.hwidEnabled);
-      await migrator.addColumn(subscription, subscription.hwid);
+      if (from < 4) {
+        await migrator.addColumn(subscription, subscription.hwidEnabled);
+        await migrator.addColumn(subscription, subscription.hwid);
+      }
+      if (from >= 3) {
+        await migrator.addColumn(routingProfile, routingProfile.advanced);
+      }
 
       // Drift writes this again after beforeOpen. Commit it with the DDL so an
       // interruption between those callbacks cannot leave the old version.

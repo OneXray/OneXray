@@ -56,6 +56,84 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test('Raw tunIn updates only owned settings and retains its position and sniffing', () {
+    for (final platform in ConnectionPlatform.values) {
+      for (final windowsMode in WindowsMode.values) {
+        final source = <String, dynamic>{
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+          'inbounds': [
+            {
+              'tag': 'extra',
+              'protocol': 'socks',
+              'listen': '127.0.0.1',
+              'port': 12080,
+            },
+            {
+              'tag': 'tunIn',
+              'protocol': 'tun',
+              'settings': {
+                'desc': 'Keep',
+                'userLevel': 5,
+                'futureSetting': 'retain',
+                'name': 'Old',
+                'mtu': 1234,
+                'gateway': ['old'],
+                'dns': ['old'],
+                'autoSystemRoutingTable': ['old'],
+                'autoOutboundsInterface': 'Old',
+              },
+              'sniffing': {
+                'enabled': false,
+                'routeOnly': true,
+                'domainsExcluded': ['domain:example.net'],
+              },
+            },
+          ],
+        };
+        final before = jsonEncode(source);
+        final result = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          raw: source,
+          entries: [],
+          regions: catalog,
+          options: options(
+            platform: platform,
+            windowsMode: windowsMode,
+            interfaceName: 'Ethernet',
+          ),
+        ).config;
+        expect(result['inbounds'][0], source['inbounds'][0]);
+        final tun = result['inbounds'][1];
+        expect(tun['sniffing'], source['inbounds'][1]['sniffing']);
+        if (platform == ConnectionPlatform.windows &&
+            windowsMode == WindowsMode.msix) {
+          expect(tun['protocol'], 'socks');
+          expect(tun['settings'], {'auth': 'noauth', 'udp': true});
+        } else {
+          expect(tun['settings']['desc'], 'Keep');
+          expect(tun['settings']['userLevel'], 5);
+          expect(tun['settings']['futureSetting'], 'retain');
+          expect(tun['settings']['name'], 'OneXrayTun');
+          expect(tun['settings']['mtu'], VpnConstants.tunMtu);
+          if (platform != ConnectionPlatform.windows &&
+              platform != ConnectionPlatform.linux) {
+            for (final key in [
+              'gateway',
+              'dns',
+              'autoSystemRoutingTable',
+              'autoOutboundsInterface',
+            ]) {
+              expect(tun['settings'].containsKey(key), false);
+            }
+          }
+        }
+        expect(jsonEncode(source), before);
+      }
+    }
+  });
+
   test(
     'FakeDNS is opt-in per route and paired with managed inbound recovery',
     () {
@@ -162,87 +240,86 @@ void main() {
     );
   });
 
-  test('Raw FakeDNS adapts only the managed inbound and preserves source', () {
-    for (final dns in [
-      {
-        'servers': ['fakedns', '9.9.9.9'],
-      },
-      {
-        'servers': [
-          {'address': 'fakedns', 'disableCache': true},
-        ],
-      },
-    ]) {
-      for (final poolKey in [null, 'fakedns', 'fakeDns']) {
-        final source = <String, dynamic>{
-          'dns': dns,
-          ?poolKey: {'ipPool': '198.18.16.0/20', 'poolSize': 1024},
-          'inbounds': [
-            {
-              'tag': 'tunIn',
-              'protocol': 'tun',
-              'sniffing': {'enabled': false},
-            },
-            {
-              'tag': 'extra',
-              'protocol': 'socks',
-              'port': 20000,
-              'sniffing': {'enabled': false},
-            },
-          ],
-          'outbounds': [
-            {'protocol': 'freedom'},
-          ],
-        };
-        final before = jsonEncode(source);
-        final config = ConnectionCompiler.compile(
-          settings: ConnectionSettings(expert: true),
-          raw: source,
-          entries: [],
-          regions: catalog,
-          options: options(ipv6: false),
-        ).config;
-        expect(
-          config['inbounds'].first['sniffing']['destOverride'],
-          contains('fakedns'),
-        );
-        expect(config['inbounds'].last, (source['inbounds'] as List).last);
-        if (poolKey == null) {
-          expect(config.containsKey('fakedns'), false);
-        } else {
-          expect(config[poolKey], source[poolKey]);
-        }
-        expect(config['dns']['queryStrategy'], 'UseIPv4');
-        expect(jsonEncode(source), before);
-      }
-    }
-    for (final pool in [false, true]) {
-      final config = ConnectionCompiler.compile(
-        settings: ConnectionSettings(expert: true),
-        raw: {
-          'dns': {
-            'servers': ['8.8.8.8'],
-          },
-          if (pool)
-            'fakedns': [
-              {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
-            ],
-          'outbounds': [
-            {'protocol': 'freedom'},
+  test(
+    'Raw FakeDNS preserves explicit sniffing and supplies missing inbounds',
+    () {
+      for (final dns in [
+        {
+          'servers': ['fakedns', '9.9.9.9'],
+        },
+        {
+          'servers': [
+            {'address': 'fakedns', 'disableCache': true},
           ],
         },
-        entries: [],
-        regions: catalog,
-        options: options(),
-      ).config;
-      expect(
-        (config['inbounds'].first['sniffing']['destOverride'] as List).contains(
-          'fakedns',
-        ),
-        pool,
-      );
-    }
-  });
+      ]) {
+        for (final poolKey in [null, 'fakedns', 'fakeDns']) {
+          final source = <String, dynamic>{
+            'dns': dns,
+            ?poolKey: {'ipPool': '198.18.16.0/20', 'poolSize': 1024},
+            'inbounds': [
+              {
+                'tag': 'tunIn',
+                'protocol': 'tun',
+                'sniffing': {'enabled': false},
+              },
+              {
+                'tag': 'extra',
+                'protocol': 'socks',
+                'port': 20000,
+                'sniffing': {'enabled': false},
+              },
+            ],
+            'outbounds': [
+              {'protocol': 'freedom'},
+            ],
+          };
+          final before = jsonEncode(source);
+          final config = ConnectionCompiler.compile(
+            settings: ConnectionSettings(expert: true),
+            raw: source,
+            entries: [],
+            regions: catalog,
+            options: options(ipv6: false),
+          ).config;
+          expect(config['inbounds'].first['sniffing'], {'enabled': false});
+          expect(config['inbounds'].last, (source['inbounds'] as List).last);
+          if (poolKey == null) {
+            expect(config.containsKey('fakedns'), false);
+          } else {
+            expect(config[poolKey], source[poolKey]);
+          }
+          expect(config['dns']['queryStrategy'], 'UseIPv4');
+          expect(jsonEncode(source), before);
+        }
+      }
+      for (final pool in [false, true]) {
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          raw: {
+            'dns': {
+              'servers': ['8.8.8.8'],
+            },
+            if (pool)
+              'fakedns': [
+                {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
+              ],
+            'outbounds': [
+              {'protocol': 'freedom'},
+            ],
+          },
+          entries: [],
+          regions: catalog,
+          options: options(),
+        ).config;
+        expect(
+          (config['inbounds'].first['sniffing']['destOverride'] as List)
+              .contains('fakedns'),
+          pool,
+        );
+      }
+    },
+  );
 
   test('routing DNS addresses are independent from proxy and tunnel DNS', () {
     for (final mode in TrafficMode.values) {
@@ -417,7 +494,7 @@ void main() {
               raw: raw
                   ? {
                       'inbounds': [
-                        {'tag': 'tunIn', 'protocol': 'socks', 'port': 10080},
+                        {'tag': 'tunIn', 'protocol': 'tun'},
                       ],
                       'outbounds': [
                         {'protocol': 'freedom'},

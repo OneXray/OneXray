@@ -173,7 +173,42 @@ class ConnectCallout extends StatelessWidget {
 }
 
 typedef ConnectTrafficChoice = ({TrafficMode mode, int? id, bool edit});
-typedef ConnectCustomChoice = ({int id, String name, int? ruleCount});
+typedef ConnectCustomChoice = ({
+  int id,
+  String name,
+  int? ruleCount,
+  bool advanced,
+});
+
+Future<bool?> showCustomRoutingModeDialog(BuildContext context) =>
+    showAppDialog<bool>(context, (dialogContext) {
+      final l = AppLocalizations.of(dialogContext)!;
+      return AppDialog(
+        title: l.prototypeNewCustomRoute,
+        onClose: () => Navigator.pop(dialogContext),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MethodOption(
+                title: l.routingNormalConfiguration,
+                description: l.prototypeCustomRoutingDescription,
+                selected: false,
+                onPressed: () => Navigator.pop(dialogContext, false),
+              ),
+              const SizedBox(height: 12),
+              _MethodOption(
+                title: l.routingAdvancedJson,
+                description: l.routingAdvancedSummary,
+                selected: false,
+                onPressed: () => Navigator.pop(dialogContext, true),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
 
 class ConnectTrafficMethodDialog extends StatelessWidget {
   const ConnectTrafficMethodDialog({
@@ -260,7 +295,10 @@ class ConnectTrafficMethodDialog extends StatelessWidget {
                 title: route.name,
                 description: route.ruleCount == null
                     ? l.prototypeCannotReadCustomRoute
-                    : l.prototypeRuleCount(route.ruleCount!),
+                    : [
+                        if (route.advanced) l.routingAdvancedJson,
+                        l.prototypeRuleCount(route.ruleCount!),
+                      ].join(' · '),
                 selected:
                     current.trafficMode == TrafficMode.custom &&
                     current.customId == route.id,

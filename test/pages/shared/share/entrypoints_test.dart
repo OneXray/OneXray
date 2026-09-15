@@ -233,12 +233,7 @@ void main() {
         await tester.pumpAndSettle();
         final link =
             OneXrayAppLinkParser.parse(Uri.parse(links))! as OneXrayConfigLink;
-        expect(
-          link.type,
-          kind == ConfigurationKind.raw
-              ? OneXrayConfigLinkType.raw
-              : OneXrayConfigLinkType.custom,
-        );
+        expect(link.type, kind.linkType);
         expect(link.name, 'Draft');
         if (kind == ConfigurationKind.raw) {
           expect(link.xrayJson, source);

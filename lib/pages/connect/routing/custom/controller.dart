@@ -169,7 +169,7 @@ class CustomRoutingEditorController
       final rows = await service.rows;
       final settings = await service.coordinator.configuration;
       if (!isPageActive) return;
-      var value = draft.state;
+      var value = draft.state as RoutingProfileState;
       var valueName = value.name;
       if (initialText != null) {
         final document = RoutingProfileDocument.parse(initialText!);

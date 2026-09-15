@@ -7,10 +7,12 @@ import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
-import 'package:onexray/pages/connect/raw_editor/controller.dart';
+import 'package:onexray/pages/connect/json_editor/controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/json_editor.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
+import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
@@ -25,8 +27,8 @@ void main() {
     (tester) async {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final coordinator = ConnectionCoordinator(database: db);
-      final controller = RawEditorController(
-        rawId: null,
+      final controller = JsonConfigurationEditorController(
+        configurationId: null,
         service: RawEditorService(database: db, coordinator: coordinator),
       );
       addTearDown(() async {
@@ -63,7 +65,10 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     final coordinator = ConnectionCoordinator(database: db);
     final service = _PendingRawSave(database: db, coordinator: coordinator);
-    final controller = RawEditorController(rawId: null, service: service);
+    final controller = JsonConfigurationEditorController(
+      configurationId: null,
+      service: service,
+    );
     addTearDown(() async {
       coordinator.dispose();
       await db.close();
@@ -132,6 +137,73 @@ void main() {
     expect(position.pixels, 500);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'advanced editor uses its own template and keeps imported fields on save',
+    (tester) async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final coordinator = ConnectionCoordinator(database: db);
+      final service = _PendingAdvancedSave(
+        database: db,
+        coordinator: coordinator,
+      );
+      final controller = JsonConfigurationEditorController(
+        configurationId: null,
+        kind: ConfigurationKind.customAdvanced,
+        customService: service,
+      );
+      addTearDown(() async {
+        await controller.close();
+        coordinator.dispose();
+        await db.close();
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: Text('Advanced draft')),
+        ),
+      );
+      final context = tester.element(find.text('Advanced draft'));
+      await controller.load(context);
+      expect(controller.advanced, isTrue);
+      expect(controller.canSave, isFalse);
+      expect(controller.text.text, contains('"routeOnly": true'));
+      controller.name.text = 'Independent DNS';
+      controller.text.text = '''{"outbounds":[{},{}],"dns":{"hosts":{"example.test":"192.0.2.1"}},"inbounds":[{"tag":"tunIn","sniffing":{"enabled":false}}],"routing":{"domainStrategy":"AsIs","rules":[]}}''';
+      final expected = AdvancedRoutingDocument.parse(controller.text.text).state
+          .toJson();
+      final saving = controller.save(context);
+      final draft = await service.started.future;
+      expect(draft.state.advanced, isTrue);
+      expect(draft.state.entryCount, 2);
+      expect(draft.state.toJson(), expected);
+      expect(draft.state.name, 'Independent DNS');
+      expect(controller.state.busy, isTrue);
+      expect(controller.state.deleting, isFalse);
+      service.result.complete(null);
+      await saving;
+      expect(controller.error, isNull);
+      expect(controller.canSave, isTrue);
+      expect(await db.routingProfileDao.allRows, isEmpty);
+      expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
+    },
+  );
+}
+
+class _PendingAdvancedSave extends CustomRoutingEditorService {
+  _PendingAdvancedSave({super.database, super.coordinator});
+  final started = Completer<CustomRoutingEditorDraft>();
+  final result = Completer<int?>();
+  @override
+  Future<int?> save(
+    CustomRoutingEditorDraft draft, {
+    required Future<bool> Function() confirmReconnect,
+    ConfigurationImportDraft? imported,
+  }) {
+    started.complete(draft);
+    return result.future;
+  }
 }
 
 class _PendingRawSave extends RawEditorService {

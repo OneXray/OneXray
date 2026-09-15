@@ -9,6 +9,7 @@ import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 class CustomRoutingEditorException extends AppFailure {
   final String reason;
@@ -23,7 +24,7 @@ class CustomRoutingEditorException extends AppFailure {
 
 class CustomRoutingEditorDraft {
   final RoutingProfileData? original;
-  final RoutingProfileState state;
+  final RoutingConfiguration state;
   const CustomRoutingEditorDraft({this.original, required this.state});
 }
 
@@ -36,7 +37,7 @@ class CustomRoutingEditorService {
   final Future<ConnectionRuntime> Function(
     ConnectionConfiguration,
     Future<void>,
-    RoutingProfileState,
+    RoutingConfiguration,
   )?
   prepare;
 
@@ -56,7 +57,7 @@ class CustomRoutingEditorService {
     if (row == null) throw const CustomRoutingEditorException('missing');
     return CustomRoutingEditorDraft(
       original: row,
-      state: CustomRoutingService.read(row),
+      state: CustomRoutingService.readConfiguration(row),
     );
   }
 
@@ -97,7 +98,7 @@ class CustomRoutingEditorService {
     final affectsRuntime =
         selected &&
         !connection.expert &&
-        !sameRouting(CustomRoutingService.read(original), state);
+        !sameRouting(CustomRoutingService.readConfiguration(original), state);
     int? savedId = original?.id;
     final saved = await coordinator.saveEditedAsset(
       configuration,
@@ -174,7 +175,8 @@ class CustomRoutingEditorService {
     final current = await db.routingProfileDao.searchRow(original.id);
     if (current == null ||
         current.data != original.data ||
-        current.name != original.name) {
+        current.name != original.name ||
+        current.advanced != original.advanced) {
       throw const CustomRoutingEditorException('changed');
     }
   }
@@ -192,9 +194,16 @@ class CustomRoutingEditorService {
       value.trafficMode == TrafficMode.custom && value.customId == id;
 
   static bool sameRouting(
-    RoutingProfileState before,
-    RoutingProfileState after,
+    RoutingConfiguration before,
+    RoutingConfiguration after,
   ) {
+    if (before.advanced || after.advanced) {
+      return before.advanced == after.advanced &&
+          const DeepCollectionEquality().equals(
+            before.toJson(),
+            after.toJson(),
+          );
+    }
     Object semantic(RoutingProfileState state) => {
       'entries': state.entryCount,
       'directDnsAddress': state.directDnsAddress.trim(),
@@ -204,8 +213,8 @@ class CustomRoutingEditorService {
       ],
     };
     return const DeepCollectionEquality().equals(
-      semantic(before),
-      semantic(after),
+      semantic(before as RoutingProfileState),
+      semantic(after as RoutingProfileState),
     );
   }
 }

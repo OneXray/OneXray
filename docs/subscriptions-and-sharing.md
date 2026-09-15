@@ -67,7 +67,7 @@ Age 公钥和私钥仅保存在订阅中，不随普通分享发出。分享只�
 固定 scheme/host 为 `onexray://onexray.com`，当前接受：
 
 ```text
-/config/add?type=outbound|raw|custom&data=<base64>#<name>
+/config/add?type=outbound|raw|custom|custom-advanced&data=<base64>#<name>
 /sub/add?url=<https-url>&age=x25519|hybrid#<name>
 /dat/add?type=domain|ip&url=<https-url>#<name>
 ```
@@ -81,6 +81,12 @@ Raw/Custom 使用共享完整配置交换服务，根部允许 `name`。Custom �
 导入专用 `geodata`。下载、确认、发布、回滚及冷启动恢复统一遵循
 [Geodata 发布合同](data-management.md#geodata-发布)。Raw 保留用户原文的运行语义，
 普通节点导入不能代替完整 Raw 导入。
+
+常规自定义路由仍使用 `custom`，高级 JSON 模板使用 `custom-advanced`；不根据字段猜类型。
+裸高级 JSON 由高级编辑器导入，带类型的分享链接可使用现有 App Link 混合导入。
+两种路由共用名称唯一和三份上限，高级不经过普通 State/模型转换。
+Geodata 扫描覆盖路由、DNS server/hosts、入站嗅探排除项及 DNS outbound 规则，
+只识别这些字段中的标准 ext 引用，不扫描用户名、密码或任意 JSON 字符串。
 
 分享或导出前提示敏感数据风险；不要把 Age 私钥、完整配置或解密正文写入日志。
 超额旧 Raw 与升级边界见 [数据管理](data-management.md)。

@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
-import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/connect/routing/custom/metadata.dart';
 
 /// External Custom-routing document after import-only metadata is separated.
 final class RoutingProfileDocument {
@@ -32,7 +32,7 @@ final class RoutingProfileDocument {
             embeddedName.trim().runes.length > 32)) {
       throw const FormatException('name must contain 1–32 characters');
     }
-    if (document.containsKey('geodata')) _checkAssets(document['geodata']);
+    if (document.containsKey('geodata')) routingAssets(document['geodata']);
     document.remove('name');
     _checkEditableFields(document);
     try {
@@ -112,33 +112,5 @@ void _onlyKeys(Map<String, dynamic> value, Set<String> allowed, String path) {
     if (!allowed.contains(key)) {
       throw FormatException('Unsupported field: $path.$key');
     }
-  }
-}
-
-void _checkAssets(Object? value) {
-  final geodata = _object(value, 'geodata');
-  _onlyKeys(geodata, const {'assets'}, 'geodata');
-  final assets = geodata['assets'];
-  if (assets is! List) {
-    throw const FormatException('geodata.assets must be an array');
-  }
-  final names = <String>{};
-  for (var index = 0; index < assets.length; index++) {
-    final path = 'geodata.assets[$index]';
-    final asset = _object(assets[index], path);
-    _onlyKeys(asset, const {'file', 'url'}, path);
-    final file = asset['file'];
-    if (file is! String) {
-      throw FormatException('$path.file must be a safe custom .dat filename');
-    }
-    GeoDataInput.referenceFileName(file);
-    if (!names.add(file.toLowerCase())) {
-      throw FormatException('$path duplicates a geodata filename');
-    }
-    final url = asset['url'];
-    if (url is! String) {
-      throw FormatException('$path.url must be an HTTPS URL');
-    }
-    GeoDataInput.httpsUri(url);
   }
 }

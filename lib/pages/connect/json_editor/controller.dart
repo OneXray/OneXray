@@ -8,24 +8,29 @@ import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
+import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 
 const _unchanged = Object();
 
-class RawEditorPageState {
+class JsonConfigurationEditorState {
   final bool loaded;
   final bool busy;
+  final bool deleting;
   final String? error;
   final int? sharingDataCount;
   final String name;
   final String text;
   final ConfigurationTransferState transfer;
 
-  const RawEditorPageState({
+  const JsonConfigurationEditorState({
     this.loaded = false,
     this.busy = true,
+    this.deleting = false,
     this.error,
     this.sharingDataCount,
     this.name = '',
@@ -33,17 +38,19 @@ class RawEditorPageState {
     this.transfer = const ConfigurationTransferState(),
   });
 
-  RawEditorPageState copyWith({
+  JsonConfigurationEditorState copyWith({
     bool? loaded,
     bool? busy,
+    bool? deleting,
     Object? error = _unchanged,
     Object? sharingDataCount = _unchanged,
     String? name,
     String? text,
     ConfigurationTransferState? transfer,
-  }) => RawEditorPageState(
+  }) => JsonConfigurationEditorState(
     loaded: loaded ?? this.loaded,
     busy: busy ?? this.busy,
+    deleting: deleting ?? this.deleting,
     error: identical(error, _unchanged) ? this.error : error as String?,
     sharingDataCount: identical(sharingDataCount, _unchanged)
         ? this.sharingDataCount
@@ -54,19 +61,36 @@ class RawEditorPageState {
   );
 }
 
-class RawEditorController extends PageCubit<RawEditorPageState> {
-  final RawEditorService service;
-  final int? rawId;
+class JsonConfigurationEditorController
+    extends PageCubit<JsonConfigurationEditorState> {
+  final RawEditorService? _rawService;
+  final CustomRoutingEditorService? _customService;
+  late final service =
+      _rawService ??
+      RawEditorService(
+        database: _customService?.db,
+        coordinator: _customService?.coordinator,
+      );
+  late final customService =
+      _customService ??
+      CustomRoutingEditorService(
+        database: _rawService?.db,
+        coordinator: _rawService?.coordinator,
+      );
+  final ConfigurationKind kind;
+  final int? configurationId;
   final String? initialText;
   final String? initialName;
 
-  RawEditorController({
-    required this.rawId,
+  JsonConfigurationEditorController({
+    required this.configurationId,
     this.initialText,
     this.initialName,
     RawEditorService? service,
-  }) : service = service ?? RawEditorService(),
-       super(const RawEditorPageState()) {
+    this._customService,
+    this.kind = ConfigurationKind.raw,
+  }) : _rawService = service,
+       super(const JsonConfigurationEditorState()) {
     text.addListener(_textChanged);
     name.addListener(_nameChanged);
     _transferSubscription = transfers.stream.listen(_transferChanged);
@@ -75,12 +99,15 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
   final name = TextEditingController();
   final text = CodeLineEditingController();
   RawEditorDraft? _draft;
+  CustomRoutingEditorDraft? _routingDraft;
+  bool get advanced => kind == ConfigurationKind.customAdvanced;
+  bool get canDelete => advanced && _routingDraft?.original != null && !working;
   bool _saving = false;
   int _textRevision = 0;
   late final StreamSubscription<ConfigurationTransferState>
   _transferSubscription;
   late final transfers = ConfigurationTransferController(
-    kind: ConfigurationKind.raw,
+    kind: kind,
     readText: () => text.text,
     readName: () => name.text,
     onImport: (draft) {
@@ -141,12 +168,29 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
 
   Future<void> load(BuildContext context) async {
     try {
-      final draft = await service.load(rawId);
-      if (!isPageActive) return;
-      _draft = draft;
-      name.text = draft.name;
-      text.text = draft.text;
-      if (rawId == null && initialText != null) {
+      if (advanced) {
+        final draft = configurationId == null
+            ? CustomRoutingEditorDraft(
+                state: AdvancedRoutingDocument.parse(
+                  AdvancedRoutingProfile.defaultText,
+                ).state,
+              )
+            : await customService.load(configurationId);
+        if (!draft.state.advanced) {
+          throw const FormatException('Use the normal routing editor');
+        }
+        if (!isPageActive) return;
+        _routingDraft = draft;
+        name.text = draft.state.name;
+        text.text = draft.state.encode();
+      } else {
+        final draft = await service.load(configurationId);
+        if (!isPageActive) return;
+        _draft = draft;
+        name.text = draft.name;
+        text.text = draft.text;
+      }
+      if (configurationId == null && initialText != null) {
         text.text = initialText!;
         final json = jsonDecode(initialText!);
         if (json is! Map<String, dynamic>) {
@@ -170,7 +214,7 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
       if (isPageActive) {
         emit(
           state.copyWith(
-            loaded: _draft != null,
+            loaded: _draft != null || _routingDraft != null,
             busy: false,
             name: name.text,
             text: text.text,
@@ -192,13 +236,32 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
     emit(state.copyWith(busy: true, error: null));
     final l10n = AppLocalizations.of(context)!;
     try {
-      final id = await service.save(
-        draft,
-        imported: transfers.imported,
-        confirmReconnect: () => context.mounted
-            ? showApplyAndReconnectDialog(context, label: state.name.trim())
-            : Future.value(false),
-      );
+      Future<bool> confirmReconnect() => context.mounted
+          ? showApplyAndReconnectDialog(context, label: state.name.trim())
+          : Future.value(false);
+      int? id;
+      if (advanced) {
+        final doc = AdvancedRoutingDocument.parse(state.text, name: state.name);
+        if (doc.assets.isNotEmpty) {
+          throw const FormatException(
+            'Use Import to install geodata.assets before saving',
+          );
+        }
+        id = await customService.save(
+          CustomRoutingEditorDraft(
+            original: _routingDraft!.original,
+            state: doc.state,
+          ),
+          imported: transfers.imported,
+          confirmReconnect: confirmReconnect,
+        );
+      } else {
+        id = await service.save(
+          draft,
+          imported: transfers.imported,
+          confirmReconnect: confirmReconnect,
+        );
+      }
       if (id != null &&
           isPageActive &&
           context.mounted &&
@@ -224,6 +287,21 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
           },
         ),
       );
+    } on CustomRoutingEditorException catch (failure) {
+      emit(
+        state.copyWith(
+          error: switch (failure.reason) {
+            'limit' => l10n.prototypeCustomRouteLimit,
+            'name' => l10n.prototypeRouteNameRequired,
+            'duplicate' => l10n.prototypeRouteNameUnique,
+            _ => appFailureMessage(
+              l10n,
+              failure,
+              operation: l10n.buttonSaveFailed,
+            ),
+          },
+        ),
+      );
     } catch (error) {
       emit(
         state.copyWith(
@@ -238,6 +316,64 @@ class RawEditorController extends PageCubit<RawEditorPageState> {
       _saving = false;
       if (!isPageActive) await transfers.close();
       emit(state.copyWith(busy: false));
+    }
+  }
+
+  Future<void> delete(BuildContext context) async {
+    if (!canDelete) return;
+    final row = _routingDraft!.original!;
+    final l10n = AppLocalizations.of(context)!;
+    emit(state.copyWith(busy: true, deleting: true, error: null));
+    try {
+      final deleted = await customService.delete(
+        row,
+        confirm: (selected, reconnect) => context.mounted
+            ? showDestructiveConfirmationDialog(
+                context,
+                title: l10n.prototypeDeleteName(row.name),
+                subtitle: reconnect
+                    ? l10n.prototypeDeletingRouteReconnectNotice
+                    : selected
+                    ? l10n.prototypeDeletedRouteSmartNotice
+                    : l10n.prototypeRemoveRouteNotice,
+                warning: l10n.prototypeCannotUndo,
+                confirmLabel: reconnect
+                    ? l10n.prototypeSwitchAndReconnect
+                    : selected
+                    ? l10n.prototypeDeleteAndUseSmartRouting
+                    : l10n.prototypeDeleteRoute,
+              )
+            : Future.value(false),
+      );
+      if (deleted && isPageActive && context.mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (error) {
+      emit(state.copyWith(error: appFailureMessage(l10n, error)));
+    } finally {
+      emit(state.copyWith(busy: false, deleting: false));
+    }
+  }
+
+  Future<void> openDocumentation(BuildContext context) async {
+    final language = Localizations.localeOf(context).languageCode;
+    final prefix = const {'zh', 'ru'}.contains(language) ? '$language/' : '';
+    try {
+      if (!await launchUrl(
+        Uri.parse(
+          'https://onexray.com/${prefix}docs/configuration/advanced-routing/',
+        ),
+        mode: LaunchMode.externalApplication,
+      )) {
+        throw StateError('No application could open this link');
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ContextAlert.showToast(
+          context,
+          appFailureMessage(AppLocalizations.of(context)!, error),
+        );
+      }
     }
   }
 

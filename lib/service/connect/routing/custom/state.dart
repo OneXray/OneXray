@@ -2,6 +2,7 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 enum RoutingRuleAction { proxy, direct, block }
 
@@ -97,9 +98,12 @@ final class RoutingRuleState {
 }
 
 /// The ordinary Custom routing state between UI, Xray models and persistence.
-final class RoutingProfileState {
+final class RoutingProfileState implements RoutingConfiguration {
+  @override
   final int? id;
+  @override
   final String name;
+  @override
   final int entryCount;
   final String directDnsAddress;
   final bool fakeDns;
@@ -181,8 +185,19 @@ final class RoutingProfileState {
     );
   }
 
+  @override
   String encode() => JsonTool.encoder.convert(xrayJson.toJson());
 
+  @override
+  bool get advanced => false;
+
+  @override
+  int get ruleCount => rules.length;
+
+  @override
+  Map<String, dynamic> toJson() => xrayJson.toJson();
+
+  @override
   RoutingProfileState copyWith({
     int? id,
     bool clearId = false,
@@ -200,6 +215,7 @@ final class RoutingProfileState {
     rules: rules ?? this.rules,
   );
 
+  @override
   void validate() {
     final trimmedName = name.trim();
     if (trimmedName.isNotEmpty && trimmedName.runes.length > 32) {
