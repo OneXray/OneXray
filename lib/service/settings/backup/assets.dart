@@ -1,0 +1,226 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart';
+import 'package:onexray/core/backup/codec.dart';
+import 'package:onexray/core/backup/model.dart';
+import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/db/database/constants.dart';
+import 'package:onexray/core/db/dao/routing_profile.dart';
+import 'package:onexray/core/model/geo_data_type.dart';
+import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/connect/runtime.dart';
+import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+
+/// Only connection assets cross this boundary. Runtime choices, device policy,
+/// database identities, measurements and resource bytes are never exported.
+class BackupAssets {
+  BackupAssets(this.db, this.geodata);
+  final AppDatabase db;
+  final GeoDataService geodata;
+
+  Future<BackupDocument> capture() => db.transaction(() async {
+    final nodes =
+        await (db.select(db.coreConfig)..where(
+              (row) => row.subId.equals(0) & row.type.isIn(['outbound', 'raw']),
+            ))
+            .get();
+    final subscriptions = await db.subscriptionDao.allRows;
+    final routes = await db.routingProfileDao.allRows;
+    final sources = await db.geoDataDao.allRows;
+    final settings = ConnectionConfiguration.fromJson(
+      jsonDecode((await db.connectionConfigDao.read()).configurationJson)
+          as Map<String, dynamic>,
+    ).connection.smart;
+    return BackupDocument(
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+      coreConfigs: [
+        for (final row in nodes)
+          BackupCoreConfig(
+            row.name,
+            row.type,
+            row.tags,
+            row.data ??
+                (throw const FormatException('A configuration has no data')),
+          ),
+      ],
+      subscriptions: [
+        for (final row in subscriptions)
+          BackupSubscription(
+            row.name,
+            row.url,
+            _optional(row.ageSecretKey),
+            _optional(row.agePublicKey),
+            row.hwidEnabled,
+            _optional(row.hwid),
+          ),
+      ],
+      routingProfiles: [
+        for (final row in routes)
+          BackupRoutingProfile(row.name, row.advanced, row.data),
+      ],
+      smartRouting: BackupSmartRouting(
+        entryCount: settings.entryCount,
+        directRegions: settings.directRegions,
+        directPrivate: settings.directPrivate,
+        directApple: settings.directApple,
+        directWindows: settings.directWindows,
+        directDns: settings.directDns,
+        directDnsAddress: settings.directDnsAddress,
+        fakeDns: settings.fakeDns,
+        blockAds: settings.blockAds,
+      ),
+      geoData: [
+        for (final row in sources) BackupGeoData(row.name, row.type, row.url),
+      ],
+    );
+  });
+
+  Future<GeoDataRestorePlan> preview(BackupDocument document) async {
+    validateBackupAssets(document);
+    return geodata.previewRestore(backupSources(document));
+  }
+
+  /// Caller has drained mutating modules and confirmed VPN stopped. This method
+  /// owns one DB commit plus the Geodata rollback boundary, never a download.
+  Future<void> restore(BackupDocument document, GeoDataRestorePlan preview) =>
+      geodata.restoreSources(preview, (writeMetadata) async {
+        final original = ConnectionConfiguration.fromJson(
+          jsonDecode((await db.connectionConfigDao.read()).configurationJson)
+              as Map<String, dynamic>,
+        );
+        final restored = ConnectionConfiguration(
+          connection: ConnectionSettings(
+            smart: SmartRoutingSettings.fromJson(
+              document.smartRouting.toJson(),
+            ),
+          ),
+          policy: original.policy,
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: restored.encode(),
+          writeAssets: () async {
+            await db.coreConfigDao.clear();
+            await db.subscriptionDao.clear();
+            await db.routingProfileDao.clear();
+            for (final row in document.coreConfigs) {
+              await db.coreConfigDao.insertRow(
+                CoreConfigCompanion.insert(
+                  name: row.name,
+                  type: row.type,
+                  tags: row.tags,
+                  data: Value(row.data),
+                  delay: PingDelayConstants.unknown,
+                  subId: 0,
+                ),
+              );
+            }
+            for (final row in document.subscriptions) {
+              await db.subscriptionDao.insertRow(
+                SubscriptionCompanion.insert(
+                  name: row.name,
+                  url: row.url,
+                  ageSecretKey: Value(_optional(row.ageSecretKey)),
+                  agePublicKey: Value(_optional(row.agePublicKey)),
+                  hwidEnabled: Value(row.hwidEnabled),
+                  hwid: Value(_optional(row.hwid)),
+                  timestamp: DateTime.fromMillisecondsSinceEpoch(0),
+                ),
+              );
+            }
+            for (final row in document.routingProfiles) {
+              await db.routingProfileDao.insertRow(
+                RoutingProfileCompanion.insert(
+                  name: row.name,
+                  advanced: Value(row.advanced),
+                  data: row.data,
+                ),
+              );
+            }
+            await writeMetadata();
+          },
+        );
+      });
+}
+
+List<GeoDataInput> backupSources(BackupDocument document) => [
+  for (final row in document.geoData)
+    GeoDataInput(
+      fileName: '${row.name}.dat',
+      type: GeoDataType.values.byName(row.type),
+      url: row.url,
+    ),
+];
+
+/// Structural/import checks only; missing files do not prevent restoration.
+/// Xray semantics are left to the existing editor/runtime validation paths.
+void validateBackupAssets(BackupDocument document) {
+  for (final row in document.coreConfigs) {
+    _name(row.name);
+    if (row.type != 'outbound' && row.type != 'raw') {
+      throw const FormatException(
+        'Only local outbound and Raw assets can be restored',
+      );
+    }
+    decodeBackupConfiguration(row.data);
+  }
+  final urls = <String>{};
+  for (final row in document.subscriptions) {
+    _name(row.name);
+    GeoDataInput.httpsUri(row.url);
+    if (!urls.add(row.url)) {
+      throw const FormatException('Duplicate subscription URL');
+    }
+    if ((_optional(row.ageSecretKey) == null) !=
+        (_optional(row.agePublicKey) == null)) {
+      throw const FormatException('Both Age keys are required');
+    }
+    if (row.hwidEnabled && _optional(row.hwid) == null) {
+      throw const FormatException('The enabled subscription HWID is missing');
+    }
+  }
+  if (document.routingProfiles.length > RoutingProfileDao.maxProfiles) {
+    throw const FormatException(
+      'At most three custom routing profiles are allowed',
+    );
+  }
+  final names = <String>{};
+  for (final row in document.routingProfiles) {
+    _name(row.name);
+    if (row.name.trim().runes.length > 32 ||
+        !names.add(row.name.trim().toLowerCase())) {
+      throw const FormatException(
+        'Custom routing names must be unique and contain 1–32 characters',
+      );
+    }
+    decodeBackupConfiguration(row.data);
+    ConfigurationTransferService.routingDocument(
+      utf8.decode(base64Decode(row.data)),
+      row.advanced
+          ? ConfigurationKind.customAdvanced
+          : ConfigurationKind.custom,
+      name: row.name,
+      allowMetadata: false,
+    );
+  }
+  SmartRoutingSettings.fromJson(document.smartRouting.toJson());
+  final files = <String>{};
+  for (final row in document.geoData) {
+    final name = GeoDataInput.referenceFileName('${row.name}.dat');
+    GeoDataInput.httpsUri(row.url);
+    if (!['domain', 'ip'].contains(row.type) ||
+        !files.add(name.toLowerCase())) {
+      throw const FormatException('Invalid or duplicate Geodata source');
+    }
+  }
+}
+
+void _name(String name) {
+  if (name.trim().isEmpty) {
+    throw const FormatException('A backup asset name is missing');
+  }
+}
+
+String? _optional(String? value) =>
+    value == null || value.trim().isEmpty ? null : value;

@@ -86,7 +86,8 @@ class DataUpdateService {
     final customGeoData = await AppDatabase().geoDataDao.allRows;
     for (final geoData in customGeoData) {
       if (_paused || !isVpnConnected()) break;
-      if (now.difference(geoData.timestamp).inHours >= interval) {
+      if (!geoData.installed ||
+          now.difference(geoData.timestamp).inHours >= interval) {
         try {
           await GeoDataService().updateCustom(geoData);
         } catch (error) {

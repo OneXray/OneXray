@@ -101,6 +101,7 @@ class AppDatabase extends _$AppDatabase {
       if (from >= 3) {
         await migrator.addColumn(routingProfile, routingProfile.advanced);
       }
+      await migrator.addColumn(geoData, geoData.installed);
 
       // Drift writes this again after beforeOpen. Commit it with the DDL so an
       // interruption between those callbacks cannot leave the old version.

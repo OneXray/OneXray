@@ -8,6 +8,8 @@ import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/platform_requirements.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
@@ -184,6 +186,9 @@ class ConnectionPreparation {
         dnsLog: policy.recordDns,
         maskAddress: policy.maskAddress,
       ),
+    );
+    await GeoDataService().requireDependencies(
+      geoDataReferences(jsonDecode(compiled.xrayJson) as Map<String, dynamic>),
     );
     for (final server in [...entries, ?finalExit]) {
       final row = await db.coreConfigDao.searchRow(server.id);

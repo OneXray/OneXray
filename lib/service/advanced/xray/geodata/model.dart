@@ -87,3 +87,19 @@ class PublishedGeoData {
   String reference(String code) =>
       builtIn ? '${row.name}:$code' : 'ext:$fileName:$code';
 }
+
+class GeoDataRestorePlan {
+  final List<GeoDataInput> sources;
+  final Map<String, GeoDataData> reusable;
+  final List<GeoDataData> conflicts;
+
+  GeoDataRestorePlan({
+    required Iterable<GeoDataInput> sources,
+    required Map<String, GeoDataData> reusable,
+    required Iterable<GeoDataData> conflicts,
+  }) : sources = List.unmodifiable(sources),
+       reusable = Map.unmodifiable(reusable),
+       conflicts = List.unmodifiable(conflicts);
+
+  int get pendingCount => sources.length - reusable.length;
+}

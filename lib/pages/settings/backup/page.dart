@@ -1,0 +1,308 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:intl/intl.dart' show DateFormat;
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/settings/backup/controller.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
+import 'package:onexray/pages/shared/widgets/settings_page.dart';
+import 'package:onexray/pages/theme/color.dart';
+import 'package:onexray/pages/theme/font.dart';
+import 'package:onexray/pages/theme/layout.dart';
+import 'package:onexray/service/settings/backup/service.dart';
+import 'package:onexray/service/advanced/xray/data_update/state.dart';
+import 'package:shadcn_ui/shadcn_ui.dart' show ShadSwitch;
+import 'package:onexray/service/shared/failure.dart';
+
+class BackupPage extends StatelessWidget {
+  const BackupPage({super.key, this.service});
+  final BackupService? service;
+
+  @override
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => BackupController(service: service),
+    child: BlocBuilder<BackupController, BackupPageState>(
+      builder: (context, state) {
+        final controller = context.read<BackupController>();
+        final l = AppLocalizations.of(context)!;
+        final backup = state.backup;
+        final target = backup.settings.target;
+        final palette = ColorManager.palette(context);
+        final platform = defaultTargetPlatform;
+        final android = platform == TargetPlatform.android;
+        final windows = platform == TargetPlatform.windows;
+        final supported = {
+          TargetPlatform.android,
+          TargetPlatform.iOS,
+          TargetPlatform.macOS,
+          TargetPlatform.windows,
+        }.contains(platform);
+        final mobile =
+            MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
+        final date = DateFormat.yMd(Localizations.localeOf(context).toString())
+            .add_Hm();
+        final busy = state.busy;
+        return Scaffold(
+          appBar: AppBar(title: Text(l.backupTitle)),
+          bottomNavigationBar: supported
+              ? PageActionBar(
+                  children: [
+                    OutlinedButton(
+                      onPressed: busy || target == null
+                          ? null
+                          : () => controller.restore(context),
+                      child: ButtonProgress(
+                        busy: state.action == BackupPageAction.restoring,
+                        child: Text(l.backupRestore),
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: busy || target == null
+                          ? null
+                          : () => controller.backup(context),
+                      child: ButtonProgress(
+                        busy:
+                            state.action == BackupPageAction.writing ||
+                            backup.operation == BackupOperation.writing,
+                        child: Text(l.backupNow),
+                      ),
+                    ),
+                  ],
+                )
+              : null,
+          body: SafeArea(
+            child: state.loading
+                ? const Center(child: CircularProgressIndicator())
+                : !supported
+                ? Center(child: Text(l.prototypeTemporarilyUnavailable))
+                : SettingsPageScroll(
+                    child: Padding(
+                      padding: EdgeInsets.all(
+                        mobile ? AppSpacing.mobilePage : AppSpacing.page,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 24,
+                        children: [
+                          Text(
+                            l.backupScope,
+                            style: AppTypography.settingsDetailNote,
+                          ),
+                          SettingSection(
+                            title: l.backupLocation,
+                            icon: LucideIcons.cloud,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  spacing: 12,
+                                  children: [
+                                    Text(
+                                      android
+                                          ? l.backupAndroidHint
+                                          : windows
+                                          ? l.backupWindowsHint
+                                          : l.backupAppleHint,
+                                      style: AppTypography.settingsDetailNote,
+                                    ),
+                                    if (target != null)
+                                      SelectableText(
+                                        target.label,
+                                        textDirection: TextDirection.ltr,
+                                        style: AppTypography.code,
+                                      )
+                                    else
+                                      Text(l.backupNotConfigured),
+                                    if (target != null &&
+                                        !backup.settings.confirmed)
+                                      Text(
+                                        l.backupNotConfirmed,
+                                        style: AppTypography.settingsDetailNote,
+                                      ),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        OutlinedButton(
+                                          onPressed: busy
+                                              ? null
+                                              : () => controller.select(
+                                                  context,
+                                                  create: false,
+                                                ),
+                                          child: ButtonProgress(
+                                            busy:
+                                                state.action ==
+                                                BackupPageAction.selecting,
+                                            child: Text(
+                                              android
+                                                  ? l.backupChooseExisting
+                                                  : windows
+                                                  ? l.backupChooseFolder
+                                                  : l.backupUseICloud,
+                                            ),
+                                          ),
+                                        ),
+                                        if (android)
+                                          OutlinedButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => controller.select(
+                                                    context,
+                                                    create: true,
+                                                  ),
+                                            child: ButtonProgress(
+                                              busy:
+                                                  state.action ==
+                                                  BackupPageAction.creating,
+                                              child: Text(l.backupCreateFile),
+                                            ),
+                                          ),
+                                        if (target != null)
+                                          TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => controller.unbind(
+                                                    context,
+                                                  ),
+                                            child: ButtonProgress(
+                                              busy:
+                                                  state.action ==
+                                                  BackupPageAction.unbinding,
+                                              child: Text(l.backupUnbind),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          SettingSection(
+                            title: l.backupAutomatic,
+                            icon: LucideIcons.refreshCw,
+                            padding: EdgeInsets.zero,
+                            dividerIndent: 0,
+                            children: [
+                              SettingRow(
+                                title: l.backupAutomatic,
+                                subtitle: l.backupScheduleNotice,
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (backup.changingAutomatic)
+                                      const Padding(
+                                        padding: EdgeInsetsDirectional.only(
+                                          end: 8,
+                                        ),
+                                        child: ButtonProgressIndicator(),
+                                      ),
+                                    ShadSwitch(
+                                      value: backup.automatic,
+                                      enabled:
+                                          !backup.changingAutomatic &&
+                                          state.action !=
+                                              BackupPageAction.restoring,
+                                      onChanged: (value) => controller
+                                          .setAutomatic(context, value),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SettingRow(
+                                title: l.backupInterval,
+                                subtitle: l.backupIntervalHint,
+                                value: switch (backup.interval) {
+                                  AutoUpdateInterval.oneDay =>
+                                    l.autoUpdatePageIntervalOneDay,
+                                  AutoUpdateInterval.threeDays =>
+                                    l.autoUpdatePageIntervalThreeDays,
+                                  AutoUpdateInterval.oneWeek =>
+                                    l.autoUpdatePageIntervalOneWeek,
+                                },
+                                showChevron: true,
+                                onTap: () => controller.openInterval(context),
+                              ),
+                              if (backup.automatic &&
+                                  !backup.settings.confirmed)
+                                Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Text(
+                                    l.backupAutomaticNotReady,
+                                    style: AppTypography.settingsDetailNote,
+                                  ),
+                                ),
+                              if (target != null && !backup.settings.confirmed)
+                                Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: OutlinedButton(
+                                    onPressed: busy
+                                        ? null
+                                        : () =>
+                                              controller.allowBackups(context),
+                                    child: ButtonProgress(
+                                      busy:
+                                          state.action ==
+                                          BackupPageAction.allowing,
+                                      child: Text(l.backupAllow),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: palette.warningSurface,
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.compact,
+                              ),
+                            ),
+                            child: Text(
+                              l.backupSensitiveWarning,
+                              style: AppTypography.settingsDetailNote,
+                            ),
+                          ),
+                          Text(
+                            backup.settings.lastSuccess == null
+                                ? l.backupNeverWritten
+                                : l.backupLastSuccess(
+                                    date.format(
+                                      backup.settings.lastSuccess!.toLocal(),
+                                    ),
+                                  ),
+                            style: AppTypography.settingsDetailNote,
+                          ),
+                          Text(
+                            l.backupSyncNotice,
+                            style: AppTypography.settingsDetailNote.copyWith(
+                              color: palette.mutedForeground,
+                            ),
+                          ),
+                          if (backup.error != null)
+                            SelectableText(
+                              appFailureMessage(
+                                l,
+                                backup.error,
+                                operation: l.backupFailed,
+                              ),
+                              style: AppTypography.settingsDetailNote.copyWith(
+                                color: palette.destructive,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      },
+    ),
+  );
+}

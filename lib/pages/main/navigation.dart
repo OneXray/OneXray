@@ -53,6 +53,7 @@ enum AppSecondaryDestination {
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),
+  backup("backup"),
   desktopSettings("desktop-settings"),
   appIcon("app-icon"),
   theme("theme"),

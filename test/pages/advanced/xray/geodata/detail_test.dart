@@ -88,6 +88,7 @@ class _CountingGeoData extends PublishedGeoData {
   _CountingGeoData(List<XrayGeoListCodes> codes)
     : super(
         row: GeoDataData(
+          installed: true,
           id: -2,
           name: 'geosite',
           type: 'domain',

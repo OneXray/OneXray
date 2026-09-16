@@ -59,6 +59,7 @@ void main() {
       });
       final service = ConfigurationTransferService(
         lookup: (name) async => GeoDataData(
+          installed: true,
           id: 1,
           name: name,
           type: 'ip',
@@ -170,6 +171,7 @@ void main() {
         '"future": 123 }\n';
     final service = ConfigurationTransferService(
       lookup: (name) async => GeoDataData(
+        installed: true,
         id: 1,
         name: name,
         type: 'domain',

@@ -90,6 +90,8 @@ Geodata 扫描覆盖路由、DNS server/hosts、入站嗅探排除项及 DNS out
 
 分享或导出前提示敏感数据风险；不要把 Age 私钥、完整配置或解密正文写入日志。
 超额旧 Raw 与升级边界见 [数据管理](data-management.md)。
+单文件 [连接配置备份](backup.md) 走独立入口与协议，保留订阅 Age 密钥/HWID，但不保存订阅节点缓存；
+不是普通分享的一种编码，也不由普通节点/Raw/Custom 导入器自动识别。
 
 ## 系统分享
 

@@ -93,6 +93,7 @@ TrayMenuData _menuData(int count) {
     ..geodata = [
       for (final id in ids)
         GeoDataData(
+          installed: true,
           id: id,
           name: 'File $id',
           type: 'domain',

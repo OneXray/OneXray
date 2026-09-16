@@ -7,6 +7,7 @@ import 'package:onexray/pages/advanced/xray/config/page.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/ping/page.dart';
 import 'package:onexray/pages/settings/about/page.dart';
+import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/wifi.dart';
 import 'package:onexray/pages/advanced/tunnel/android/page.dart';
@@ -346,6 +347,7 @@ final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
     ),
   ),
   _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
+  _route(AppSecondaryDestination.backup, (_, _) => const BackupPage()),
   _route(
     AppSecondaryDestination.desktopSettings,
     (_, _) => const DesktopSettingsPage(),

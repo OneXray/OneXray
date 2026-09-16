@@ -11,9 +11,21 @@ class GeoDataDao extends DatabaseAccessor<AppDatabase> with _$GeoDataDaoMixin {
   Future<List<GeoDataData>> get allRows async =>
       (select(geoData)..where((row) => row.id.isBiggerThanValue(0))).get();
 
-  Stream<List<GeoDataData>> get publishedRowsStream => select(geoData).watch();
+  Stream<List<GeoDataData>> get allSourcesStream => select(geoData).watch();
 
-  Future<List<GeoDataData>> get publishedRows async => select(geoData).get();
+  Future<List<GeoDataData>> get allSources => select(geoData).get();
+
+  Stream<List<GeoDataData>> get publishedRowsStream =>
+      (select(geoData)..where((row) => row.installed.equals(true))).watch();
+
+  Future<List<GeoDataData>> get publishedRows =>
+      (select(geoData)..where((row) => row.installed.equals(true))).get();
+
+  Future<int> clearPublished() =>
+      (delete(geoData)..where((row) => row.installed.equals(true))).go();
+
+  Future<int> clearCustom() =>
+      (delete(geoData)..where((row) => row.id.isBiggerThanValue(0))).go();
 
   Future<GeoDataData?> searchRow(int id) async {
     return (select(

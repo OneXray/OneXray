@@ -144,6 +144,23 @@ class PreferencesKey {
     await _prefs.setString(_autoUpdate, text);
   }
 
+  static const _backup = '${_namespace}backup';
+  static const _automaticBackup = '${_namespace}automaticBackup';
+
+  Future<Map<String, dynamic>?> readBackup() async {
+    final value = await _prefs.getString(_backup);
+    return value == null ? null : JsonTool.decodeBase64ToJson(value);
+  }
+
+  Future<void> saveBackup(Map<String, dynamic> value) =>
+      _prefs.setString(_backup, JsonTool.encodeJsonToBase64(value));
+
+  Future<bool> readAutomaticBackup() async =>
+      await _prefs.getBool(_automaticBackup) ?? true;
+
+  Future<void> saveAutomaticBackup(bool value) =>
+      _prefs.setBool(_automaticBackup, value);
+
   static const _themeCode = "${_namespace}themeCode";
 
   Future<String?> readThemeCode() async {
@@ -173,6 +190,8 @@ class PreferencesKey {
       _prefs.remove(_appUpdateSkippedVersion),
       _prefs.remove(_pingState),
       _prefs.remove(_autoUpdate),
+      _prefs.remove(_backup),
+      _prefs.remove(_automaticBackup),
       _prefs.remove('app2.xraySettingId'),
       _prefs.remove(_desktopStartHidden),
       _prefs.remove(_connectOnAppLaunch),

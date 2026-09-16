@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/flutter_api.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
+import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/advanced/xray/data_update/service.dart';
+import 'package:onexray/service/settings/backup/service.dart';
 
 class BackgroundTaskService with WidgetsBindingObserver {
   static final BackgroundTaskService _singleton =
@@ -12,11 +15,18 @@ class BackgroundTaskService with WidgetsBindingObserver {
 
   factory BackgroundTaskService() => _singleton;
 
-  BackgroundTaskService._internal() : _updates = DataUpdateService();
+  BackgroundTaskService._internal()
+    : _updates = DataUpdateService(),
+      _checkBackup = (() => BackupService().checkAutomatic());
 
-  BackgroundTaskService.forTesting(this._updates);
+  BackgroundTaskService.forTesting(
+    this._updates, {
+    Future<void> Function()? checkBackup,
+  }) : _checkBackup = checkBackup ?? _noBackup;
 
   final DataUpdateService _updates;
+  final Future<void> Function() _checkBackup;
+  static Future<void> _noBackup() async {}
 
   //==========================
   Timer? _timer;
@@ -42,7 +52,7 @@ class BackgroundTaskService with WidgetsBindingObserver {
     final interval = const Duration(hours: 1);
     _timer = Timer.periodic(interval, (_) => checkDataUpdate());
 
-    // Subscriptions may update offline; Geodata needs a confirmed connection.
+    // Backup and subscriptions do not require VPN; Geodata needs a connection.
     unawaited(checkDataUpdate());
   }
 
@@ -69,11 +79,24 @@ class BackgroundTaskService with WidgetsBindingObserver {
     bool updateSubscription = true,
     bool updateGeoData = true,
   }) async {
-    await _updates.checkAndRun(
-      updateSubscription: updateSubscription,
-      updateGeoData: updateGeoData && _vpnConnected,
-      isVpnConnected: () => _vpnConnected,
-    );
+    await Future.wait([
+      _independentCheck(
+        () => _updates.checkAndRun(
+          updateSubscription: updateSubscription,
+          updateGeoData: updateGeoData && _vpnConnected,
+          isVpnConnected: () => _vpnConnected,
+        ),
+      ),
+      _independentCheck(_checkBackup),
+    ]);
+  }
+
+  Future<void> _independentCheck(Future<void> Function() check) async {
+    try {
+      await check();
+    } catch (error) {
+      ygLogger('Background check failed: ${failureDetails(error)}');
+    }
   }
 
   void _vpnStatusChanged(VpnStatus status) {

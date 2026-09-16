@@ -251,6 +251,7 @@ void main() {
 
 GeoDataData _geoData(String name, {String? url}) {
   return GeoDataData(
+    installed: true,
     id: 3,
     name: name,
     type: GeoDataType.domain.name,
