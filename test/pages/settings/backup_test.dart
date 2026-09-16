@@ -113,6 +113,29 @@ void main() {
           )!;
           expect(find.text(l.backupTitle), findsOneWidget);
           expect(storage.writes, 0);
+          final sections = find.byType(SettingSection);
+          final cards = [
+            for (var i = 0; i < 2; i++)
+              tester.getRect(
+                find.descendant(
+                  of: sections.at(i),
+                  matching: find.byType(ShadCard),
+                ),
+              ),
+          ];
+          expect(cards.first.left, cards.last.left);
+          expect(cards.first.right, cards.last.right);
+          final headers = [
+            tester.getRect(find.text(l.backupLocation)),
+            tester.getRect(find.text(l.backupAutomatic).first),
+          ];
+          final rtl =
+              Directionality.of(tester.element(sections.first)) ==
+              TextDirection.rtl;
+          expect(
+            rtl ? headers.first.right : headers.first.left,
+            rtl ? headers.last.right : headers.last.left,
+          );
           final bottom = tester.getBottomRight(find.byType(PageActionBar)).dy;
           await tester.drag(
             find.byType(SettingsPageScroll),

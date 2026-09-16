@@ -94,6 +94,7 @@ class BackupPage extends StatelessWidget {
                           SettingSection(
                             title: l.backupLocation,
                             icon: LucideIcons.cloud,
+                            padding: EdgeInsets.zero,
                             children: [
                               Padding(
                                 padding: const EdgeInsets.all(14),
