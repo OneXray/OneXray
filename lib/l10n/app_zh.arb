@@ -22,6 +22,7 @@
   "backupOverwriteWarning": "此位置仅保留一份备份。新备份会替换原有内容，包括其他设备留下的备份。此许可用于后续手动和自动备份，直到更换或解除位置绑定。",
   "backupNow": "立即备份",
   "backupRestore": "恢复",
+  "backupRestoreFrom": "从备份恢复",
   "backupRestoreTitle": "替换连接配置？",
   "backupRestoreWarning": "将停止 VPN，并替换当前全部连接配置，包括清除订阅节点缓存。设备设置保持不变。资源文件和订阅可稍后下载，恢复不依赖下载，也不会自动重连 VPN。",
   "backupEmptyWarning": "这份备份没有节点、Raw JSON、订阅或自定义路由。恢复后将清空现有连接配置。",

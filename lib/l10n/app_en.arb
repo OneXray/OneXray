@@ -22,6 +22,7 @@
   "backupOverwriteWarning": "OneXray keeps one file at this location. New backups replace its current contents, including a backup from another device. This permission applies to later manual and automatic backups until you change or unbind the location.",
   "backupNow": "Back up now",
   "backupRestore": "Restore",
+  "backupRestoreFrom": "Restore from backup",
   "backupRestoreTitle": "Replace connection configurations?",
   "backupRestoreWarning": "This stops the VPN and replaces all current connection configurations, including subscription server caches. Device settings stay unchanged. Resource files and subscriptions can be downloaded later; restore does not require them or reconnect the VPN.",
   "backupEmptyWarning": "This backup has no servers, Raw JSON, subscriptions or custom routes. Restoring it clears your existing connection configurations.",

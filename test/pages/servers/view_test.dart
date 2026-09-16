@@ -20,6 +20,7 @@ import 'package:onexray/pages/shared/widgets/responsive_content.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/settings/backup/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
@@ -600,6 +601,10 @@ void main() {
     final l = AppLocalizations.of(tester.element(find.byType(ServerBrowser)))!;
 
     expect(find.byType(PageEmptyState), findsOneWidget);
+    expect(
+      find.widgetWithText(OutlinedButton, l.backupRestoreFrom),
+      BackupService.supported ? findsOneWidget : findsNothing,
+    );
     final emptyCard = find.byWidgetPredicate(
       (widget) =>
           widget is DecoratedBox &&

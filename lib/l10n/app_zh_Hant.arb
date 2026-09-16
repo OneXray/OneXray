@@ -22,6 +22,7 @@
   "backupOverwriteWarning": "此位置僅保留一份備份。新備份會取代原有內容，包括其他裝置留下的備份。此許可用於後續手動和自動備份，直到更換或解除位置綁定。",
   "backupNow": "立即備份",
   "backupRestore": "還原",
+  "backupRestoreFrom": "從備份還原",
   "backupRestoreTitle": "取代連線設定？",
   "backupRestoreWarning": "將停止 VPN，並取代目前全部連線設定，包括清除訂閱節點快取。裝置設定保持不變。資源檔案和訂閱可稍後下載，還原不依賴下載，也不會自動重新連線 VPN。",
   "backupEmptyWarning": "這份備份沒有節點、Raw JSON、訂閱或自訂路由。還原後將清空現有連線設定。",
