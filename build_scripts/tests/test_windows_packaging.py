@@ -260,19 +260,40 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertIn("release:\n    types:\n      - released", workflow)
         self.assertIn("workflow_dispatch:", workflow)
         self.assertIn('git check-ref-format "refs/tags/$tag"', workflow)
-        self.assertIn("identifier: YuanDevLLC.OneXray", workflow)
-        self.assertIn("uses: vedantmgoyal9/winget-releaser@v2", workflow)
-        self.assertIn("max-versions-to-keep: 0", workflow)
+        self.assertIn("WINGET_IDENTIFIER: YuanDevLLC.OneXray", workflow)
+        self.assertNotIn("winget-releaser@", workflow)
         self.assertIn("contents: read", workflow)
+        self.assertIn("defaults:\n      run:\n        shell: bash", workflow)
+        self.assertIn("--version '=2.16.0'", workflow)
         self.assertIn("secrets.PACKAGE_MANAGER_GITHUB_TOKEN", workflow)
-        self.assertEqual(workflow.count("if: steps.verify.outputs.should_update == 'true'"), 2)
-        pattern = re.search(r"installers-regex: '([^']+)'", workflow).group(1)
+        phases = ["Generate winget manifests", "Fix installer fields",
+                  "Validate winget manifests", "Submit validated manifests"]
+        self.assertEqual(sorted(workflow.index(f"- name: {phase}") for phase in phases),
+                         [workflow.index(f"- name: {phase}") for phase in phases])
+        for phase in phases:
+            body = workflow.split(f"- name: {phase}", 1)[1].split("\n      - ", 1)[0]
+            self.assertIn("if: steps.verify.outputs.should_update == 'true'", body)
+        generate = workflow.split("- name: Generate winget manifests", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn('komac update "$WINGET_IDENTIFIER"', generate)
+        self.assertIn('--dry-run --output "$WINGET_OUTPUT/generated"', generate)
+        self.assertNotIn("--submit", workflow)
+        self.assertNotIn("komac remove", workflow)
+        self.assertNotIn("PACKAGE_MANAGER_GITHUB_TOKEN", generate)
+        validate = workflow.split("- name: Validate winget manifests", 1)[1].split("\n      - ", 1)[0]
+        self.assertIn('winget_manifest.py validate "$MANIFEST_DIR"', validate)
+        self.assertIn('komac submit "$MANIFEST_DIR" --dry-run', validate)
+        self.assertNotIn("PACKAGE_MANAGER_GITHUB_TOKEN", validate)
+        submit = workflow.split("- name: Submit validated manifests", 1)[1]
+        self.assertIn('komac submit "$MANIFEST_DIR" --yes', submit)
+        self.assertNotIn("komac update", submit)
+        self.assertIn("gh search prs", submit)
+        self.assertEqual(workflow.count("MANIFEST_DIR: ${{ steps.generate.outputs.manifest_dir }}"), 3)
         for name in ("OneXray-windows-amd64.exe", "OneXray-windows-arm64.exe"):
-            self.assertRegex(name, pattern)
+            self.assertIn(f'.name == "{name}"', generate)
             self.assertIn(name, workflow)
         for name in ("OneXray-windows-amd64.zip", "OneXray-windows-arm64.msix",
                      "OneXrayCore.exe", "OneXray-windows-amd64.exe.sig"):
-            self.assertNotRegex(name, pattern)
+            self.assertNotIn(name, generate)
 
     def test_msix_uses_store_version_without_rebuilding_windows(self):
         with (

@@ -34,7 +34,17 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      WINGET_IDENTIFIER: YuanDevLLC.OneXray
+      WINGET_OUTPUT: references/winget
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
       - name: Resolve release tag
         id: release
         env:
@@ -62,16 +72,14 @@ jobs:
         run: |
           echo "should_update=false" >> "$GITHUB_OUTPUT"
 
-          release_json="$(gh release view "$RELEASE_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --json isDraft,isPrerelease,assets)"
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")"
 
-          if [ "$(jq -r '.isDraft' <<<"$release_json")" != "false" ]; then
+          if [ "$(jq -r '.draft' <<<"$release_json")" != "false" ]; then
             echo "Release $RELEASE_TAG is still a draft." >&2
             exit 1
           fi
 
-          if [ "$(jq -r '.isPrerelease' <<<"$release_json")" != "false" ]; then
+          if [ "$(jq -r '.prerelease' <<<"$release_json")" != "false" ]; then
             echo "Release $RELEASE_TAG is a pre-release; skipping winget update."
             exit 0
           fi
@@ -79,12 +87,14 @@ jobs:
           for asset in \
             OneXray-windows-amd64.exe \
             OneXray-windows-arm64.exe; do
-            if [ -z "$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .url' <<<"$release_json")" ]; then
+            if [ "$(jq --arg asset "$asset" '[.assets[] | select(.name == $asset)] | length' <<<"$release_json")" != "1" ]; then
               echo "Release $RELEASE_TAG is missing required asset: $asset" >&2
               exit 1
             fi
           done
 
+          mkdir -p "$WINGET_OUTPUT"
+          jq . <<<"$release_json" > "$WINGET_OUTPUT/release.json"
           echo "should_update=true" >> "$GITHUB_OUTPUT"
 
       - name: Validate winget fork and token
@@ -111,12 +121,79 @@ jobs:
             exit 1
           fi
 
-      - name: Open winget package PR
+      - uses: astral-sh/setup-uv@v7
         if: steps.verify.outputs.should_update == 'true'
-        uses: vedantmgoyal9/winget-releaser@v2
+
+      - uses: cargo-bins/cargo-binstall@main
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Install Komac
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: cargo binstall komac --version '=2.16.0' --locked --no-confirm
+
+      - name: Generate winget manifests
+        id: generate
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          mapfile -t urls < <(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe" or .name == "OneXray-windows-arm64.exe") | .browser_download_url' "$WINGET_OUTPUT/release.json")
+
+          komac update "$WINGET_IDENTIFIER" --version "$version" \
+            --dry-run --output "$WINGET_OUTPUT/generated" --urls "${urls[@]}"
+
+          manifest_dir="$WINGET_OUTPUT/generated/manifests/y/YuanDevLLC/OneXray/$version"
+          test -d "$manifest_dir"
+          echo "manifest_dir=$manifest_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Fix installer fields
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          MANIFEST_DIR: ${{ steps.generate.outputs.manifest_dir }}
+        run: uv run --script build_scripts/winget_manifest.py fix "$MANIFEST_DIR"
+
+      - name: Validate winget manifests
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MANIFEST_DIR: ${{ steps.generate.outputs.manifest_dir }}
+        run: |
+          uv run --script build_scripts/winget_manifest.py validate "$MANIFEST_DIR" \
+            --release "$WINGET_OUTPUT/release.json"
+          komac submit "$MANIFEST_DIR" --dry-run
+        # Komac's dry-run parses the saved files without opening a PR.
+        # Generation and validation use only the read-only token.
+        # JSON Schema validation does not replace Windows installation testing.
+
+      - name: Upload validated manifests
+        if: steps.verify.outputs.should_update == 'true'
+        uses: actions/upload-artifact@v7
         with:
-          identifier: YuanDevLLC.OneXray
-          release-tag: ${{ steps.release.outputs.tag }}
-          installers-regex: '^OneXray-windows-(amd64|arm64)\.exe$'
-          max-versions-to-keep: 0
-          token: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+          name: winget-${{ steps.release.outputs.tag }}
+          path: ${{ steps.generate.outputs.manifest_dir }}
+          if-no-files-found: error
+
+      - name: Submit validated manifests
+        if: steps.verify.outputs.should_update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGE_MANAGER_GITHUB_TOKEN }}
+          KOMAC_FORK_OWNER: ${{ github.repository_owner }}
+          MANIFEST_DIR: ${{ steps.generate.outputs.manifest_dir }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          title="New version: $WINGET_IDENTIFIER version ${RELEASE_TAG#v}"
+          existing_pr="$(gh search prs --repo microsoft/winget-pkgs --state open \
+            --match title "$title" --json title,url \
+            | jq -r --arg title "$title" '.[] | select(.title == $title) | .url')"
+          if [ -n "$existing_pr" ]; then
+            echo "A manifest PR already exists; update it instead of creating a duplicate: $existing_pr" >&2
+            exit 1
+          fi
+          komac submit "$MANIFEST_DIR" --yes
