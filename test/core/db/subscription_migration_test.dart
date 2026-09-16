@@ -26,7 +26,10 @@ void main() {
       final sub = (await database.subscriptionDao.allRows).single;
       expect(sub.hwidEnabled, true);
       expect(sub.hwid, 'keep-hwid');
-      expect((await database.geoDataDao.allRows).every((row) => row.installed), true);
+      expect(
+        (await database.geoDataDao.allRows).every((row) => row.installed),
+        true,
+      );
       await database.close();
       final upgraded = sqlite.sqlite3.open(file.path);
       expect(upgraded.userVersion, 5);

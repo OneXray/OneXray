@@ -11,9 +11,11 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/settings/backup/assets.dart';
 import 'package:onexray/service/settings/backup/service.dart';
 import 'package:onexray/service/settings/language/locale.dart';
@@ -132,6 +134,53 @@ void main() {
       );
     }
   }
+
+  testWidgets(
+    'backup interval saves inline with local progress and no cloud access',
+    (tester) async {
+      final save = Completer<void>();
+      preferences.beforeSaveInterval = () => save.future;
+      await tester.pumpWidget(app(const Locale('en')));
+      await tester.pumpAndSettle();
+      final l = AppLocalizations.of(
+        tester.element(find.byType(PageActionBar)),
+      )!;
+      final select = find.byType(SettingSelect<AutoUpdateInterval>);
+      expect(
+        tester.widget<SettingSelect<AutoUpdateInterval>>(select).value,
+        AutoUpdateInterval.threeDays,
+      );
+      await tester.ensureVisible(select);
+      await tester.tap(find.text(l.prototypeEveryThreeDays));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l.prototypeEveryDay));
+      await pumpUntil(
+        tester,
+        () => service.state.operation == BackupOperation.saving,
+      );
+      expect(find.byType(BackupPage), findsOneWidget);
+      expect(find.byType(ButtonProgressIndicator), findsOneWidget);
+      expect(tester.takeException(), null);
+      save.complete();
+      await tester.pumpAndSettle();
+      expect(preferences.period, AutoUpdateInterval.oneDay);
+      expect(
+        tester.widget<SettingSelect<AutoUpdateInterval>>(select).value,
+        AutoUpdateInterval.oneDay,
+      );
+      expect(find.text(l.prototypeSettingsSaved), findsOneWidget);
+      expect((storage.reads, storage.writes), (0, 0));
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(app(const Locale('en')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SettingSelect<AutoUpdateInterval>>(select).value,
+        AutoUpdateInterval.oneDay,
+      );
+      expect(tester.takeException(), null);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets(
     'manual overwrite then preview and offline restore; no consent on cancelled restore',

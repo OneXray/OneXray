@@ -6,7 +6,6 @@ import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/service/advanced/xray/data_update/state.dart';
-import 'package:onexray/service/settings/backup/service.dart';
 
 class AutoUpdatePageState {
   final AutoUpdateState autoUpdateState;
@@ -16,7 +15,6 @@ class AutoUpdatePageState {
   final bool saving;
   final bool failed;
   final Object? failure;
-  final bool automaticBackup;
   AutoUpdatePageState({
     AutoUpdateState? autoUpdateState,
     this.userAgent = DownloadUserAgentMode.oneXray,
@@ -25,7 +23,6 @@ class AutoUpdatePageState {
     this.failed = false,
     this.failure,
     this.loaded = false,
-    this.automaticBackup = false,
   }) : autoUpdateState = autoUpdateState ?? AutoUpdateState();
 
   AutoUpdatePageState copyWith({
@@ -36,7 +33,6 @@ class AutoUpdatePageState {
     bool? failed,
     Object? failure,
   }) => AutoUpdatePageState(
-    automaticBackup: automaticBackup,
     autoUpdateState: autoUpdateState,
     userAgent: userAgent ?? this.userAgent,
     loading: loading ?? this.loading,
@@ -58,12 +54,8 @@ class AutoUpdateController extends PageCubit<AutoUpdatePageState> {
       final value = AutoUpdateState();
       await value.readFromPreferences();
       final mode = await PreferencesKey().readDownloadUserAgentMode();
-      final backup =
-          BackupService.supported &&
-          await PreferencesKey().readAutomaticBackup();
       emit(
         AutoUpdatePageState(
-          automaticBackup: backup,
           autoUpdateState: value,
           userAgent: mode,
           loading: false,

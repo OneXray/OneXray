@@ -15,7 +15,7 @@ import 'package:onexray/service/settings/backup/assets.dart';
 import 'package:onexray/service/settings/data_cleanup.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 
-enum BackupOperation { loading, selecting, writing, reading, restoring }
+enum BackupOperation { loading, saving, selecting, writing, reading, restoring }
 
 class BackupSettings {
   final BackupTarget? target;
@@ -91,11 +91,12 @@ class BackupPreferences {
   Future<bool> automatic() => PreferencesKey().readAutomaticBackup();
   Future<void> saveAutomatic(bool value) =>
       PreferencesKey().saveAutomaticBackup(value);
-  Future<AutoUpdateInterval> interval() async {
-    final updates = AutoUpdateState();
-    await updates.readFromPreferences();
-    return updates.geoDataInterval;
-  }
+  Future<AutoUpdateInterval> interval() async => AutoUpdateInterval.fromInt(
+    await PreferencesKey().readBackupInterval() ??
+        AutoUpdateInterval.threeDays.value,
+  );
+  Future<void> saveInterval(AutoUpdateInterval value) =>
+      PreferencesKey().saveBackupInterval(value.value);
 }
 
 class BackupPreview {
@@ -215,6 +216,12 @@ class BackupService extends Cubit<BackupState> {
     }
     if (enabled) unawaited(checkAutomatic());
   }
+
+  Future<void> setInterval(AutoUpdateInterval value) =>
+      _run(BackupOperation.saving, () async {
+        await _preferences.saveInterval(value);
+        emit(state.copyWith(interval: value));
+      }, clearError: false);
 
   Future<bool> select({required bool create}) =>
       _run(BackupOperation.selecting, () async {

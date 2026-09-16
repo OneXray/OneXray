@@ -218,16 +218,36 @@ class BackupPage extends StatelessWidget {
                               SettingRow(
                                 title: l.backupInterval,
                                 subtitle: l.backupIntervalHint,
-                                value: switch (backup.interval) {
-                                  AutoUpdateInterval.oneDay =>
-                                    l.autoUpdatePageIntervalOneDay,
-                                  AutoUpdateInterval.threeDays =>
-                                    l.autoUpdatePageIntervalThreeDays,
-                                  AutoUpdateInterval.oneWeek =>
-                                    l.autoUpdatePageIntervalOneWeek,
-                                },
-                                showChevron: true,
-                                onTap: () => controller.openInterval(context),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (state.action ==
+                                        BackupPageAction.savingInterval)
+                                      const Padding(
+                                        padding: EdgeInsetsDirectional.only(
+                                          end: 8,
+                                        ),
+                                        child: ButtonProgressIndicator(),
+                                      ),
+                                    SettingSelect<AutoUpdateInterval>(
+                                      value: backup.interval,
+                                      entries: {
+                                        AutoUpdateInterval.oneDay:
+                                            l.prototypeEveryDay,
+                                        AutoUpdateInterval.threeDays:
+                                            l.prototypeEveryThreeDays,
+                                        AutoUpdateInterval.oneWeek:
+                                            l.prototypeEveryWeek,
+                                      },
+                                      onChanged: busy
+                                          ? null
+                                          : (value) => controller.setInterval(
+                                              context,
+                                              value,
+                                            ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               if (backup.automatic &&
                                   !backup.settings.confirmed)

@@ -4,9 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
-import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
+import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:onexray/service/settings/backup/service.dart';
 import 'package:onexray/service/shared/failure.dart';
 
@@ -14,6 +14,7 @@ enum BackupPageAction {
   selecting,
   creating,
   allowing,
+  savingInterval,
   writing,
   restoring,
   unbinding,
@@ -162,9 +163,17 @@ class BackupController extends PageCubit<BackupPageState> {
     }
   }
 
-  Future<void> openInterval(BuildContext context) async {
-    await context.pushScoped(AppSecondaryDestination.autoUpdate);
-    if (isPageActive) await load();
+  Future<void> setInterval(
+    BuildContext context,
+    AutoUpdateInterval? value,
+  ) async {
+    if (value == null || value == state.backup.interval) return;
+    await _perform(context, BackupPageAction.savingInterval, () async {
+      await service.setInterval(value);
+      if (isPageActive && context.mounted) {
+        ContextAlert.settingsSaved(context);
+      }
+    });
   }
 
   Future<void> unbind(BuildContext context) => _perform(

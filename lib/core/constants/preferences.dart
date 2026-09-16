@@ -146,6 +146,7 @@ class PreferencesKey {
 
   static const _backup = '${_namespace}backup';
   static const _automaticBackup = '${_namespace}automaticBackup';
+  static const _backupInterval = '${_namespace}backupInterval';
 
   Future<Map<String, dynamic>?> readBackup() async {
     final value = await _prefs.getString(_backup);
@@ -160,6 +161,11 @@ class PreferencesKey {
 
   Future<void> saveAutomaticBackup(bool value) =>
       _prefs.setBool(_automaticBackup, value);
+
+  Future<int?> readBackupInterval() => _prefs.getInt(_backupInterval);
+
+  Future<void> saveBackupInterval(int hours) =>
+      _prefs.setInt(_backupInterval, hours);
 
   static const _themeCode = "${_namespace}themeCode";
 
@@ -192,6 +198,7 @@ class PreferencesKey {
       _prefs.remove(_autoUpdate),
       _prefs.remove(_backup),
       _prefs.remove(_automaticBackup),
+      _prefs.remove(_backupInterval),
       _prefs.remove('app2.xraySettingId'),
       _prefs.remove(_desktopStartHidden),
       _prefs.remove(_connectOnAppLaunch),

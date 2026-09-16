@@ -13,7 +13,6 @@ import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:onexray/service/advanced/xray/data_update/state.dart';
-import 'package:onexray/service/settings/backup/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AutoUpdatePage extends StatelessWidget {
@@ -115,9 +114,7 @@ class AutoUpdatePage extends StatelessWidget {
                             icon: LucideIcons.globe2,
                             padding: EdgeInsets.zero,
                             dividerIndent: 0,
-                            description: BackupService.supported
-                                ? '${l.prototypeGeodataUpdatesTogether}\n${l.backupSharedIntervalNotice}'
-                                : l.prototypeGeodataUpdatesTogether,
+                            description: l.prototypeGeodataUpdatesTogether,
                             descriptionBelow: true,
                             children: [
                               _automaticUpdates(
@@ -131,9 +128,7 @@ class AutoUpdatePage extends StatelessWidget {
                               _interval(
                                 l,
                                 value.geoDataInterval,
-                                (value.geoDataEnable ||
-                                        state.automaticBackup) &&
-                                    !state.saving,
+                                value.geoDataEnable && !state.saving,
                                 controller.updateGeoDataInterval,
                                 mobile: mobile,
                               ),

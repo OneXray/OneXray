@@ -228,9 +228,36 @@ void main() {
     now = now.add(const Duration(days: 2));
     await service.checkAutomatic();
     expect(storage.writes, 1);
-    preferences.period = AutoUpdateInterval.oneDay;
+    await service.setInterval(AutoUpdateInterval.oneDay);
+    expect(service.state.interval, AutoUpdateInterval.oneDay);
+    expect(storage.writes, 1);
     await service.checkAutomatic();
     expect(storage.writes, 2);
+  });
+
+  test('saving the interval stays local, persists after reload and survives unbinding', () async {
+    await service.setInterval(AutoUpdateInterval.oneWeek);
+    await service.load();
+    expect(service.state.interval, AutoUpdateInterval.oneWeek);
+    expect(preferences.period, AutoUpdateInterval.oneWeek);
+    await service.select(create: false);
+    await service.unbind();
+    await service.load();
+    expect(service.state.interval, AutoUpdateInterval.oneWeek);
+    expect((storage.reads, storage.writes), (0, 0));
+  });
+
+  test('a failed interval save preserves the previous choice', () async {
+    preferences.beforeSaveInterval = () async =>
+        throw StateError('Save failed');
+    await expectLater(
+      service.setInterval(AutoUpdateInterval.oneWeek),
+      throwsStateError,
+    );
+    expect(service.state.operation, null);
+    expect(service.state.interval, AutoUpdateInterval.threeDays);
+    expect(preferences.period, AutoUpdateInterval.threeDays);
+    expect((storage.reads, storage.writes), (0, 0));
   });
 
   test('disabled automatic backups do not prevent manual writes or advance a separate interval', () async {
@@ -355,6 +382,7 @@ class MemoryBackupPreferences extends BackupPreferences {
   bool enabled = true;
   AutoUpdateInterval period = AutoUpdateInterval.threeDays;
   Future<void> Function()? beforeInterval;
+  Future<void> Function()? beforeSaveInterval;
   @override
   Future<BackupSettings> read() async => settings;
   @override
@@ -373,6 +401,12 @@ class MemoryBackupPreferences extends BackupPreferences {
   Future<AutoUpdateInterval> interval() async {
     await beforeInterval?.call();
     return period;
+  }
+
+  @override
+  Future<void> saveInterval(AutoUpdateInterval value) async {
+    await beforeSaveInterval?.call();
+    period = value;
   }
 }
 
