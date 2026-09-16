@@ -5,12 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
-import 'package:onexray/pages/connect/page.dart';
-import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/main/menu_actions.dart';
-import 'package:onexray/pages/settings/page.dart';
-import 'package:onexray/pages/servers/page.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -53,10 +49,7 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
   Future<void> _initializeServices() {
     ShareService().onIncomingShare = (text) async {
       if (mounted) {
-        await context.pushScoped(
-          AppSecondaryDestination.serversImport,
-          extra: text,
-        );
+        await context.pushScoped(AppPageDestination.serversImport, extra: text);
       }
     };
     return (widget.initializeServices ?? ServiceManager.serviceInit)(context);
@@ -327,12 +320,7 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
   }
 
   void _showDesktopUpdate(BuildContext context, AppUpdateInfo updateInfo) {
-    context.goPrimaryRoot(AppPrimaryDestination.settings);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted) {
-        context.pushAppUpdateDialog(updateInfo);
-      }
-    });
+    context.pushAppUpdateDialog(updateInfo);
   }
 
   Widget _navigationIcon(
@@ -429,21 +417,5 @@ class _UpdateBadge extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.primary,
       child: child,
     );
-  }
-}
-
-class PrimaryRootContent extends StatelessWidget {
-  const PrimaryRootContent({super.key, required this.primary});
-
-  final AppPrimaryDestination primary;
-
-  @override
-  Widget build(BuildContext context) {
-    return switch (primary) {
-      AppPrimaryDestination.connect => const ConnectPage(),
-      AppPrimaryDestination.servers => const ServersPage(),
-      AppPrimaryDestination.advanced => const AdvancedRootPage(),
-      AppPrimaryDestination.settings => const SettingsPage(),
-    };
   }
 }

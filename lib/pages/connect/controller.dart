@@ -175,7 +175,7 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
   }
 
   void _syncTrafficVisibility() =>
-      coordinator.setTrafficVisible(isPageActive && _pageVisible);
+      coordinator.setTrafficVisible(this, isPageActive && _pageVisible);
 
   Future<void> initialize() async {
     failed = false;
@@ -479,11 +479,11 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
   }
 
   Future<void> addServers(BuildContext context) =>
-      context.pushScoped(AppSecondaryDestination.serversImport);
+      context.pushScoped(AppPageDestination.serversImport);
   Future<void> editRaw(BuildContext context, [int? id]) =>
-      context.pushScoped(AppSecondaryDestination.rawEditor, extra: id);
-  void chooseServer(BuildContext context) =>
-      context.goPrimaryRoot(AppPrimaryDestination.servers);
+      context.pushScoped(AppPageDestination.rawEditor, extra: id);
+  Future<void> chooseServer(BuildContext context) =>
+      context.pushScoped(AppPageDestination.servers);
 
   Future<void> showRawActions(BuildContext context, CoreConfigData row) async {
     if (deletingRawIds.contains(row.id)) return;
@@ -561,7 +561,7 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
     );
     if (selected != null && context.mounted) {
       if (selected.edit) {
-        var destination = AppSecondaryDestination.smartRouting;
+        var destination = AppPageDestination.smartRouting;
         if (selected.mode == TrafficMode.custom) {
           final advanced = selected.id == null
               ? await showCustomRoutingModeDialog(context)
@@ -570,8 +570,8 @@ class ConnectController extends PageCubit<ConnectPageState> with ServerLabels {
                     .advanced;
           if (advanced == null || !context.mounted) return;
           destination = advanced
-              ? AppSecondaryDestination.advancedRouting
-              : AppSecondaryDestination.customRouting;
+              ? AppPageDestination.advancedRouting
+              : AppPageDestination.customRouting;
         }
         if (!context.mounted) return;
         await context.pushScoped(destination, extra: selected.id);

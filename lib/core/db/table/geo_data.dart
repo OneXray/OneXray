@@ -14,4 +14,6 @@ class GeoData extends Table {
   IntColumn get categoryCount => integer()();
 
   IntColumn get ruleCount => integer()();
+
+  BoolColumn get installed => boolean().withDefault(const Constant(true))();
 }

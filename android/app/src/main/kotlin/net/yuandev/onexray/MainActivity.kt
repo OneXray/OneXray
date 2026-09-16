@@ -14,11 +14,14 @@ import io.flutter.embedding.engine.FlutterEngine
 import net.yuandev.onexray.pigeon.AppFlutterApi
 import net.yuandev.onexray.pigeon.AppHostApi
 import net.yuandev.onexray.pigeon.BridgeHostApi
+import net.yuandev.onexray.pigeon.BackupHostApi
+import net.yuandev.onexray.pigeon.BackupApi
 import net.yuandev.onexray.vpn.OneVpnService
 
 class MainActivity : FlutterFragmentActivity() {
 
     private val hostApi = AppHostApi(this)
+    private val backupApi = BackupApi(this)
     private var vpnStatusReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +35,7 @@ class MainActivity : FlutterFragmentActivity() {
 
         val flutterApi = AppFlutterApi(flutterEngine.dartExecutor)
         BridgeHostApi.setUp(flutterEngine.dartExecutor, hostApi)
+        BackupHostApi.setUp(flutterEngine.dartExecutor, backupApi)
 
         hostApi.onInit(flutterApi)
     }
@@ -66,6 +70,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        backupApi.dispose()
         hostApi.onDestroy()
         // 防御式注销
         vpnStatusReceiver?.let {

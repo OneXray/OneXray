@@ -120,10 +120,10 @@ class SettingsController extends PageCubit<SettingsPageState> {
 
   Future<void> openSetting(
     BuildContext context,
-    AppSecondaryDestination destination,
+    AppPageDestination destination,
   ) async {
     await context.pushScoped(destination);
-    if (isPageActive && destination == AppSecondaryDestination.appIcon) {
+    if (isPageActive && destination == AppPageDestination.appIcon) {
       await _readPreferences();
     }
   }
@@ -203,9 +203,6 @@ class SettingsController extends PageCubit<SettingsPageState> {
       if (await AppDataCleanupService().clearFromSettings()) {
         AppStartupService().suppressConnectOnAppLaunch();
         emit(state.copyWith(connectOnLaunch: false));
-        if (context.mounted) {
-          context.goPrimaryRoot(AppPrimaryDestination.connect);
-        }
       } else if (context.mounted) {
         _showUnavailable(context);
       }

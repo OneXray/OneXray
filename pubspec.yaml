@@ -55,6 +55,8 @@ dependencies:
   permission_handler: ^13.0.2
   # qrcode
   file_picker: ^12.2.0
+  icloud_storage_plus: 4.0.0
+  saf_stream: 4.0.1
   mobile_scanner: ^7.4.1
   image: ^4.9.2
   zxing2: ^0.2.4

@@ -17,6 +17,7 @@ import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/settings/backup/service.dart';
 import 'package:path_provider/path_provider.dart';
 
 final class AppDataCleanupService {
@@ -26,6 +27,7 @@ final class AppDataCleanupService {
     SubscriptionService(),
     PingService(),
     null,
+    BackupService(),
   );
 
   factory AppDataCleanupService() => _singleton;
@@ -36,6 +38,7 @@ final class AppDataCleanupService {
     this._subscriptions,
     this._ping,
     this._clearOverride,
+    this._backup,
   );
 
   @visibleForTesting
@@ -45,14 +48,22 @@ final class AppDataCleanupService {
     required SubscriptionService subscriptions,
     required PingService ping,
     required Future<void> Function() clear,
-  }) =>
-      AppDataCleanupService._(coordinator, geodata, subscriptions, ping, clear);
+    BackupService? backup,
+  }) => AppDataCleanupService._(
+    coordinator,
+    geodata,
+    subscriptions,
+    ping,
+    clear,
+    backup,
+  );
 
   final ConnectionCoordinator _coordinator;
   final GeoDataService _geodata;
   final SubscriptionService _subscriptions;
   final PingService _ping;
   final Future<void> Function()? _clearOverride;
+  final BackupService? _backup;
   bool _clearing = false;
 
   Future<bool> clearFromSettings() async {
@@ -62,14 +73,7 @@ final class AppDataCleanupService {
     try {
       // Pause every producer before awaiting any one of them. In-flight imports
       // may finish their current write, but cannot start another source/probe.
-      await Future.wait([
-        DataUpdateService().pauseForDataClear(),
-        ServerImportService.pauseForDataClear(),
-        _subscriptions.pauseForDataClear(),
-        _ping.pauseForDataClear(),
-        _coordinator.pauseForDataClear(),
-        _geodata.pauseForDataClear(),
-      ]);
+      await _pauseProducers(pauseBackup: true);
       await _geodata.withFiles(() async {
         await _coordinator.stopForMaintenance();
         deleting = true;
@@ -84,14 +88,48 @@ final class AppDataCleanupService {
         cause: e,
       );
     } finally {
-      _geodata.resumeAfterDataClear();
-      _coordinator.resumeAfterDataClear();
-      _ping.resumeAfterDataClear();
-      _subscriptions.resumeAfterDataClear();
-      ServerImportService.resumeAfterDataClear();
-      DataUpdateService().resumeAfterDataClear();
+      _resumeProducers(resumeBackup: true);
       _clearing = false;
     }
+  }
+
+  /// Same admission/drain boundary as clear, without deleting preferences,
+  /// platform policy, default resources, runtime permissions or startup setup.
+  Future<void> runForRestore(Future<void> Function() commit) async {
+    if (_clearing) throw StateError('App data is being cleared or restored.');
+    _clearing = true;
+    try {
+      // The caller already owns the backup operation. Waiting for it here
+      // would wait for this very restore; clear claims _clearing first instead.
+      await _pauseProducers(pauseBackup: false);
+      await _geodata.withFiles(() async {
+        await _coordinator.stopForMaintenance();
+        await commit();
+      });
+    } finally {
+      _resumeProducers(resumeBackup: false);
+      _clearing = false;
+    }
+  }
+
+  Future<void> _pauseProducers({required bool pauseBackup}) => Future.wait([
+    if (pauseBackup && _backup != null) _backup.pauseForDataClear(),
+    DataUpdateService().pauseForDataClear(),
+    ServerImportService.pauseForDataClear(),
+    _subscriptions.pauseForDataClear(),
+    _ping.pauseForDataClear(),
+    _coordinator.pauseForDataClear(),
+    _geodata.pauseForDataClear(),
+  ]);
+
+  void _resumeProducers({required bool resumeBackup}) {
+    _geodata.resumeAfterDataClear();
+    _coordinator.resumeAfterDataClear();
+    _ping.resumeAfterDataClear();
+    _subscriptions.resumeAfterDataClear();
+    ServerImportService.resumeAfterDataClear();
+    DataUpdateService().resumeAfterDataClear();
+    if (resumeBackup) _backup?.resumeAfterDataClear();
   }
 
   Future<void> _clear() async {

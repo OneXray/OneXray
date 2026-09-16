@@ -127,6 +127,7 @@ class GeoDataService {
   });
 
   Future<bool> _checkInstalled() async {
+    _checkDefaultRows(await _db.geoDataDao.allSources);
     final rows = await _db.geoDataDao.publishedRows;
     final existing = await _flatNames(Directory(_root));
     if (!rows.any((row) => row.id < 0) || existing.isEmpty) return false;
@@ -157,6 +158,8 @@ class GeoDataService {
     final root = Directory(_root);
     final rootWasMissing = !await root.exists();
     await _ensureRoot();
+    _checkDefaultRows(await _db.geoDataDao.allSources);
+    await _recoverRestoredFiles(discard: rootWasMissing);
     final rows = await _db.geoDataDao.publishedRows;
     await _recoverImportDrafts(rows, discard: rootWasMissing);
     final existing = await _flatNames(root);
@@ -204,7 +207,7 @@ class GeoDataService {
       try {
         await _db.transaction(() async {
           if (resetPublication) {
-            await _db.geoDataDao.clear();
+            await _db.geoDataDao.clearPublished();
           } else {
             final current = await _db.geoDataDao.publishedRows;
             _checkDefaultRows(current);
@@ -229,8 +232,176 @@ class GeoDataService {
   Future<List<PublishedGeoData>> publishedFiles() =>
       withFiles(() async => _readAll(await _db.geoDataDao.publishedRows));
 
+  /// Only registered dependencies of the selected runtime are checked. This
+  /// does not download, validate Xray semantics or block unrelated configs.
+  Future<void> requireDependencies(Map<String, GeoDataType> references) =>
+      withFiles(() async {
+        for (final file in references.keys) {
+          final row = await _db.geoDataDao.searchRowByName(
+            file.substring(0, file.length - 4),
+          );
+          if (row != null &&
+              (!row.installed || !await File(p.join(_root, file)).exists())) {
+            throw FileSystemException(
+              'Routing data is not downloaded. Download it in Advanced > Xray > Routing data.',
+              file,
+            );
+          }
+        }
+      });
+
   Stream<List<PublishedGeoData>> watchPublished() =>
       _db.geoDataDao.publishedRowsStream.asyncMap((_) => publishedFiles());
+
+  Stream<List<GeoDataData>> watchPending() => _db.geoDataDao.allSourcesStream
+      .map((rows) => rows.where((row) => !row.installed).toList());
+
+  Future<GeoDataRestorePlan> previewRestore(List<GeoDataInput> sources) =>
+      withFiles(() async {
+        final installed = await publishedFiles();
+        final rows = await _db.geoDataDao.allRows;
+        final reusable = <String, GeoDataData>{};
+        final conflicts = <GeoDataData>[];
+        for (final source in sources) {
+          final old = rows
+              .where(
+                (row) => row.name.toLowerCase() == source.name.toLowerCase(),
+              )
+              .firstOrNull;
+          if (old == null) continue;
+          if (old.name == source.name &&
+              old.type == source.type.name &&
+              old.url == source.url) {
+            if (installed.any((file) => file.row.id == old.id)) {
+              reusable[source.name] = old;
+            }
+          } else {
+            conflicts.add(old);
+          }
+        }
+        return GeoDataRestorePlan(
+          sources: sources,
+          reusable: reusable,
+          conflicts: conflicts,
+        );
+      });
+
+  /// Offline restoration of declarations. The caller replaces connection
+  /// assets in the same DB transaction as writeMetadata. No download or index
+  /// generation is needed for sources that are intentionally pending.
+  Future<T> restoreSources<T>(
+    GeoDataRestorePlan preview,
+    Future<T> Function(Future<void> Function() writeMetadata) action,
+  ) => withFiles(() async {
+    final current = await previewRestore(preview.sources);
+    if (current.conflicts.any((row) => !preview.conflicts.contains(row))) {
+      throw const AppFailure(FailureCategory.conflict, 'changed');
+    }
+    final removals = (await _db.geoDataDao.allRows)
+        .where(
+          (row) => row.installed && current.reusable[row.name]?.id != row.id,
+        )
+        .toList();
+    Directory? journal;
+    var committed = false;
+    try {
+      if (removals.isNotEmpty) {
+        journal = await _newStage('restore-');
+        await File(p.join(journal.path, 'restore.json')).writeAsString(
+          jsonEncode([
+            for (final row in removals) {'id': row.id, 'name': row.name},
+          ]),
+          flush: true,
+        );
+        for (final row in removals) {
+          for (final suffix in ['dat', 'json']) {
+            final name = '${row.name}.$suffix';
+            await File(p.join(_root, name)).rename(p.join(journal.path, name));
+          }
+        }
+      }
+      final result = await _db.transaction(
+        () => action(() async {
+          await _db.geoDataDao.clearCustom();
+          for (final source in current.sources) {
+            final previous = current.reusable[source.name];
+            await _db.geoDataDao.insertRow(
+              GeoDataCompanion.insert(
+                name: source.name,
+                type: source.type.name,
+                url: source.url,
+                timestamp:
+                    previous?.timestamp ??
+                    DateTime.fromMillisecondsSinceEpoch(0),
+                categoryCount: previous?.categoryCount ?? 0,
+                ruleCount: previous?.ruleCount ?? 0,
+                installed: Value(previous != null),
+              ),
+            );
+          }
+        }),
+      );
+      committed = true;
+      return result;
+    } finally {
+      if (journal != null) {
+        if (!committed) {
+          await _recoverRestoreJournal(journal, discard: false);
+        } else {
+          try {
+            await _deleteStage(journal);
+          } catch (_) {
+            // New IDs prove the DB commit on the next cold start.
+          }
+        }
+      }
+    }
+  });
+
+  Future<void> _recoverRestoredFiles({required bool discard}) async {
+    final parent = Directory(p.dirname(_root));
+    await for (final entry in parent.list(followLinks: false)) {
+      if (entry is Directory &&
+          p.basename(entry.path).startsWith('.onexray-geodata-restore-')) {
+        await _recoverRestoreJournal(entry, discard: discard);
+      }
+    }
+  }
+
+  Future<void> _recoverRestoreJournal(
+    Directory journal, {
+    required bool discard,
+  }) async {
+    final manifest = File(p.join(journal.path, 'restore.json'));
+    if (!await manifest.exists()) {
+      if ((await _flatNames(journal)).isEmpty) await _deleteStage(journal);
+      return;
+    }
+    final entries = jsonDecode(await manifest.readAsString());
+    if (entries is! List) throw StateError('Invalid Geodata restore journal');
+    for (final entry in entries) {
+      if (entry is! Map || entry['id'] is! int || entry['name'] is! String) {
+        throw StateError('Invalid Geodata restore journal');
+      }
+      final id = entry['id'] as int;
+      final name = entry['name'] as String;
+      _checkName(name);
+      if (id <= 0) throw StateError('Invalid Geodata restore identity');
+      final old = await _db.geoDataDao.searchRow(id);
+      if (!discard && old != null && old.installed && old.name == name) {
+        for (final suffix in ['dat', 'json']) {
+          final previous = File(p.join(journal.path, '$name.$suffix'));
+          if (!await previous.exists()) continue;
+          final target = File(p.join(_root, '$name.$suffix'));
+          if (await target.exists()) {
+            throw StateError('Conflicting Geodata restore files');
+          }
+          await previous.rename(target.path);
+        }
+      }
+    }
+    await _deleteStage(journal);
+  }
 
   Future<void> add(GeoDataInput input) {
     final normalized = GeoDataInput(
@@ -336,6 +507,7 @@ class GeoDataService {
                 timestamp: DateTime.now(),
                 categoryCount: index.categoryCount!,
                 ruleCount: index.ruleCount!,
+                installed: true,
               ),
             )) {
               throw StateError('Routing data source is unavailable');
@@ -619,7 +791,8 @@ class GeoDataService {
       }
     }
     final defaults = rows.where((row) => row.id < 0).toList();
-    if (defaults.isNotEmpty && defaults.length != 2) {
+    if (defaults.isNotEmpty &&
+        (defaults.length != 2 || defaults.any((row) => !row.installed))) {
       throw StateError('Default routing data is incomplete');
     }
   }
@@ -661,7 +834,7 @@ class GeoDataService {
         '${source.name}.json'.toLowerCase(),
       });
     }
-    final rows = await _db.geoDataDao.publishedRows;
+    final rows = await _db.geoDataDao.allSources;
     if (rows.any((row) => names.contains(row.name.toLowerCase()))) {
       throw const FormatException('Geodata filename already exists');
     }

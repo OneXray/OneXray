@@ -1,0 +1,182 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'model.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+BackupDocument _$BackupDocumentFromJson(Map<String, dynamic> json) {
+  $checkKeys(
+    json,
+    allowedKeys: const [
+      'format',
+      'version',
+      'createdAt',
+      'coreConfigs',
+      'subscriptions',
+      'routingProfiles',
+      'smartRouting',
+      'geoData',
+    ],
+  );
+  return BackupDocument(
+    format: json['format'] as String? ?? 'onexray-backup',
+    version: (json['version'] as num?)?.toInt() ?? 1,
+    createdAt: (json['createdAt'] as num).toInt(),
+    coreConfigs: (json['coreConfigs'] as List<dynamic>)
+        .map((e) => BackupCoreConfig.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    subscriptions: (json['subscriptions'] as List<dynamic>)
+        .map((e) => BackupSubscription.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    routingProfiles: (json['routingProfiles'] as List<dynamic>)
+        .map((e) => BackupRoutingProfile.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    smartRouting: BackupSmartRouting.fromJson(
+      json['smartRouting'] as Map<String, dynamic>,
+    ),
+    geoData: (json['geoData'] as List<dynamic>)
+        .map((e) => BackupGeoData.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
+Map<String, dynamic> _$BackupDocumentToJson(
+  BackupDocument instance,
+) => <String, dynamic>{
+  'format': instance.format,
+  'version': instance.version,
+  'createdAt': instance.createdAt,
+  'coreConfigs': instance.coreConfigs.map((e) => e.toJson()).toList(),
+  'subscriptions': instance.subscriptions.map((e) => e.toJson()).toList(),
+  'routingProfiles': instance.routingProfiles.map((e) => e.toJson()).toList(),
+  'smartRouting': instance.smartRouting.toJson(),
+  'geoData': instance.geoData.map((e) => e.toJson()).toList(),
+};
+
+BackupCoreConfig _$BackupCoreConfigFromJson(Map<String, dynamic> json) {
+  $checkKeys(json, allowedKeys: const ['name', 'type', 'tags', 'data']);
+  return BackupCoreConfig(
+    json['name'] as String,
+    json['type'] as String,
+    json['tags'] as String,
+    json['data'] as String,
+  );
+}
+
+Map<String, dynamic> _$BackupCoreConfigToJson(BackupCoreConfig instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'type': instance.type,
+      'tags': instance.tags,
+      'data': instance.data,
+    };
+
+BackupSubscription _$BackupSubscriptionFromJson(Map<String, dynamic> json) {
+  $checkKeys(
+    json,
+    allowedKeys: const [
+      'name',
+      'url',
+      'ageSecretKey',
+      'agePublicKey',
+      'hwidEnabled',
+      'hwid',
+    ],
+  );
+  return BackupSubscription(
+    json['name'] as String,
+    json['url'] as String,
+    json['ageSecretKey'] as String?,
+    json['agePublicKey'] as String?,
+    json['hwidEnabled'] as bool,
+    json['hwid'] as String?,
+  );
+}
+
+Map<String, dynamic> _$BackupSubscriptionToJson(BackupSubscription instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'url': instance.url,
+      'ageSecretKey': instance.ageSecretKey,
+      'agePublicKey': instance.agePublicKey,
+      'hwidEnabled': instance.hwidEnabled,
+      'hwid': instance.hwid,
+    };
+
+BackupRoutingProfile _$BackupRoutingProfileFromJson(Map<String, dynamic> json) {
+  $checkKeys(json, allowedKeys: const ['name', 'advanced', 'data']);
+  return BackupRoutingProfile(
+    json['name'] as String,
+    json['advanced'] as bool,
+    json['data'] as String,
+  );
+}
+
+Map<String, dynamic> _$BackupRoutingProfileToJson(
+  BackupRoutingProfile instance,
+) => <String, dynamic>{
+  'name': instance.name,
+  'advanced': instance.advanced,
+  'data': instance.data,
+};
+
+BackupGeoData _$BackupGeoDataFromJson(Map<String, dynamic> json) {
+  $checkKeys(json, allowedKeys: const ['name', 'type', 'url']);
+  return BackupGeoData(
+    json['name'] as String,
+    json['type'] as String,
+    json['url'] as String,
+  );
+}
+
+Map<String, dynamic> _$BackupGeoDataToJson(BackupGeoData instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'type': instance.type,
+      'url': instance.url,
+    };
+
+BackupSmartRouting _$BackupSmartRoutingFromJson(Map<String, dynamic> json) {
+  $checkKeys(
+    json,
+    allowedKeys: const [
+      'entryCount',
+      'directRegions',
+      'directPrivate',
+      'directApple',
+      'directWindows',
+      'directDns',
+      'directDnsAddress',
+      'fakeDns',
+      'blockAds',
+    ],
+  );
+  return BackupSmartRouting(
+    entryCount: (json['entryCount'] as num).toInt(),
+    directRegions: (json['directRegions'] as List<dynamic>)
+        .map((e) => e as String)
+        .toList(),
+    directPrivate: json['directPrivate'] as bool,
+    directApple: json['directApple'] as bool,
+    directWindows: json['directWindows'] as bool,
+    directDns: json['directDns'] as bool,
+    directDnsAddress: json['directDnsAddress'] as String,
+    fakeDns: json['fakeDns'] as bool,
+    blockAds: json['blockAds'] as bool,
+  );
+}
+
+Map<String, dynamic> _$BackupSmartRoutingToJson(BackupSmartRouting instance) =>
+    <String, dynamic>{
+      'entryCount': instance.entryCount,
+      'directRegions': instance.directRegions,
+      'directPrivate': instance.directPrivate,
+      'directApple': instance.directApple,
+      'directWindows': instance.directWindows,
+      'directDns': instance.directDns,
+      'directDnsAddress': instance.directDnsAddress,
+      'fakeDns': instance.fakeDns,
+      'blockAds': instance.blockAds,
+    };

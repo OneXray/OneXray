@@ -20,6 +20,8 @@ import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
 import 'package:path/path.dart' as p;
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -120,6 +122,181 @@ void main() {
     type: GeoDataType.domain,
     url: 'https://example.com/$name',
   );
+
+  test(
+    'offline restore registers pending sources and startup never downloads',
+    () async {
+      await service.ensureInstalled();
+      final preview = await service.previewRestore([input()]);
+      expect(preview.pendingCount, 1);
+      await service.restoreSources(preview, (write) => write());
+      final pending = (await db.geoDataDao.allRows).single;
+      expect(pending.installed, false);
+      expect(await service.publishedFiles(), hasLength(2));
+      await service.ensureInstalled();
+      expect(downloads, 0);
+      failDownload = 'custom';
+      await expectLater(
+        service.updateCustom(pending),
+        throwsA(isA<SocketException>()),
+      );
+      expect((await db.geoDataDao.allRows).single.installed, false);
+      failDownload = null;
+      await service.updateCustom(pending);
+      expect((await db.geoDataDao.allRows).single.installed, true);
+      expect(await service.publishedFiles(), hasLength(3));
+    },
+  );
+
+  test('a missing dat root preserves pending declarations while rebuilding defaults', () async {
+    await service.ensureInstalled();
+    final preview = await service.previewRestore([input()]);
+    await service.restoreSources(preview, (write) => write());
+    await datRoot.delete(recursive: true);
+    await service.ensureInstalled();
+    expect((await db.geoDataDao.allRows).single.installed, false);
+    expect(await service.publishedFiles(), hasLength(2));
+    expect(downloads, 0);
+  });
+
+  test('pending sources share metadata, not categories, and only block their dependents', () async {
+    await service.ensureInstalled();
+    final preview = await service.previewRestore([input()]);
+    await service.restoreSources(preview, (write) => write());
+    final json = {
+      'outbounds': [{}],
+      'routing': {
+        'rules': [
+          {
+            'domain': ['ext:custom.dat:CN'],
+            'balancerTag': 'proxy',
+          },
+        ],
+      },
+    };
+    final refs = geoDataReferences(json);
+    await expectLater(
+      service.requireDependencies(refs),
+      throwsA(
+        isA<FileSystemException>().having(
+          (e) => e.path,
+          'filename',
+          'custom.dat',
+        ),
+      ),
+    );
+    await service.requireDependencies(
+      geoDataReferences({'remarks': 'ext:custom.dat:CN', 'outbounds': []}),
+    );
+    final transfer = ConfigurationTransferService(
+      lookup: db.geoDataDao.searchRowByName,
+    );
+    final shared = jsonDecode(
+      await transfer.exportJson(
+        kind: ConfigurationKind.custom,
+        name: 'Pending',
+        text: jsonEncode(json),
+      ),
+    ) as Map<String, dynamic>;
+    expect(shared['geodata']['assets'], [
+      {'file': 'custom.dat', 'url': 'https://example.com/custom.dat'},
+    ]);
+    final index = await RoutingGeodataIndex.load(
+      database: db,
+      directory: datRoot.path,
+    );
+    expect(index.domainFiles, isNot(contains('custom.dat')));
+    expect(downloads, 0);
+    await service.updateCustom((await db.geoDataDao.allRows).single);
+    await service.requireDependencies(refs);
+    expect(
+      (await RoutingGeodataIndex.load(
+        database: db,
+        directory: datRoot.path,
+      )).domainFiles,
+      contains('custom.dat'),
+    );
+  });
+
+  test(
+    'restore reuses identical sources, rejects newly introduced conflicts',
+    () async {
+      await service.ensureInstalled();
+      final beforeAdd = await service.previewRestore([input()]);
+      final different = GeoDataInput(
+        fileName: 'custom.dat',
+        type: GeoDataType.ip,
+        url: 'https://example.com/other.dat',
+      );
+      await service.add(different);
+      await expectLater(
+        service.restoreSources(beforeAdd, (write) => write()),
+        throwsA(anything),
+      );
+      final preview = await service.previewRestore([different]);
+      final old = (await db.geoDataDao.allRows).single;
+      final oldBytes = await rootBytes();
+      expect(preview.pendingCount, 0);
+      await service.restoreSources(preview, (write) => write());
+      final restored = (await db.geoDataDao.allRows).single;
+      expect(restored.id, greaterThan(old.id));
+      expect(restored.installed, true);
+      expect(await rootBytes(), oldBytes);
+    },
+  );
+
+  test(
+    'restore file removals roll back with the database transaction',
+    () async {
+      await service.ensureInstalled();
+      await service.add(input());
+      final original = await db.geoDataDao.allRows;
+      final bytes = await rootBytes();
+      final preview = await service.previewRestore([]);
+      await expectLater(
+        service.restoreSources(preview, (write) async {
+          await write();
+          throw StateError('fixture DB failure');
+        }),
+        throwsStateError,
+      );
+      expect(await db.geoDataDao.allRows, original);
+      expect(await rootBytes(), bytes);
+    },
+  );
+
+  for (final committed in [false, true]) {
+    test(
+      'cold recovery finishes interrupted restore, committed=$committed',
+      () async {
+        await service.ensureInstalled();
+        await service.add(input());
+        final old = (await db.geoDataDao.allRows).single;
+        final stage = await workspace.createTemp('.onexray-geodata-restore-');
+        await File(p.join(stage.path, 'restore.json')).writeAsString(
+          jsonEncode([
+            {'id': old.id, 'name': old.name},
+          ]),
+        );
+        for (final suffix in ['dat', 'json']) {
+          final name = '${old.name}.$suffix';
+          await File(p.join(datRoot.path, name))
+              .rename(p.join(stage.path, name));
+        }
+        if (committed) await db.geoDataDao.clearCustom();
+        final cold = GeoDataService.forTesting(
+          database: db,
+          directory: datRoot.path,
+          download: (_, _) async => fail('Recovery must not download'),
+          count: count,
+          copyBundled: (_) async => fail('Defaults must be retained'),
+        );
+        await cold.ensureInstalled();
+        expect(await cold.publishedFiles(), hasLength(committed ? 2 : 3));
+        expect(await stage.exists(), false);
+      },
+    );
+  }
 
   test('manual update-all keeps the default pair and updates independent custom data', () async {
     await service.ensureInstalled();

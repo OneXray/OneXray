@@ -70,6 +70,24 @@ abstract class BridgeHostApi {
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
+class BackupLocation {
+  BackupLocation({required this.identifier, required this.label});
+  final String identifier;
+  final String label;
+}
+
+@HostApi()
+abstract class BackupHostApi {
+  @asyncCallback
+  BackupLocation? selectBackupFile(bool create);
+
+  @asyncCallback
+  void requireBackupAccess(String identifier);
+
+  @asyncCallback
+  void releaseBackupFile(String identifier);
+}
+
 class AppleVpnCapabilities {
   AppleVpnCapabilities({
     required this.serviceExclusions,

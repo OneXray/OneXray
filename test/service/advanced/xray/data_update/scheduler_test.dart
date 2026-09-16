@@ -27,6 +27,7 @@ final class _CountingPreferences extends InMemorySharedPreferencesAsync {
 }
 
 final class _RecordingUpdates implements DataUpdateService {
+  Future<void> Function()? onCheck;
   final checks =
       <({bool subscriptions, bool geodata, bool Function() isVpnConnected})>[];
 
@@ -41,6 +42,7 @@ final class _RecordingUpdates implements DataUpdateService {
       geodata: updateGeoData,
       isVpnConnected: isVpnConnected,
     ));
+    await onCheck?.call();
   }
 
   @override
@@ -154,7 +156,13 @@ void main() {
     tester,
   ) async {
     final updates = _RecordingUpdates();
-    final service = BackgroundTaskService.forTesting(updates);
+    var backups = 0;
+    final service = BackgroundTaskService.forTesting(
+      updates,
+      checkBackup: () async {
+        backups++;
+      },
+    );
     try {
       service.init();
       await tester.pump();
@@ -163,6 +171,7 @@ void main() {
       await tester.pump(const Duration(hours: 1));
 
       expect(updates.checks, hasLength(3));
+      expect(backups, 3);
       for (final check in updates.checks) {
         expect(check.subscriptions, isTrue);
         expect(check.geodata, isFalse);
@@ -177,7 +186,13 @@ void main() {
     tester,
   ) async {
     final updates = _RecordingUpdates();
-    final service = BackgroundTaskService.forTesting(updates);
+    var backups = 0;
+    final service = BackgroundTaskService.forTesting(
+      updates,
+      checkBackup: () async {
+        backups++;
+      },
+    );
     try {
       service.init();
       await tester.pump();
@@ -185,8 +200,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
       expect(updates.checks, hasLength(1));
+      expect(backups, 1);
       await tester.pump(const Duration(seconds: 1));
       expect(updates.checks, hasLength(2));
+      expect(backups, 2);
       final connectedCheck = updates.checks.last;
       expect(connectedCheck.geodata, isTrue);
       expect(connectedCheck.isVpnConnected(), isTrue);
@@ -198,6 +215,7 @@ void main() {
       service.didChangeAppLifecycleState(AppLifecycleState.resumed);
       await tester.pump();
       expect(updates.checks.last.geodata, isFalse);
+      expect(backups, 3);
     } finally {
       service.dispose();
     }
@@ -253,4 +271,30 @@ void main() {
       service.dispose();
     }
   });
+
+  test(
+    'backup runs during a pending update and either failure stays isolated',
+    () async {
+      final release = Completer<void>();
+      final updates = _RecordingUpdates()..onCheck = () => release.future;
+      var backups = 0;
+      final service = BackgroundTaskService.forTesting(
+        updates,
+        checkBackup: () async {
+          backups++;
+          if (backups == 1) throw StateError('Fixture backup failure');
+        },
+      );
+      final pending = service.checkDataUpdate();
+      await Future<void>.delayed(Duration.zero);
+      expect(backups, 1);
+      expect(updates.checks, hasLength(1));
+      release.complete();
+      await pending;
+      updates.onCheck = () async => throw StateError('Fixture update failure');
+      await service.checkDataUpdate();
+      expect(backups, 2);
+      expect(updates.checks, hasLength(2));
+    },
+  );
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/advanced/xray/log/controller.dart';
@@ -13,6 +14,7 @@ import 'package:onexray/pages/advanced/xray/data_update/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/ping/state.dart';
+import 'package:onexray/service/advanced/xray/data_update/state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 // ignore: depend_on_referenced_packages
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -81,6 +83,25 @@ void main() {
       }
     });
   }
+
+  testWidgets('backup does not enable the disabled Geodata interval', (
+    tester,
+  ) async {
+    final updates = AutoUpdateState()..geoDataEnable = false;
+    await updates.saveToPreferences();
+    await PreferencesKey().saveAutomaticBackup(true);
+    await tester.pumpWidget(app(const AutoUpdatePage()));
+    await tester.pumpAndSettle();
+    final intervals = tester
+        .widgetList<SettingSelect<AutoUpdateInterval>>(
+          find.byType(SettingSelect<AutoUpdateInterval>),
+        )
+        .toList();
+    expect(intervals, hasLength(2));
+    expect(intervals.first.onChanged, isNotNull);
+    expect(intervals.last.onChanged, null);
+    expect(tester.takeException(), null);
+  });
 
   testWidgets('ping settings restore a custom URL', (tester) async {
     final pingState = PingState()

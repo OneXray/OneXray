@@ -10,6 +10,35 @@ import 'package:onexray/pages/main/page_visibility.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 
 void main() {
+  test(
+    'closing a hidden connection page preserves the visible page demand',
+    () async {
+      final coordinator = _Coordinator();
+      final root = ConnectController(
+        database: coordinator.db,
+        coordinator: coordinator,
+      );
+      final secondary = ConnectController(
+        database: coordinator.db,
+        coordinator: coordinator,
+      );
+      addTearDown(() async {
+        await root.close();
+        await secondary.close();
+        coordinator.dispose();
+        await coordinator.db.close();
+      });
+
+      root.setPageVisible(true);
+      root.setPageVisible(false);
+      secondary.setPageVisible(true);
+      await root.close();
+      expect(coordinator.visible, isTrue);
+      await secondary.close();
+      expect(coordinator.visible, isFalse);
+    },
+  );
+
   for (final width in [390.0, 1200.0]) {
     testWidgets(
       'traffic demand follows retained tabs, pages and disposal ($width)',
@@ -18,6 +47,10 @@ void main() {
         addTearDown(() => tester.binding.setSurfaceSize(null));
         final coordinator = _Coordinator();
         final controller = ConnectController(
+          database: coordinator.db,
+          coordinator: coordinator,
+        );
+        final secondary = ConnectController(
           database: coordinator.db,
           coordinator: coordinator,
         );
@@ -54,6 +87,17 @@ void main() {
                     GoRoute(
                       path: '/servers',
                       builder: (_, _) => const Scaffold(body: Text('servers')),
+                      routes: [
+                        GoRoute(
+                          path: 'connect',
+                          builder: (_, _) => PageVisibility(
+                            onChanged: secondary.setPageVisible,
+                            child: const Scaffold(
+                              body: Text('secondary-connection'),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -86,6 +130,24 @@ void main() {
         await tester.pumpAndSettle();
         expect(coordinator.visible, isTrue);
 
+        shell.goBranch(1);
+        await tester.pumpAndSettle();
+        router.push('/servers/connect');
+        await tester.pumpAndSettle();
+        expect(coordinator.visible, isTrue);
+        shell.goBranch(0);
+        await tester.pumpAndSettle();
+        expect(coordinator.visible, isTrue);
+        shell.goBranch(1);
+        await tester.pumpAndSettle();
+        expect(coordinator.visible, isTrue);
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(coordinator.visible, isFalse);
+        shell.goBranch(0);
+        await tester.pumpAndSettle();
+        expect(coordinator.visible, isTrue);
+
         controller.setPageVisible(false);
         expect(coordinator.visible, isFalse);
         controller.setPageVisible(true);
@@ -94,6 +156,7 @@ void main() {
         expect(coordinator.visible, isFalse);
         expect(tester.takeException(), isNull);
         await controller.close();
+        await secondary.close();
         coordinator.dispose();
         router.dispose();
         await coordinator.db.close();
@@ -105,8 +168,15 @@ void main() {
 class _Coordinator extends ConnectionCoordinator {
   _Coordinator()
     : super(database: AppDatabase.forTesting(NativeDatabase.memory()));
-  bool visible = false;
+  final Set<Object> _visiblePages = {};
+  bool get visible => _visiblePages.isNotEmpty;
 
   @override
-  void setTrafficVisible(bool visible) => this.visible = visible;
+  void setTrafficVisible(Object page, bool visible) {
+    if (visible) {
+      _visiblePages.add(page);
+    } else {
+      _visiblePages.remove(page);
+    }
+  }
 }

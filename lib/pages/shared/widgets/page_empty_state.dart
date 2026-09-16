@@ -1,9 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/l10n/localizations/app_localizations.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/service/settings/backup/service.dart';
 
 class PageEmptyState extends StatelessWidget {
   const PageEmptyState({
@@ -91,6 +94,18 @@ class PageEmptyState extends StatelessWidget {
                     icon: const Icon(LucideIcons.plus, size: 18),
                     label: Text(primaryLabel),
                   ),
+                  if (BackupService.supported) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () =>
+                          context.pushScoped(AppPageDestination.backup),
+                      icon: const Icon(LucideIcons.rotateCcw, size: 18),
+                      label: Text(
+                        AppLocalizations.of(context)!.backupRestoreFrom,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   TextButton(
                     onPressed: onSecondary,

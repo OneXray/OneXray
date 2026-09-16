@@ -46,9 +46,9 @@ void main() {
       );
       await controller.initialize();
       await tester.pump();
-      final firstUpdate = controller.update(context, first);
-      await controller.update(context, first);
-      final secondUpdate = controller.update(context, second);
+      final firstUpdate = controller.update(context, first.row);
+      await controller.update(context, first.row);
+      final secondUpdate = controller.update(context, second.row);
       await controller.updateAll(context);
       expect(service.calls, [42, 43]);
       expect(controller.state.fileBusy(42), isTrue);
@@ -130,6 +130,50 @@ void main() {
     Locale('fa'),
   ]) {
     for (final width in const [390.0, 1160.0]) {
+      testWidgets(
+        'pending source has actions but no publication metadata ($locale, $width)',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = Size(width, 844);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          var downloads = 0;
+          var deletions = 0;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light,
+              locale: locale,
+              localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: PendingGeoDataRow(
+                  row: _file(
+                    42,
+                    'long-custom-dataset-name',
+                    0,
+                  ).row.copyWith(installed: false),
+                  busy: false,
+                  deleting: false,
+                  onDownload: () => downloads++,
+                  onDelete: () => deletions++,
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final l = AppLocalizations.of(
+            tester.element(find.byType(PendingGeoDataRow)),
+          )!;
+          expect(find.text(l.geodataPendingDownload), findsOneWidget);
+          expect(find.text(l.prototypeSize), findsNothing);
+          expect(find.text(l.prototypeLastSuccessfulUpdate), findsNothing);
+          await tester.tap(find.text(l.prototypeDownload));
+          await tester.tap(find.text(l.prototypeDelete));
+          expect((downloads, deletions), (1, 1));
+          expect(tester.takeException(), isNull);
+        },
+      );
+
       testWidgets(
         'Geodata rows render dates and route actions ($locale, $width)',
         (tester) async {
@@ -259,6 +303,9 @@ class _PendingGeoDataService implements GeoDataService {
   Stream<List<PublishedGeoData>> watchPublished() => Stream.value(files);
 
   @override
+  Stream<List<GeoDataData>> watchPending() => Stream.value(const []);
+
+  @override
   Future<void> updateCustom(GeoDataData original) {
     calls.add(original.id);
     return AppEventBus.instance.trackDownload(
@@ -273,6 +320,7 @@ class _PendingGeoDataService implements GeoDataService {
 PublishedGeoData _file(int id, String name, int bytes) => PublishedGeoData(
   row: GeoDataData(
     id: id,
+    installed: true,
     name: name,
     type: id == -1 ? 'ip' : 'domain',
     url: 'https://$name.example/$name.dat',

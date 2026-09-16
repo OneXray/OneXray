@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/view.dart' show formatTraffic;
 import 'package:onexray/pages/theme/font.dart';
@@ -11,6 +12,81 @@ import 'package:intl/intl.dart' show DateFormat;
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
+
+/// Pending declarations have no published size, timestamp or category page.
+class PendingGeoDataRow extends StatelessWidget {
+  const PendingGeoDataRow({
+    super.key,
+    required this.row,
+    required this.busy,
+    required this.deleting,
+    required this.onDownload,
+    required this.onDelete,
+  });
+  final GeoDataData row;
+  final bool busy;
+  final bool deleting;
+  final VoidCallback onDownload;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final palette = ColorManager.palette(context);
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: palette.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 8,
+        children: [
+          Text(
+            '${row.name}.dat',
+            textDirection: TextDirection.ltr,
+            style: AppTypography.geodataValue,
+          ),
+          Text(
+            Uri.tryParse(row.url)?.host ?? '',
+            textDirection: TextDirection.ltr,
+            style: AppTypography.geodataValue,
+          ),
+          Text(
+            l.geodataPendingDownload,
+            style: AppTypography.settingsDetailNote.copyWith(
+              color: palette.mutedForeground,
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: busy ? null : onDownload,
+                icon: AppActivityBuilder(
+                  builder: (context, activity) => activity.downloading
+                      ? const ButtonProgressIndicator()
+                      : const Icon(LucideIcons.download, size: 16),
+                ),
+                label: Text(l.prototypeDownload),
+              ),
+              TextButton.icon(
+                onPressed: busy ? null : onDelete,
+                icon: deleting
+                    ? const ButtonProgressIndicator()
+                    : const Icon(LucideIcons.trash2, size: 16),
+                label: Text(l.prototypeDelete),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Default and custom datasets share file rows, never a second detail screen
 /// embedded in the list. Only custom rows expose their dataset actions.

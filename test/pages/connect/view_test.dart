@@ -15,6 +15,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/traffic.dart';
+import 'package:onexray/service/settings/backup/service.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
@@ -351,6 +352,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(PageEmptyState), findsOneWidget);
+      final l = AppLocalizations.of(
+        tester.element(find.byType(PageEmptyState)),
+      )!;
+      expect(
+        find.widgetWithText(OutlinedButton, l.backupRestoreFrom),
+        BackupService.supported ? findsOneWidget : findsNothing,
+      );
       final emptyCard = find.byWidgetPredicate(
         (widget) =>
             widget is DecoratedBox &&

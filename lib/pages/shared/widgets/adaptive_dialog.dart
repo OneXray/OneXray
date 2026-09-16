@@ -13,7 +13,7 @@ Future<T?> showChoiceDialog<T>(BuildContext context, WidgetBuilder builder) {
   if (MediaQuery.sizeOf(context).width < 700) {
     return showModalBottomSheet<T>(
       context: context,
-      useRootNavigator: true,
+      useRootNavigator: false,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
@@ -27,6 +27,7 @@ Future<T?> showChoiceDialog<T>(BuildContext context, WidgetBuilder builder) {
   }
   return showDialog<T>(
     context: context,
+    useRootNavigator: false,
     builder: (context) => Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520, maxHeight: 680),
@@ -43,6 +44,7 @@ Future<T?> showAppDialog<T>(
   double desktopMaxWidth = AppLayout.dialogWidth,
 }) => showGeneralDialog<T>(
   context: context,
+  useRootNavigator: false,
   barrierDismissible: true,
   barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
   // The previous wizard step still owns its barrier while its card is offstage.

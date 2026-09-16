@@ -34,6 +34,7 @@ class RoutingGeodataIndex {
     final root = directory;
     final files = <String, String>{'geosite.dat': 'domain', 'geoip.dat': 'ip'};
     for (final row in await db.geoDataDao.allRows) {
+      if (!row.installed) continue;
       final name = row.name.endsWith('.dat') ? row.name : '${row.name}.dat';
       if (p.posix.basename(name) != name || p.windows.basename(name) != name) {
         continue;

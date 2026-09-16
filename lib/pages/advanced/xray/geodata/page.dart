@@ -107,9 +107,9 @@ class _GeoDataPageState extends State<GeoDataPage> {
                             onOpen: (file) =>
                                 widget.openFile(context, file.row.id),
                             onUpdate: (file) =>
-                                controller.update(context, file),
+                                controller.update(context, file.row),
                             onDelete: (file) =>
-                                controller.delete(context, file),
+                                controller.delete(context, file.row),
                           ),
                           if (state.errors[-1] != null)
                             _error(context, state.errors[-1]!),
@@ -127,7 +127,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
                             ),
                           ),
                           if (state.adding) _form(context, state, controller),
-                          if (state.custom.isEmpty)
+                          if (state.custom.isEmpty && state.pending.isEmpty)
                             Container(
                               constraints: const BoxConstraints(minHeight: 72),
                               alignment: Alignment.center,
@@ -152,8 +152,8 @@ class _GeoDataPageState extends State<GeoDataPage> {
                                           color: palette.mutedForeground,
                                         ),
                               ),
-                            )
-                          else
+                            ),
+                          if (state.custom.isNotEmpty)
                             GeoDataRows(
                               files: state.custom,
                               custom: true,
@@ -163,9 +163,9 @@ class _GeoDataPageState extends State<GeoDataPage> {
                               onOpen: (file) =>
                                   widget.openFile(context, file.row.id),
                               onUpdate: (file) =>
-                                  controller.update(context, file),
+                                  controller.update(context, file.row),
                               onDelete: (file) =>
-                                  controller.delete(context, file),
+                                  controller.delete(context, file.row),
                             ),
                           for (final file in state.custom)
                             if (state.errors[file.row.id] != null)
@@ -173,6 +173,20 @@ class _GeoDataPageState extends State<GeoDataPage> {
                                 context,
                                 '${file.fileName}: ${state.errors[file.row.id]}',
                               ),
+                          for (final row in state.pending) ...[
+                            PendingGeoDataRow(
+                              row: row,
+                              busy: state.fileBusy(row.id),
+                              deleting: state.deleting.contains(row.id),
+                              onDownload: () => controller.update(context, row),
+                              onDelete: () => controller.delete(context, row),
+                            ),
+                            if (state.errors[row.id] != null)
+                              _error(
+                                context,
+                                '${row.name}.dat: ${state.errors[row.id]}',
+                              ),
+                          ],
                         ],
                       ),
                     ),

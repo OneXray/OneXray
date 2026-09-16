@@ -10,9 +10,15 @@
 - [Age 加密订阅](age-encrypted-subscriptions.md)：密钥、下载、解密与安全边界。
 - [App 启动行为](app-startup.md)：正常启动、首次初始化、权限检查和桌面启动行为。
 - [数据管理](data-management.md)：GeoData、自动更新和数据清理。
+- [连接配置备份](backup.md)：单文件协议、平台存储、自动备份、离线恢复与安全边界。
 - [Windows 构建](windows-build.md)：EXE / MSIX 运行模式、EXE / ZIP / MSIX 打包、本地签名和 CI。
 - [验证边界](refactor-validation.md)：按改动选择检查项、平台验证限制和验证数据隔离。
 
 维护要求见 [文档规则](AGENTS.md)，仓库操作与审查要求见 [工程约定](../AGENTS.md)。
 [旧原型](../../references/onexray-app-prototype/) 仅供历史视觉参考，不覆盖当前合同，
-不据此恢复累计流量、备份或旧 Setup 等已删除功能。
+不据此恢复累计流量、旧 ZIP 备份或旧 Setup 等已删除功能。
+
+## 进行中的开发计划
+
+- [单文件云备份开发计划](../plans/cloud-backup.md)：已确认范围、插件使用边界、P0–P8 开发步骤及逐步验收要求；
+  本机实施结果与真实提供商待验收项单独记录；当前行为以备份合同为准，不用本机检查替代云端验收。

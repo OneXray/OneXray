@@ -22,7 +22,7 @@ class GeoDataValidator {
     } catch (_) {
       return Tuple2(false, appLocalizationsNoContext().prototypeEnterFileName);
     }
-    final rows = await AppDatabase().geoDataDao.publishedRows;
+    final rows = await AppDatabase().geoDataDao.allSources;
     if (rows.any(
       (row) => '${row.name}.dat'.toLowerCase() == fileName.toLowerCase(),
     )) {

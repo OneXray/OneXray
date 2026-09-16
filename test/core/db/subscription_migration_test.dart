@@ -26,6 +26,10 @@ void main() {
       final sub = (await database.subscriptionDao.allRows).single;
       expect(sub.hwidEnabled, true);
       expect(sub.hwid, 'keep-hwid');
+      expect(
+        (await database.geoDataDao.allRows).every((row) => row.installed),
+        true,
+      );
       await database.close();
       final upgraded = sqlite.sqlite3.open(file.path);
       expect(upgraded.userVersion, 5);
@@ -602,6 +606,8 @@ Map<String, List<List<Object?>>> _snapshotV3(sqlite.Database database) => {
               ? 'SELECT id, name, url, timestamp, age_secret_key, age_public_key FROM subscription ORDER BY id'
               : table == 'routing_profile'
               ? 'SELECT id, name, data FROM routing_profile ORDER BY id'
+              : table == 'geo_data'
+              ? 'SELECT id, name, type, url, timestamp, category_count, rule_count FROM geo_data ORDER BY id'
               : 'SELECT * FROM $table ORDER BY id',
         )
         .map((row) => row.values.toList())
