@@ -96,7 +96,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Timer? _trafficPoll;
   bool _refreshing = false;
   bool _readingTraffic = false;
-  bool _trafficVisible = false;
+  final Set<Object> _visibleTrafficPages = {};
   bool _ready = false;
   VpnStatus? _pendingStatus;
   int _commandGeneration = 0;
@@ -242,10 +242,16 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   }
 
   /// Page visibility is demand, not ownership of the VPN.
-  /// In particular, a retained but offstage navigation branch has no demand.
-  void setTrafficVisible(bool visible) {
-    if (_closed || _trafficVisible == visible) return;
-    _trafficVisible = visible;
+  /// Each page reports independently, including secondary connection pages.
+  void setTrafficVisible(Object page, bool visible) {
+    if (_closed) return;
+    final wasVisible = _visibleTrafficPages.isNotEmpty;
+    if (visible) {
+      _visibleTrafficPages.add(page);
+    } else {
+      _visibleTrafficPages.remove(page);
+    }
+    if (wasVisible == _visibleTrafficPages.isNotEmpty) return;
     _trafficGeneration++;
     _resetSpeed = true;
     _syncTrafficSampling();
@@ -255,7 +261,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
       _ready &&
       !_closed &&
       _appVisible &&
-      _trafficVisible &&
+      _visibleTrafficPages.isNotEmpty &&
       !_commandActive &&
       (_pendingStatus == null || _pendingStatus == VpnStatus.connected) &&
       state.value.phase == ConnectionPhase.connected &&
@@ -825,6 +831,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   void dispose() {
     _closed = true;
+    _visibleTrafficPages.clear();
     if (_observingLifecycle) WidgetsBinding.instance.removeObserver(this);
     cancel();
     unawaited(_statusSubscription?.cancel());

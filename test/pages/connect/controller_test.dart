@@ -16,6 +16,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/controller.dart';
 import 'package:onexray/pages/connect/view.dart';
+import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/theme/theme.dart';
@@ -324,7 +325,7 @@ void main() {
   );
 
   testWidgets(
-    'connect actions use editors, dialogs and shared server navigation',
+    'connect actions keep editors, server browsing and groups in the source tab',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -371,17 +372,16 @@ void main() {
                 path: 'smart-routing',
                 builder: (_, _) => const Scaffold(body: Text('smart-editor')),
               ),
-            ],
-          ),
-          GoRoute(
-            path: '/servers',
-            builder: (context, _) => Scaffold(
-              body: TextButton(
-                onPressed: () => context.push('/servers/server-group'),
-                child: const Text('servers-root'),
+              GoRoute(
+                path: 'servers',
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () =>
+                        context.pushScoped(AppPageDestination.serverGroup),
+                    child: const Text('servers-browser'),
+                  ),
+                ),
               ),
-            ),
-            routes: [
               GoRoute(
                 path: 'server-group',
                 builder: (context, _) => Scaffold(
@@ -441,22 +441,28 @@ void main() {
       expect(find.text('Choose a traffic method'), findsNothing);
       await tester.tap(find.text('location-action'));
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/servers');
-      expect(find.text('servers-root'), findsOneWidget);
-      expect(router.canPop(), false);
-      await tester.tap(find.text('servers-root'));
+      expect(
+        GoRouterState.of(tester.element(find.text('servers-browser'))).uri.path,
+        '/connect/servers',
+      );
+      expect(router.canPop(), true);
+      await tester.tap(find.text('servers-browser'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('use-group'));
       await tester.pumpAndSettle();
       expect(
         GoRouterState.of(tester.element(find.text('use-group'))).uri.path,
-        '/servers/server-group',
+        '/connect/server-group',
       );
       expect(find.text('use-group'), findsOneWidget);
       expect(coordinator.saved.connection.expert, false);
       router.pop();
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/servers');
+      expect(find.text('servers-browser'), findsOneWidget);
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('connection-home'), findsOneWidget);
+      expect(router.canPop(), false);
       expect(tester.takeException(), isNull);
     },
   );

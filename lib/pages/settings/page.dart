@@ -81,7 +81,7 @@ class SettingsPage extends StatelessWidget {
                         ),
                         onTap: () => controller.openSetting(
                           context,
-                          AppSecondaryDestination.appIcon,
+                          AppPageDestination.appIcon,
                         ),
                       ),
                   ],
@@ -102,7 +102,7 @@ class SettingsPage extends StatelessWidget {
                       showChevron: true,
                       onTap: () => controller.openSetting(
                         context,
-                        AppSecondaryDestination.language,
+                        AppPageDestination.language,
                       ),
                     ),
                   ],
@@ -144,7 +144,7 @@ class SettingsPage extends StatelessWidget {
                         showChevron: true,
                         onTap: () => controller.openSetting(
                           context,
-                          AppSecondaryDestination.backup,
+                          AppPageDestination.backup,
                         ),
                       ),
                     SettingRow(
@@ -186,7 +186,7 @@ class SettingsPage extends StatelessWidget {
                         showChevron: true,
                         onTap: () => controller.openSetting(
                           context,
-                          AppSecondaryDestination.aboutOneXray,
+                          AppPageDestination.aboutOneXray,
                         ),
                       ),
                     ),

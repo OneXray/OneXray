@@ -23,6 +23,7 @@ import 'package:onexray/pages/shared/share/page.dart';
 import 'package:onexray/pages/shared/share/params.dart';
 import 'package:onexray/pages/launch/splash/page.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
+import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
@@ -31,6 +32,8 @@ import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/servers/import/page.dart';
 import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/connect/page.dart';
+import 'package:onexray/pages/settings/page.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
@@ -89,15 +92,6 @@ abstract final class RouterPath {
       ),
       GoRoute(path: RouterPath.privacy, redirect: (_, _) => RouterPath.setup),
       GoRoute(path: RouterPath.firstRun, redirect: (_, _) => RouterPath.setup),
-      GoRoute(
-        path: AppDialogRoutePath.appUpdate,
-        pageBuilder: (_, state) => AppDialogPage<void>(
-          builder: (_) => _withDialogExtra<AppUpdateDialogParams>(
-            state,
-            (params) => AppUpdateDialog(params: params),
-          ),
-        ),
-      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, navigationShell) {
           return AdaptiveMainShell(navigationShell: navigationShell);
@@ -116,248 +110,259 @@ final _primaryNavigatorKeys = {
 };
 
 StatefulShellBranch _buildPrimaryBranch(AppPrimaryDestination primary) {
+  final root = _pageRoutes.firstWhere(
+    (route) => route.destination == primary.page,
+  );
   return StatefulShellBranch(
     navigatorKey: _primaryNavigatorKeys[primary],
     routes: [
       GoRoute(
         path: primary.rootPath,
-        builder: (_, _) => PrimaryRootContent(primary: primary),
-        routes: _buildSharedSecondaryRoutes(),
+        builder: root.builder,
+        routes: _buildTabRoutes(),
       ),
     ],
   );
 }
 
-List<GoRoute> _buildSharedSecondaryRoutes() {
-  return _sharedSecondaryRoutes
-      .map(
-        (route) => AppSecondaryDestination.dialogs.contains(route.destination)
-            ? GoRoute(
-                path: route.destination.segment,
-                parentNavigatorKey: _rootNavigatorKey,
-                pageBuilder: (context, state) => AppDialogPage<dynamic>(
-                  key: state.pageKey,
-                  barrierColor: ColorManager.palette(context).overlay,
-                  useSafeArea: false,
-                  builder: (context) =>
-                      AppDialogFrame(child: route.builder(context, state)),
-                ),
-              )
-            : GoRoute(
-                path: route.destination.segment,
-                builder: (context, state) => Theme(
-                  data: AppTheme.secondaryPage(context),
-                  child: Builder(
-                    builder: (context) => route.builder(context, state),
-                  ),
-                ),
-              ),
-      )
-      .toList();
+List<GoRoute> _buildTabRoutes() {
+  return _pageRoutes.map((route) {
+    if (route.destination == AppPageDestination.appUpdate) {
+      return GoRoute(
+        path: route.destination.segment,
+        pageBuilder: (context, state) => AppDialogPage<void>(
+          key: state.pageKey,
+          builder: (context) => route.builder(context, state),
+        ),
+      );
+    }
+    if (AppPageDestination.adaptiveDialogs.contains(route.destination)) {
+      return GoRoute(
+        path: route.destination.segment,
+        pageBuilder: (context, state) => AppDialogPage<dynamic>(
+          key: state.pageKey,
+          barrierColor: ColorManager.palette(context).overlay,
+          useSafeArea: false,
+          builder: (context) =>
+              AppDialogFrame(child: route.builder(context, state)),
+        ),
+      );
+    }
+    return GoRoute(
+      path: route.destination.segment,
+      builder: (context, state) => Theme(
+        data: AppTheme.secondaryPage(context),
+        child: Builder(builder: (context) => route.builder(context, state)),
+      ),
+    );
+  }).toList();
 }
 
-typedef _SecondaryRouteBuilder = Widget Function(
+typedef _PageRouteBuilder = Widget Function(
   BuildContext context,
   GoRouterState state,
 );
 
-class _SharedSecondaryRoute {
-  final AppSecondaryDestination destination;
-  final _SecondaryRouteBuilder builder;
+class _PageRoute {
+  final AppPageDestination destination;
+  final _PageRouteBuilder builder;
 
-  const _SharedSecondaryRoute(this.destination, this.builder);
+  const _PageRoute(this.destination, this.builder);
 }
 
-_SharedSecondaryRoute _route(
-  AppSecondaryDestination destination,
-  _SecondaryRouteBuilder builder,
-) {
-  return _SharedSecondaryRoute(destination, builder);
+_PageRoute _route(AppPageDestination destination, _PageRouteBuilder builder) {
+  return _PageRoute(destination, builder);
 }
 
-final _sharedSecondaryRoutes = <_SharedSecondaryRoute>[
+final _pageRoutes = <_PageRoute>[
+  _route(AppPageDestination.connect, (_, _) => const ConnectPage()),
+  _route(AppPageDestination.servers, (_, _) => const ServersPage()),
+  _route(AppPageDestination.advanced, (_, _) => const AdvancedRootPage()),
+  _route(AppPageDestination.settings, (_, _) => const SettingsPage()),
   _route(
-    AppSecondaryDestination.appleVpn,
+    AppPageDestination.appleVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
       (draft) => AppleVpnPage(
         draft: draft,
         openWifi: (context, draft) => context.pushScoped<bool>(
-          AppSecondaryDestination.appleWifi,
+          AppPageDestination.appleWifi,
           extra: draft,
         ),
       ),
     ),
   ),
   _route(
-    AppSecondaryDestination.appleWifi,
+    AppPageDestination.appleWifi,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
       (draft) => AppleWifiPage(draft: draft),
     ),
   ),
   _route(
-    AppSecondaryDestination.androidVpn,
+    AppPageDestination.androidVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
       (draft) => AndroidVpnPage(
         draft: draft,
         openApps: (context, mode, selected) => context.pushScoped<List<String>>(
-          AppSecondaryDestination.androidApps,
+          AppPageDestination.androidApps,
           extra: (mode, selected),
         ),
       ),
     ),
   ),
   _route(
-    AppSecondaryDestination.androidApps,
+    AppPageDestination.androidApps,
     (_, state) => _withExtra<(String, List<String>)>(
       state,
       (params) => AndroidAppsPage(mode: params.$1, selected: params.$2),
     ),
   ),
   _route(
-    AppSecondaryDestination.windowsVpn,
+    AppPageDestination.windowsVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
       (draft) => WindowsVpnPage(
         draft: draft,
         openInterface: (context, draft) => context.pushScoped<bool>(
-          AppSecondaryDestination.outboundInterface,
+          AppPageDestination.outboundInterface,
           extra: draft,
         ),
       ),
     ),
   ),
   _route(
-    AppSecondaryDestination.outboundInterface,
+    AppPageDestination.outboundInterface,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
       (draft) => OutboundInterfacePage(draft: draft),
     ),
   ),
   _route(
-    AppSecondaryDestination.routingData,
+    AppPageDestination.routingData,
     (_, _) => GeoDataPage(
-      openFile: (context, id) => context.pushScoped(
-        AppSecondaryDestination.routingDataFile,
-        extra: id,
-      ),
+      openFile: (context, id) =>
+          context.pushScoped(AppPageDestination.routingDataFile, extra: id),
     ),
   ),
   _route(
-    AppSecondaryDestination.routingDataFile,
+    AppPageDestination.routingDataFile,
     (_, state) => _withExtra<int>(state, (id) => GeoDataFilePage(fileId: id)),
   ),
   _route(
-    AppSecondaryDestination.serversImport,
+    AppPageDestination.serversImport,
     (_, state) => ServersImportPage(initialText: state.extra as String?),
   ),
   _route(
-    AppSecondaryDestination.serverGroup,
+    AppPageDestination.serverGroup,
     (_, state) => _withExtra<ServerGroupParams>(
       state,
       (params) => ServerGroupPage(params: params),
     ),
   ),
   _route(
-    AppSecondaryDestination.serverEditor,
+    AppPageDestination.serverEditor,
     (_, state) =>
         _withExtra<int>(state, (id) => ServerEditorPage(serverId: id)),
   ),
   _route(
-    AppSecondaryDestination.serverFinalExitPicker,
+    AppPageDestination.serverFinalExitPicker,
     (_, state) => _withExtra<ServerExitPickerParams>(
       state,
       (params) => ServerExitPickerPage(params: params),
     ),
   ),
   _route(
-    AppSecondaryDestination.rawEditor,
+    AppPageDestination.rawEditor,
     (_, state) =>
         JsonConfigurationEditorPage(configurationId: state.extra as int?),
   ),
   _route(
-    AppSecondaryDestination.smartRouting,
+    AppPageDestination.smartRouting,
     (_, _) => SmartRoutingEditorPage(
       openRegions: (context, selected) => context.pushScoped<List<String>>(
-        AppSecondaryDestination.directRegions,
+        AppPageDestination.directRegions,
         extra: selected,
       ),
       openFinalExit: (context, params) => context.pushScoped<ServerExitChoice>(
-        AppSecondaryDestination.serverFinalExitPicker,
+        AppPageDestination.serverFinalExitPicker,
         extra: params,
       ),
     ),
   ),
   _route(
-    AppSecondaryDestination.directRegions,
+    AppPageDestination.directRegions,
     (_, state) => DirectRegionsPage(
       selectedCodes: (state.extra as List?)?.cast<String>() ?? [],
     ),
   ),
   _route(
-    AppSecondaryDestination.customRouting,
+    AppPageDestination.customRouting,
     (_, state) => CustomRoutingEditorPage(
       profileId: state.extra as int?,
       openRule: (context, rule) => context.pushScoped<RoutingRuleState>(
-        AppSecondaryDestination.customRule,
+        AppPageDestination.customRule,
         extra: rule,
       ),
     ),
   ),
   _route(
-    AppSecondaryDestination.advancedRouting,
+    AppPageDestination.advancedRouting,
     (_, state) => JsonConfigurationEditorPage(
       configurationId: state.extra as int?,
       kind: ConfigurationKind.customAdvanced,
     ),
   ),
   _route(
-    AppSecondaryDestination.customRule,
+    AppPageDestination.customRule,
     (_, state) => CustomRoutingRulePage(rule: state.extra as RoutingRuleState?),
   ),
   _route(
-    AppSecondaryDestination.share,
+    AppPageDestination.share,
     (_, state) => _withExtra<SharePageParams>(
       state,
       (params) => SharePage(params: params),
     ),
   ),
   _route(
-    AppSecondaryDestination.subscriptionEdit,
+    AppPageDestination.subscriptionEdit,
     (_, state) => _withExtra<SubscriptionEditParams>(
       state,
       (params) => SubscriptionEditorPage(subscriptionId: params.id),
     ),
   ),
-  _route(AppSecondaryDestination.ping, (_, _) => const PingPage()),
+  _route(AppPageDestination.ping, (_, _) => const PingPage()),
   _route(
-    AppSecondaryDestination.logFile,
+    AppPageDestination.logFile,
     (_, state) => _withExtra<LogFileViewerParams>(
       state,
       (params) => LogFileViewerPage(params: params),
     ),
   ),
   _route(
-    AppSecondaryDestination.configFileViewer,
+    AppPageDestination.configFileViewer,
     (_, state) => _withExtra<ConfigFileViewerParams>(
       state,
       (params) => ConfigFileViewerPage(params: params),
     ),
   ),
-  _route(AppSecondaryDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
-  _route(AppSecondaryDestination.backup, (_, _) => const BackupPage()),
+  _route(AppPageDestination.autoUpdate, (_, _) => const AutoUpdatePage()),
+  _route(AppPageDestination.backup, (_, _) => const BackupPage()),
   _route(
-    AppSecondaryDestination.desktopSettings,
+    AppPageDestination.desktopSettings,
     (_, _) => const DesktopSettingsPage(),
   ),
-  _route(AppSecondaryDestination.appIcon, (_, _) => const AppIconPage()),
-  _route(AppSecondaryDestination.theme, (_, _) => const ThemePage()),
-  _route(AppSecondaryDestination.language, (_, _) => const LanguagePage()),
+  _route(AppPageDestination.appIcon, (_, _) => const AppIconPage()),
+  _route(AppPageDestination.theme, (_, _) => const ThemePage()),
+  _route(AppPageDestination.language, (_, _) => const LanguagePage()),
+  _route(AppPageDestination.aboutOneXray, (_, _) => const AboutOneXrayPage()),
   _route(
-    AppSecondaryDestination.aboutOneXray,
-    (_, _) => const AboutOneXrayPage(),
+    AppPageDestination.appUpdate,
+    (_, state) => _withDialogExtra<AppUpdateDialogParams>(
+      state,
+      (params) => AppUpdateDialog(params: params),
+    ),
   ),
 ];
 

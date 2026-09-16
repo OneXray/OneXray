@@ -217,7 +217,7 @@ class ServersController extends PageCubit<ServersPageState>
   void _readFailed(Object error) =>
       emit(state.copyWith(failed: true, failure: error));
   Future<void> addServers(BuildContext context) =>
-      context.pushScoped(AppSecondaryDestination.serversImport);
+      context.pushScoped(AppPageDestination.serversImport);
   Future<void> run(BuildContext context, Future<void> Function() action) async {
     await runConnectionAction(context, coordinator, action);
   }
@@ -494,7 +494,7 @@ class ServersController extends PageCubit<ServersPageState>
     activeGroupId = group.id;
     if (mobile) {
       await context.pushScoped(
-        AppSecondaryDestination.serverGroup,
+        AppPageDestination.serverGroup,
         extra: ServerGroupParams(this, group.id),
       );
     }
@@ -588,7 +588,7 @@ class ServersController extends PageCubit<ServersPageState>
     switch (action) {
       case ServerAction.edit:
         await context.pushScoped(
-          AppSecondaryDestination.serverEditor,
+          AppPageDestination.serverEditor,
           extra: row.id,
         );
       case ServerAction.test:
@@ -659,7 +659,7 @@ class ServersController extends PageCubit<ServersPageState>
         );
       case SourceAction.edit:
         await context.pushScoped(
-          AppSecondaryDestination.subscriptionEdit,
+          AppPageDestination.subscriptionEdit,
           extra: SubscriptionEditParams(id: source.id),
         );
       case SourceAction.share:
@@ -673,7 +673,7 @@ class ServersController extends PageCubit<ServersPageState>
   }
 
   Future<void> shareAsset(BuildContext context, SharePageParams params) =>
-      context.pushScoped(AppSecondaryDestination.share, extra: params);
+      context.pushScoped(AppPageDestination.share, extra: params);
 
   Future<void> remove(
     BuildContext context,

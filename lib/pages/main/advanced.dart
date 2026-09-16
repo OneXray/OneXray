@@ -12,23 +12,20 @@ class AdvancedRootPage extends StatelessWidget {
   Widget build(BuildContext context) => AdvancedPage(
     openTunnel: (context, destination, draft) =>
         context.pushScoped<bool>(switch (destination) {
-          TunnelDestination.apple => AppSecondaryDestination.appleVpn,
-          TunnelDestination.android => AppSecondaryDestination.androidVpn,
-          TunnelDestination.windows => AppSecondaryDestination.windowsVpn,
-          TunnelDestination.interface =>
-            AppSecondaryDestination.outboundInterface,
+          TunnelDestination.apple => AppPageDestination.appleVpn,
+          TunnelDestination.android => AppPageDestination.androidVpn,
+          TunnelDestination.windows => AppPageDestination.windowsVpn,
+          TunnelDestination.interface => AppPageDestination.outboundInterface,
         }, extra: draft),
     xrayBuilder: (context) => XrayRuntimePage(
       onGeodata: (context) =>
-          context.pushScoped(AppSecondaryDestination.routingData),
-      onUpdates: (context) =>
-          context.pushScoped(AppSecondaryDestination.autoUpdate),
-      onSpeedTest: (context) =>
-          context.pushScoped(AppSecondaryDestination.ping),
+          context.pushScoped(AppPageDestination.routingData),
+      onUpdates: (context) => context.pushScoped(AppPageDestination.autoUpdate),
+      onSpeedTest: (context) => context.pushScoped(AppPageDestination.ping),
       onLog: (context, params) =>
-          context.pushScoped(AppSecondaryDestination.logFile, extra: params),
+          context.pushScoped(AppPageDestination.logFile, extra: params),
       onConfig: (context, params) => context.pushScoped(
-        AppSecondaryDestination.configFileViewer,
+        AppPageDestination.configFileViewer,
         extra: params,
       ),
     ),

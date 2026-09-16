@@ -3,19 +3,18 @@ import 'package:go_router/go_router.dart';
 import 'package:onexray/pages/settings/app_update/params.dart';
 import 'package:onexray/service/settings/app_update/service.dart';
 
-abstract final class AppDialogRoutePath {
-  static const appUpdate = "/app-update";
-}
-
+/// Root tabs choose their entry page from the same business-page registry.
 enum AppPrimaryDestination {
-  connect("/connect"),
-  servers("/servers"),
-  advanced("/advanced"),
-  settings("/settings");
+  connect(AppPageDestination.connect),
+  servers(AppPageDestination.servers),
+  advanced(AppPageDestination.advanced),
+  settings(AppPageDestination.settings);
 
-  final String rootPath;
+  final AppPageDestination page;
 
-  const AppPrimaryDestination(this.rootPath);
+  const AppPrimaryDestination(this.page);
+
+  String get rootPath => "/${page.segment}";
 
   static AppPrimaryDestination fromPath(String path) {
     for (final destination in values) {
@@ -28,7 +27,13 @@ enum AppPrimaryDestination {
   }
 }
 
-enum AppSecondaryDestination {
+/// Every business page can be pushed inside the current tab, including roots.
+/// Launch and Setup routes are registered separately.
+enum AppPageDestination {
+  connect("connect"),
+  servers("servers"),
+  advanced("advanced"),
+  settings("settings"),
   serversImport("servers-import"),
   serverGroup("server-group"),
   serverEditor("server-editor"),
@@ -58,13 +63,19 @@ enum AppSecondaryDestination {
   appIcon("app-icon"),
   theme("theme"),
   language("language"),
-  aboutOneXray("about-onexray");
+  aboutOneXray("about-onexray"),
+  appUpdate("app-update");
 
   final String segment;
 
-  const AppSecondaryDestination(this.segment);
+  const AppPageDestination(this.segment);
 
-  static const dialogs = {serversImport, serverEditor, share, subscriptionEdit};
+  static const adaptiveDialogs = {
+    serversImport,
+    serverEditor,
+    share,
+    subscriptionEdit,
+  };
 }
 
 extension AppNavigationContext on BuildContext {
@@ -73,7 +84,7 @@ extension AppNavigationContext on BuildContext {
     return AppPrimaryDestination.fromPath(path);
   }
 
-  String scopedPath(AppSecondaryDestination destination) {
+  String scopedPath(AppPageDestination destination) {
     final primary = currentPrimaryDestination;
     return "${primary.rootPath}/${destination.segment}";
   }
@@ -93,16 +104,13 @@ extension AppNavigationContext on BuildContext {
     go(destination.rootPath);
   }
 
-  Future<T?> pushScoped<T>(
-    AppSecondaryDestination destination, {
-    Object? extra,
-  }) {
+  Future<T?> pushScoped<T>(AppPageDestination destination, {Object? extra}) {
     return push<T>(scopedPath(destination), extra: extra);
   }
 
   Future<T?> pushAppUpdateDialog<T>(AppUpdateInfo updateInfo) {
-    return push<T>(
-      AppDialogRoutePath.appUpdate,
+    return pushScoped<T>(
+      AppPageDestination.appUpdate,
       extra: AppUpdateDialogParams(updateInfo: updateInfo),
     );
   }

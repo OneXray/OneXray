@@ -107,7 +107,7 @@ void main() {
         ),
       );
       expect(reads, 0);
-      coordinator.setTrafficVisible(true);
+      coordinator.setTrafficVisible(coordinator, true);
       await Future<void>.delayed(Duration.zero);
       expect(reads, 1);
       expect(coordinator.state.value.traffic, sample);
@@ -124,7 +124,7 @@ void main() {
       await coordinator.refresh();
       expect(coordinator.state.value.uploadSpeed, 200);
 
-      coordinator.setTrafficVisible(false);
+      coordinator.setTrafficVisible(coordinator, false);
       final hiddenReads = reads;
       await coordinator.refreshTraffic();
       expect(reads, hiddenReads);
@@ -133,7 +133,7 @@ void main() {
         downlink: 10000,
         sampledAtMs: 90000,
       );
-      coordinator.setTrafficVisible(true);
+      coordinator.setTrafficVisible(coordinator, true);
       await Future<void>.delayed(Duration.zero);
       expect(coordinator.state.value.traffic, sample);
       expect(coordinator.state.value.uploadSpeed, 0);
@@ -167,6 +167,45 @@ void main() {
     },
   );
 
+  test('traffic sampling belongs to all visible connection pages', () async {
+    final runtime = _runtime('a');
+    var reads = 0;
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => runtime,
+        inspect: (_) async =>
+            HostConnection(VpnStatus.connected, runtime: runtime),
+        readTraffic: (_) async {
+          reads++;
+          return ConnectionTraffic(
+            uplink: reads * 100,
+            downlink: reads * 200,
+            sampledAtMs: reads * 1000,
+          );
+        },
+      ),
+    );
+    final root = Object();
+    final secondary = Object();
+    coordinator.setTrafficVisible(root, true);
+    await Future<void>.delayed(Duration.zero);
+    expect(reads, 1);
+
+    coordinator.setTrafficVisible(root, true);
+    coordinator.setTrafficVisible(secondary, true);
+    coordinator.setTrafficVisible(root, false);
+    coordinator.setTrafficVisible(root, false);
+    await coordinator.refreshTraffic();
+    expect(reads, 2);
+    expect(coordinator.state.value.uploadSpeed, 100);
+    expect(coordinator.state.value.downloadSpeed, 200);
+
+    coordinator.setTrafficVisible(secondary, false);
+    await coordinator.refreshTraffic();
+    expect(reads, 2);
+  });
+
   test(
     'focus changes preserve in-flight traffic and the speed baseline',
     () async {
@@ -191,7 +230,7 @@ void main() {
           },
         ),
       );
-      coordinator.setTrafficVisible(true);
+      coordinator.setTrafficVisible(coordinator, true);
       await Future<void>.delayed(Duration.zero);
       await coordinator.refreshTraffic();
       expect(coordinator.state.value.downloadSpeed, 200);
@@ -250,7 +289,7 @@ void main() {
       );
       try {
         await coordinator.initialize(registerReferences: false);
-        coordinator.setTrafficVisible(true);
+        coordinator.setTrafficVisible(coordinator, true);
         await tester.pump();
         expect(trafficReads, 1);
         final initialStatusReads = statusReads;
@@ -423,7 +462,7 @@ void main() {
           },
         ),
       );
-      coordinator.setTrafficVisible(true);
+      coordinator.setTrafficVisible(coordinator, true);
       await Future<void>.delayed(Duration.zero);
       final before = reads;
       await coordinator.pauseForDataClear();
@@ -455,7 +494,7 @@ void main() {
         stop: () async => host = const HostConnection(VpnStatus.disconnected),
       ),
     );
-    coordinator.setTrafficVisible(true);
+    coordinator.setTrafficVisible(coordinator, true);
     await Future<void>.delayed(Duration.zero);
     holdStatus = true;
     final refresh = coordinator.refresh();

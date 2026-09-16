@@ -9,6 +9,7 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
@@ -32,6 +33,41 @@ void main() {
     expect(
       AppPrimaryDestination.fromPath('/advanced/routing-data'),
       AppPrimaryDestination.advanced,
+    );
+  });
+
+  test('all business pages share one registry inside each tab', () {
+    final routes = RouterPath.router.configuration.routes;
+    expect(routes.whereType<GoRoute>().map((route) => route.path), [
+      '/splash',
+      '/setup',
+      '/setup/privacy',
+      '/setup/interface',
+      '/setup/region',
+      '/privacy',
+      '/firstRun',
+    ]);
+    final shell = routes.whereType<StatefulShellRoute>().single;
+    for (final branch in shell.branches) {
+      final root = branch.routes.single as GoRoute;
+      final children = root.routes.cast<GoRoute>();
+      expect(
+        children.map((route) => route.path),
+        unorderedEquals(
+          AppPageDestination.values.map((route) => route.segment),
+        ),
+      );
+      for (final route in children) {
+        expect(
+          route.parentNavigatorKey,
+          null,
+          reason: '${root.path}/${route.path} must stay in its source tab',
+        );
+      }
+    }
+    expect(
+      AppPrimaryDestination.values.map((tab) => tab.page),
+      everyElement(isIn(AppPageDestination.values)),
     );
   });
 
@@ -59,10 +95,6 @@ void main() {
       navigatorKey: rootKey,
       initialLocation: AppPrimaryDestination.connect.rootPath,
       routes: [
-        GoRoute(
-          path: AppDialogRoutePath.appUpdate,
-          builder: (_, _) => const Center(child: Text('update-dialog')),
-        ),
         StatefulShellRoute.indexedStack(
           builder: (_, _, navigationShell) => AdaptiveMainShell(
             navigationShell: navigationShell,
@@ -78,20 +110,43 @@ void main() {
                         Center(child: Text('${primary.name}-content')),
                     routes: [
                       GoRoute(
+                        path: AppPageDestination.appUpdate.segment,
+                        pageBuilder: (_, state) => AppDialogPage<void>(
+                          key: state.pageKey,
+                          builder: (_) =>
+                              const Center(child: Text('update-dialog')),
+                        ),
+                      ),
+                      GoRoute(
                         path: 'details',
                         builder: (_, _) => const Center(child: Text('details')),
                       ),
                       GoRoute(
                         path: 'popup',
-                        parentNavigatorKey: rootKey,
                         pageBuilder: (context, state) => AppDialogPage<void>(
                           key: state.pageKey,
                           useSafeArea: false,
                           builder: (context) => AppDialogFrame(
                             child: AppDialog(
-                              title: 'root-popup',
+                              title: 'tab-popup',
                               body: const SizedBox(height: 100),
                               actions: [
+                                TextButton(
+                                  onPressed: () => showAppDialog<void>(
+                                    context,
+                                    (context) => AppDialog(
+                                      title: 'nested-popup',
+                                      body: const SizedBox(height: 100),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => context.pop(),
+                                          child: const Text('back-popup'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  child: const Text('next-popup'),
+                                ),
                                 FilledButton(
                                   onPressed: () => context.pop(),
                                   child: const Text('close-popup'),
@@ -145,6 +200,29 @@ void main() {
       tester.getSize(desktopConnect).width,
       AppLayout.desktopSidebarWidth - AppSpacing.sidebarHorizontal * 2 - 1,
     );
+    router.go('/servers/details');
+    await tester.pumpAndSettle();
+    await tester.tap(desktopConnect);
+    await tester.pumpAndSettle();
+    unawaited(router.push<void>('/connect/details'));
+    await tester.pumpAndSettle();
+    for (final primary in [
+      AppPrimaryDestination.servers,
+      AppPrimaryDestination.connect,
+    ]) {
+      await tester.tap(
+        find.byKey(ValueKey('primary-navigation-${primary.name}')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        GoRouterState.of(tester.element(find.text('details'))).uri.path,
+        '${primary.rootPath}/details',
+      );
+      expect(router.canPop(), true);
+    }
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('connect-content'), findsOneWidget);
     for (final width in [900.0, 721.0]) {
       await tester.binding.setSurfaceSize(Size(width, 800));
       await tester.pumpAndSettle();
@@ -192,15 +270,29 @@ void main() {
       expect(navigation, root ? findsOneWidget : findsNothing);
       expect(find.text(content), findsOneWidget);
 
+      final branchNavigator = Navigator.of(tester.element(find.text(content)));
       final closed = router.push<void>('/settings/popup');
       await tester.pumpAndSettle();
-      expect(find.text('root-popup'), findsOneWidget);
+      expect(find.text('tab-popup'), findsOneWidget);
       expect(
         Navigator.of(tester.element(find.byType(AppDialog))),
-        same(rootKey.currentState),
+        same(branchNavigator),
       );
-      expect(navigation, root ? findsOneWidget : findsNothing);
+      expect(rootKey.currentState!.canPop(), false);
+      expect(navigation, findsNothing);
       expect(find.text(content), findsOneWidget);
+      await tester.tap(find.text('next-popup'));
+      await tester.pumpAndSettle();
+      expect(find.text('tab-popup'), findsNothing);
+      expect(find.text('nested-popup'), findsOneWidget);
+      expect(
+        Navigator.of(tester.element(find.byType(AppDialog))),
+        same(branchNavigator),
+      );
+      expect(rootKey.currentState!.canPop(), false);
+      await tester.tap(find.text('back-popup'));
+      await tester.pumpAndSettle();
+      expect(find.text('tab-popup'), findsOneWidget);
       await tester.tap(find.text('close-popup'));
       await tester.pumpAndSettle();
       await closed;
@@ -214,9 +306,9 @@ void main() {
     // A declarative popup location has the root, not the previous detail, below it.
     router.go('/settings/popup');
     await tester.pumpAndSettle();
-    expect(find.text('root-popup'), findsOneWidget);
+    expect(find.text('tab-popup'), findsOneWidget);
     expect(find.text('settings-content'), findsOneWidget);
-    expect(navigation, findsOneWidget);
+    expect(navigation, findsNothing);
     router.pop();
     await tester.pumpAndSettle();
     expect(find.byType(AppDialog), findsNothing);
@@ -241,8 +333,119 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('update-dialog'), findsOneWidget);
-    expect(router.routeInformationProvider.value.uri.path, '/settings');
+    expect(rootKey.currentState!.canPop(), isFalse);
+    expect(
+      GoRouterState.of(tester.element(find.text('update-dialog'))).uri.path,
+      '/connect/app-update',
+    );
+    expect(router.routeInformationProvider.value.uri.path, '/connect');
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('connect-content'), findsOneWidget);
+    expect(router.routeInformationProvider.value.uri.path, '/connect');
   });
+
+  for (final width in [390.0, 1200.0]) {
+    testWidgets('root pages can be pushed within any tab ($width)', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(Size(width, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final eventBus = AppEventBus();
+      addTearDown(eventBus.close);
+      final rootKey = GlobalKey<NavigatorState>();
+      late StatefulNavigationShell shell;
+      Widget content(AppPageDestination page) => Scaffold(
+        appBar: AppBar(title: Text('page-${page.segment}')),
+        body: const SizedBox(),
+      );
+      final router = GoRouter(
+        navigatorKey: rootKey,
+        initialLocation: '/connect',
+        routes: [
+          StatefulShellRoute.indexedStack(
+            builder: (_, _, navigationShell) {
+              shell = navigationShell;
+              return AdaptiveMainShell(
+                navigationShell: navigationShell,
+                initializeServices: (_) async {},
+              );
+            },
+            branches: [
+              for (final tab in AppPrimaryDestination.values)
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: tab.rootPath,
+                      builder: (_, _) => content(tab.page),
+                      routes: [
+                        for (final page in AppPageDestination.values)
+                          GoRoute(
+                            path: page.segment,
+                            builder: (_, _) => content(page),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        BlocProvider.value(
+          value: eventBus,
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+            localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final tab in AppPrimaryDestination.values) {
+        router.go(tab.rootPath);
+        await tester.pumpAndSettle();
+        final navigator = Navigator.of(tester.element(find.byType(AppBar)));
+        final stack = [tab.page];
+        for (final page in [
+          ...AppPrimaryDestination.values.map((tab) => tab.page),
+          AppPageDestination.smartRouting,
+          AppPageDestination.routingData,
+        ]) {
+          final context = tester.element(find.byType(AppBar));
+          unawaited(context.pushScoped(page));
+          stack.add(page);
+          await tester.pumpAndSettle();
+          final next = tester.element(find.byType(AppBar));
+          expect(
+            GoRouterState.of(next).uri.path,
+            '${tab.rootPath}/${page.segment}',
+          );
+          expect(next.currentPrimaryDestination, tab);
+          expect(Navigator.of(next), same(navigator));
+          expect(shell.currentIndex, tab.index);
+          expect(rootKey.currentState!.canPop(), isFalse);
+          expect(find.byType(BackButton), findsOneWidget);
+          if (width < AppLayout.mobileBreakpoint) {
+            expect(find.byType(NavigationBar), findsNothing);
+          }
+        }
+        while (stack.length > 1) {
+          await tester.tap(find.byType(BackButton));
+          stack.removeLast();
+          await tester.pumpAndSettle();
+          expect(find.text('page-${stack.last.segment}'), findsOneWidget);
+          expect(shell.currentIndex, tab.index);
+        }
+        expect(router.canPop(), isFalse);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('business pages wait for services and allow a local retry', (
     tester,
@@ -355,16 +558,15 @@ void main() {
                       builder: (context, _) => Scaffold(
                         body: Center(
                           child: TextButton(
-                            onPressed: () => context.pushScoped(
-                              AppSecondaryDestination.theme,
-                            ),
+                            onPressed: () =>
+                                context.pushScoped(AppPageDestination.theme),
                             child: Text('open-${primary.name}'),
                           ),
                         ),
                       ),
                       routes: [
                         GoRoute(
-                          path: AppSecondaryDestination.theme.segment,
+                          path: AppPageDestination.theme.segment,
                           builder: (_, _) => Scaffold(
                             appBar: AppBar(
                               title: Text('detail-${primary.name}'),
