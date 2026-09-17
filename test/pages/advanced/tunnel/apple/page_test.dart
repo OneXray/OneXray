@@ -141,6 +141,38 @@ void main() {
     );
   }
 
+  testWidgets('iOS VPN icon toggle preserves its value while inactive', (
+    tester,
+  ) async {
+    _phone(tester);
+    final controller = _controller();
+    await tester.pumpWidget(
+      _app(AppleVpnView(controller: controller, capabilities: _supported)),
+    );
+    final icon = _toggle('hideVpnIcon');
+    expect(tester.widget<ShadSwitch>(icon).value, isFalse);
+    expect(tester.widget<ShadSwitch>(icon).enabled, isTrue);
+    await _tap(tester, icon);
+    expect(controller.group('apple')['hideVpnIcon'], isTrue);
+    expect(controller.strings('apple', 'excludedCidrs'), isEmpty);
+    await _tap(tester, _toggle('captureAllTraffic'));
+    expect(tester.widget<ShadSwitch>(icon).value, isTrue);
+    expect(tester.widget<ShadSwitch>(icon).enabled, isFalse);
+    expect(
+      find.text(
+        'Unavailable while Capture all traffic is on. Your preference is kept.',
+      ),
+      findsOneWidget,
+    );
+    await _tap(tester, _toggle('captureAllTraffic'));
+    expect(tester.widget<ShadSwitch>(icon).value, isTrue);
+    expect(tester.widget<ShadSwitch>(icon).enabled, isTrue);
+    controller.restoreDefaults();
+    await tester.pumpAndSettle();
+    expect(tester.widget<ShadSwitch>(icon).value, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop network actions stay content-sized', (tester) async {
     _desktop(tester);
     final controller = _controller(
@@ -158,6 +190,7 @@ void main() {
     );
 
     final selector = find.byKey(const ValueKey('apple-network-action-choice'));
+    expect(_toggle('hideVpnIcon'), findsNothing);
     expect(
       find.textContaining(
         'Incorrect configuration may cause loss of network connectivity.',
@@ -193,14 +226,14 @@ void main() {
         ),
       );
       expect(find.text('System VPN policy'), findsNothing);
-      expect(find.byType(ShadSwitch), findsNWidgets(4));
+      expect(find.byType(ShadSwitch), findsNWidgets(5));
       final warning = find.textContaining(
         'Incorrect configuration may cause loss of network connectivity.',
       );
       expect(warning, findsOneWidget);
       await _tap(tester, _toggle('captureAllTraffic'));
       expect(warning, findsOneWidget);
-      expect(find.byType(ShadSwitch), findsNWidgets(8));
+      expect(find.byType(ShadSwitch), findsNWidgets(9));
       expect(
         tester.widget<ShadSwitch>(_toggle('allowLocalNetwork')).value,
         isTrue,
@@ -335,6 +368,25 @@ void main() {
     Locale('ru'),
     Locale('fa'),
   ]) {
+    testWidgets('VPN icon setting fits an iOS phone ($locale)', (tester) async {
+      _phone(tester);
+      final controller = _controller();
+      await tester.pumpWidget(
+        _app(
+          AppleVpnView(controller: controller, capabilities: _supported),
+          locale: locale,
+        ),
+      );
+      final l = AppLocalizations.of(tester.element(find.byType(AppleVpnView)))!;
+      expect(find.text(l.appleHideVpnIcon), findsOneWidget);
+      expect(find.text(l.appleHideVpnIconHint), findsOneWidget);
+      await _tap(tester, _toggle('hideVpnIcon'));
+      expect(controller.group('apple')['hideVpnIcon'], isTrue);
+      await _tap(tester, _toggle('captureAllTraffic'));
+      expect(find.text(l.appleHideVpnIconInactive), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('Apple and Wi-Fi views fit a phone with long names ($locale)', (
       tester,
     ) async {

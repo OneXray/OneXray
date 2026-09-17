@@ -113,6 +113,7 @@ void main() {
       expect(apple['cellularAction'], 'connect');
       expect(apple['ethernetAction'], 'connect');
       expect(apple['excludedCidrs'], isEmpty);
+      expect(apple['hideVpnIcon'], isFalse);
       final tun = policy.toTun(ConnectionPlatform.ios);
       expect(tun.tunIPv4, '198.18.0.1');
       expect(tun.tunIPv6, 'fc00::1');
@@ -122,6 +123,7 @@ void main() {
       expect(tun.enableIPv6, true);
       expect(tun.includeAllNetworks, false);
       expect(tun.excludedRoutes, isEmpty);
+      expect(tun.hideVpnIcon, isFalse);
       expect(tun.excludeLocalNetworks, true);
       expect(tun.excludeCellularServices, true);
       expect(tun.excludeAPNs, true);
@@ -325,6 +327,44 @@ void main() {
           .mode,
       'disconnect',
     );
+  });
+
+  test('VPN icon preference is sent only to iOS outside capture-all mode', () {
+    for (final captureAll in [false, true]) {
+      for (final ipv6 in [false, true]) {
+        final policy = PlatformPolicy.fromJson({
+          'ipv6Enabled': ipv6,
+          'xrayOutboundInterfaceName': 'en0',
+          'apple': {
+            'captureAllTraffic': captureAll,
+            'hideVpnIcon': true,
+            'excludedCidrs': ['10.250.0.0/16', '2001:db8::/64'],
+          },
+        });
+        for (final platform in ConnectionPlatform.values) {
+          final tun = policy.toTun(platform);
+          final active = platform == ConnectionPlatform.ios && !captureAll;
+          expect(tun.hideVpnIcon, active ? isTrue : isNull);
+          expect(tun.toJson().containsKey('hideVpnIcon'), active);
+          if (active) {
+            // The special exclusions belong to Swift, not user configuration.
+            expect(tun.excludedRoutes, [
+              '10.250.0.0/16',
+              if (ipv6) '2001:db8::/64',
+            ]);
+          }
+        }
+        expect(policy.toJson()['apple']['hideVpnIcon'], isTrue);
+        expect(policy.toJson()['apple']['excludedCidrs'], [
+          '10.250.0.0/16',
+          '2001:db8::/64',
+        ]);
+        expect(
+          PlatformPolicy.fromJson(policy.toJson()).toJson(),
+          policy.toJson(),
+        );
+      }
+    }
   });
 
   test('Apple exclusions compile only for an active Apple policy', () {

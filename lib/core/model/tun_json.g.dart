@@ -21,6 +21,7 @@ TunJson _$TunJsonFromJson(Map<String, dynamic> json) => TunJson(
   json['excludeAPNs'] as bool?,
   json['excludeDeviceCommunication'] as bool?,
   (json['excludedRoutes'] as List<dynamic>?)?.map((e) => e as String).toList(),
+  json['hideVpnIcon'] as bool?,
   json['onDemandEnabled'] as bool?,
   (json['onDemandRules'] as List<dynamic>?)
       ?.map((e) => OnDemandRule.fromJson(e as Map<String, dynamic>))
@@ -45,6 +46,7 @@ Map<String, dynamic> _$TunJsonToJson(TunJson instance) => <String, dynamic>{
   'excludeAPNs': ?instance.excludeAPNs,
   'excludeDeviceCommunication': ?instance.excludeDeviceCommunication,
   'excludedRoutes': ?instance.excludedRoutes,
+  'hideVpnIcon': ?instance.hideVpnIcon,
   'onDemandEnabled': ?instance.onDemandEnabled,
   'onDemandRules': ?instance.onDemandRules?.map((e) => e.toJson()).toList(),
   'perAppVPNMode': ?instance.perAppVPNMode,

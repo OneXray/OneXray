@@ -25,6 +25,8 @@ class TunJson {
   bool? excludeAPNs;
   bool? excludeDeviceCommunication;
   List<String>? excludedRoutes;
+  // iOS only
+  bool? hideVpnIcon;
   bool? onDemandEnabled;
   List<OnDemandRule>? onDemandRules;
   // android
@@ -47,6 +49,7 @@ class TunJson {
     this.excludeAPNs,
     this.excludeDeviceCommunication,
     this.excludedRoutes,
+    this.hideVpnIcon,
     this.onDemandEnabled,
     this.onDemandRules,
     this.perAppVPNMode,

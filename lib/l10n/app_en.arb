@@ -2232,6 +2232,18 @@
   "@appleExcludedNetworksHint": {
     "description": "Apple VPN excluded networks explanation."
   },
+  "appleHideVpnIcon": "Hide VPN icon",
+  "@appleHideVpnIcon": {
+    "description": "iOS-only VPN status bar icon setting."
+  },
+  "appleHideVpnIconHint": "Hide the VPN icon in the status bar. May affect network switching; reconnect to apply.",
+  "@appleHideVpnIconHint": {
+    "description": "Warning and application timing for route-based VPN icon hiding."
+  },
+  "appleHideVpnIconInactive": "Unavailable while Capture all traffic is on. Your preference is kept.",
+  "@appleHideVpnIconInactive": {
+    "description": "VPN icon hiding is inactive with includeAllNetworks."
+  },
   "appleExcludedNetworksInactive": "Excluded networks are not applied while Capture all traffic is on. Your saved list is kept.",
   "@appleExcludedNetworksInactive": {
     "description": "Apple VPN route exclusions are inactive with includeAllNetworks."

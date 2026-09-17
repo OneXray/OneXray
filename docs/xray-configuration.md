@@ -130,7 +130,7 @@ TUN 入站也使用这些地址。Windows MSIX 将其用于网络设置和排除
 同一服务，并与其 TLS 证书匹配。有效 DNS 设置的修改复用现有保存及确认重连流程；修改
 未生效的服务器域名或 IPv6 设置不触发重连。恢复默认只修改草稿，保存后才生效。
 
-## IPv6 策略
+## Apple 路由与 VPN 图标
 
 Apple 的排除网段作为独立平台策略保存，只在关闭 `includeAllNetworks` 时传给原生
 `NEIPv4Settings.excludedRoutes` / `NEIPv6Settings.excludedRoutes`，不改写 Xray 路由或 DNS。
@@ -138,6 +138,15 @@ Apple 的排除网段作为独立平台策略保存，只在关闭 `includeAllNe
 但不校验、应用或因这份停用列表的变化重连。IPv6 关闭时保留 IPv6 条目，但不传入或
 配置 IPv6 排除路由。保存仅检查原生路由需要的 CIDR/网络地址格式，不沿用 Windows
 的条数、重复项或隧道 DNS 限制。这项功能不提供自动企业 Split DNS。
+
+iOS/iPadOS 提供“隐藏 VPN 图标”，默认关闭，仅在关闭 `includeAllNetworks` 时生效。
+原生保留默认 TUN 路由，在用户排除列表的运行副本中追加 `0.0.0.0/31`，IPv6 开启时再追加
+`::/127`，相同条目不重复添加。特殊网段不写回用户列表，不修改 Xray 配置或 VPN 状态来源。
+这是基于系统路由行为的间接实现，可能影响网络切换，不承诺所有系统版本都能隐藏图标。
+全流量接管开启时禁用此开关但保留选择，运行请求不携带该选项；其他平台不显示或应用。
+修改生效中的选项复用保存及确认重连流程，停用选项变化不要求重连。
+
+## IPv6 策略
 
 关闭 IPv6 时，Apple、Android 不配置隧道 IPv6 地址、路由和 DNS，传给 Native 的 TUN
 参数也不携带 IPv6 地址和 DNS。Linux 由 Xray-core 创建网卡，其 `tunIn.settings` 中同样
