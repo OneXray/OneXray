@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/tools/traffic_format.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
@@ -1224,29 +1225,4 @@ class TrafficReadout extends StatelessWidget {
       ),
     ),
   );
-}
-
-String formatTraffic(int bytes, {bool connection = false}) {
-  // Keep the App's 1024-byte conversion. The connection UI uses the approved
-  // prototype labels and precision; other consumers retain IEC units.
-  final units = connection
-      ? const ['B', 'KB', 'MB', 'GB', 'TB']
-      : const ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-  var value = bytes.toDouble();
-  var unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  var number = value.toStringAsFixed(
-    unit == 0
-        ? 0
-        : connection
-        ? 2
-        : 1,
-  );
-  if (connection && number.contains('.')) {
-    number = number.replaceFirst(RegExp(r'\.?0+$'), '');
-  }
-  return '$number ${units[unit]}';
 }

@@ -1,4 +1,6 @@
 {
+  "trafficWidgetAdd": "افزودن ویجت ترافیک",
+  "trafficWidgetManualHint": "ویجت ترافیک OneXray را از فهرست ویجت‌های صفحهٔ اصلی اضافه کنید.",
   "backupAutomatic": "پشتیبان‌گیری خودکار",
   "backupAllow": "اجازه پشتیبان‌گیری در این محل",
   "backupInterval": "دوره پشتیبان‌گیری",

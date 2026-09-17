@@ -1,4 +1,6 @@
 {
+  "trafficWidgetAdd": "添加流量小组件",
+  "trafficWidgetManualHint": "请在桌面的小组件列表中添加 OneXray 流量小组件。",
   "backupAutomatic": "自动备份",
   "backupAllow": "允许向此位置备份",
   "backupInterval": "备份周期",

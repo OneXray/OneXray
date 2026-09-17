@@ -1,4 +1,6 @@
 {
+  "trafficWidgetAdd": "Add traffic widget",
+  "trafficWidgetManualHint": "Add the OneXray traffic widget from your launcher's widget picker.",
   "backupAutomatic": "Automatic backup",
   "backupAllow": "Allow backups here",
   "backupInterval": "Backup interval",

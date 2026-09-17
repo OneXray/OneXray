@@ -1,4 +1,6 @@
 {
+  "trafficWidgetAdd": "Добавить виджет трафика",
+  "trafficWidgetManualHint": "Добавьте виджет трафика OneXray через список виджетов на главном экране.",
   "backupAutomatic": "Автоматическое копирование",
   "backupAllow": "Разрешить копирование сюда",
   "backupInterval": "Период копирования",

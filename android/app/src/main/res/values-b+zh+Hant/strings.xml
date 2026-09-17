@@ -1,0 +1,14 @@
+<resources>
+    <string name="traffic_widget_name">OneXray 流量</string>
+    <string name="traffic_widget_description">VPN 狀態、本次連線的網速和流量</string>
+    <string name="traffic_this_connection">本次連線</string>
+    <string name="traffic_current_speed">目前速度</string>
+    <string name="quick_settings_tile_status_connected">已連線</string>
+    <string name="quick_settings_tile_status_connecting">連線中</string>
+    <string name="quick_settings_tile_status_disconnected">未連線</string>
+    <string name="quick_settings_tile_status_disconnecting">中斷連線中</string>
+    <string name="quick_settings_tile_status_open_app">開啟應用程式</string>
+    <string name="notification_action_open">開啟</string>
+    <string name="notification_vpn_connected">VPN 已連線</string>
+    <string name="notification_action_disconnect">中斷連線</string>
+</resources>

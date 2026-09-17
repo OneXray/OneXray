@@ -12,6 +12,7 @@ import 'package:onexray/pages/settings/app_icon/controller.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
 import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:onexray/service/settings/data_cleanup.dart';
+import 'package:onexray/service/settings/traffic_widget.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/shared/doc/helper.dart';
 import 'package:onexray/service/shared/event_bus/enum.dart';
@@ -28,6 +29,7 @@ class SettingsPageState {
   final bool saving;
   final bool checkingUpdate;
   final bool clearingData;
+  final bool addingWidget;
   final Object? failure;
   const SettingsPageState({
     this.appVersion = '—',
@@ -38,6 +40,7 @@ class SettingsPageState {
     this.saving = false,
     this.checkingUpdate = false,
     this.clearingData = false,
+    this.addingWidget = false,
     this.failure,
   });
 
@@ -50,6 +53,7 @@ class SettingsPageState {
     bool? saving,
     bool? checkingUpdate,
     bool? clearingData,
+    bool? addingWidget,
     Object? failure,
     bool clearFailure = false,
   }) => SettingsPageState(
@@ -61,6 +65,7 @@ class SettingsPageState {
     saving: saving ?? this.saving,
     checkingUpdate: checkingUpdate ?? this.checkingUpdate,
     clearingData: clearingData ?? this.clearingData,
+    addingWidget: addingWidget ?? this.addingWidget,
     failure: clearFailure ? null : failure ?? this.failure,
   );
 }
@@ -82,6 +87,24 @@ class SettingsController extends PageCubit<SettingsPageState> {
   }
 
   bool get showAppIcon => AppPlatform.isIOS || AppPlatform.isMacOS;
+
+  Future<void> addTrafficWidget(BuildContext context) async {
+    if (state.addingWidget) return;
+    emit(state.copyWith(addingWidget: true));
+    try {
+      final requested = await TrafficWidgetService().requestPin();
+      if (!requested && context.mounted) {
+        ContextAlert.showToast(
+          context,
+          AppLocalizations.of(context)!.trafficWidgetManualHint,
+        );
+      }
+    } catch (error) {
+      if (context.mounted) _showUnavailable(context, error);
+    } finally {
+      emit(state.copyWith(addingWidget: false));
+    }
+  }
 
   Future<void> _readVersions() async {
     var appVersion = '—';

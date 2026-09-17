@@ -21,8 +21,9 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   Database JSON stays Base64; preserve legacy
   Raw rows above the new-item limit and keep retired Profile/Multi-node rows
   outside product flows.
-- Current-session traffic and speed come only from Xray metrics HTTP while the
-  connection page and app view are visible; input focus is not required. Do not
+- Current-session traffic and speed come only from Xray metrics HTTP. Visible
+  connection pages and the macOS menu bar share one App sampler; Android's VPN
+  service owns notification/widget sampling independently of Flutter. Do not
   persist traffic or maintain device totals.
   iOS simulator SOCKS adaptation belongs in Swift, not App UI or business state.
 - Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`

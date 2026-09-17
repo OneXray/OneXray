@@ -1,0 +1,7 @@
+<resources>
+    <color name="traffic_background">#10151E</color>
+    <color name="traffic_foreground">#F2F5F8</color>
+    <color name="traffic_secondary">#C2CAD5</color>
+    <color name="traffic_primary">#69A5FF</color>
+    <color name="traffic_border">#2B3543</color>
+</resources>

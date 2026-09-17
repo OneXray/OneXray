@@ -90,6 +90,7 @@ flutter {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     val coreVersion = "1.19.0"
     implementation("androidx.core:core-ktx:$coreVersion")
     implementation("androidx.core:core-splashscreen:1.2.0")

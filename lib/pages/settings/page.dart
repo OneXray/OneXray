@@ -57,6 +57,20 @@ class SettingsPage extends StatelessWidget {
                       onSelected: (theme) =>
                           controller.setTheme(context, theme),
                     ),
+                    if (AppPlatform.isAndroid)
+                      SettingRow(
+                        title: l10n.trafficWidgetAdd,
+                        minHeight: rowHeight,
+                        contentPadding: rowPadding,
+                        titleStyle: AppTypography.settingsRow,
+                        trailing: state.addingWidget
+                            ? const ButtonProgressIndicator(size: 20)
+                            : null,
+                        showChevron: true,
+                        onTap: state.addingWidget
+                            ? null
+                            : () => controller.addTrafficWidget(context),
+                      ),
                     if (controller.showAppIcon)
                       SettingRow(
                         title: l10n.prototypeAppIcon,

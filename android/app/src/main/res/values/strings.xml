@@ -1,4 +1,8 @@
 <resources>
+    <string name="traffic_widget_name">OneXray traffic</string>
+    <string name="traffic_widget_description">VPN status, network speed and traffic for this connection</string>
+    <string name="traffic_this_connection">This connection</string>
+    <string name="traffic_current_speed">Current speed</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">Connected</string>
     <string name="quick_settings_tile_status_connecting">Connecting</string>

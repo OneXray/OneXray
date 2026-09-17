@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/traffic_widget"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/traffic_widget_background"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:padding="16dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/quick_settings_tile_label"
+            android:textColor="@color/traffic_foreground"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/traffic_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="@string/quick_settings_tile_status_disconnected"
+            android:textColor="@color/traffic_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/traffic_current_speed"
+        android:textColor="@color/traffic_secondary"
+        android:textSize="12sp" />
+    <TextView
+        android:id="@+id/traffic_speed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="12sp"
+        android:autoSizeMaxTextSize="18sp"
+        android:autoSizeStepGranularity="1sp"
+        android:maxLines="1"
+        android:text="↓ —   ↑ —"
+        android:textDirection="ltr"
+        android:textColor="@color/traffic_primary"
+        android:textSize="18sp" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/traffic_this_connection"
+        android:textColor="@color/traffic_secondary"
+        android:textSize="12sp" />
+    <TextView
+        android:id="@+id/traffic_session"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="12sp"
+        android:autoSizeMaxTextSize="14sp"
+        android:autoSizeStepGranularity="1sp"
+        android:maxLines="1"
+        android:text="↓ —   ↑ —"
+        android:textDirection="ltr"
+        android:textColor="@color/traffic_foreground"
+        android:textSize="14sp" />
+</LinearLayout>

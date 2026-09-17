@@ -1,4 +1,6 @@
 {
+  "trafficWidgetAdd": "加入流量小工具",
+  "trafficWidgetManualHint": "請在主畫面的小工具列表中加入 OneXray 流量小工具。",
   "backupAutomatic": "自動備份",
   "backupAllow": "允許向此位置備份",
   "backupInterval": "備份週期",

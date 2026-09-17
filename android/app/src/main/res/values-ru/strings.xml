@@ -1,4 +1,8 @@
 <resources>
+    <string name="traffic_widget_name">Трафик OneXray</string>
+    <string name="traffic_widget_description">Состояние VPN, скорость и трафик текущего подключения</string>
+    <string name="traffic_this_connection">Текущее подключение</string>
+    <string name="traffic_current_speed">Текущая скорость</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">Подключено</string>
     <string name="quick_settings_tile_status_connecting">Подключение</string>

@@ -20,6 +20,7 @@ dependencies:
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
   quick_actions: ^1.1.1
+  home_widget: ^0.9.4
   go_router: ^18.0.1
   image_picker: ^1.2.3
   process: ^5.0.6
