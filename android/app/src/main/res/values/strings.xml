@@ -1,8 +1,15 @@
 <resources>
+    <string name="notification_vpn_start_failed">Connection failed</string>
+    <string name="traffic_download">Download</string>
+    <string name="traffic_upload">Upload</string>
+    <string name="traffic_session_value">Session %1$s</string>
+    <string name="traffic_session_placeholder">Session —</string>
+    <string name="traffic_start_vpn">Start VPN</string>
+    <string name="traffic_stop_vpn">Stop VPN</string>
+    <string name="traffic_widget_disconnected">Disconnected</string>
     <string name="traffic_widget_name">OneXray traffic</string>
     <string name="traffic_widget_description">VPN status, network speed and traffic for this connection</string>
     <string name="traffic_this_connection">This connection</string>
-    <string name="traffic_current_speed">Current speed</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">Connected</string>
     <string name="quick_settings_tile_status_connecting">Connecting</string>

@@ -17,6 +17,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.Parcel
 import android.os.ParcelFileDescriptor
+import android.util.AtomicFile
 import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
 import kotlinx.coroutines.CoroutineScope
@@ -44,7 +45,6 @@ import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import net.yuandev.onexray.pigeon.XrayEnv
 import net.yuandev.onexray.pigeon.VpnStatus
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -52,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class OneVpnService : VpnService() {
     companion object {
         const val ACTION_START: String = "vpn_start"
+        const val EXTRA_REUSE_CONFIGURATION: String = "reuse_configuration"
         const val ACTION_STOP: String = "vpn_stop"
         const val ACTION_STOP_REQUEST: String = "net.yuandev.onexray.VPN_STOP_REQUEST"
 
@@ -71,6 +72,7 @@ class OneVpnService : VpnService() {
     private val tunMtu = 1500
     @Volatile
     private var running = false
+    private var backgroundStart = false
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
 
@@ -178,6 +180,7 @@ class OneVpnService : VpnService() {
                 return START_NOT_STICKY
             }
             if (!running && tunnel == null) {
+                backgroundStart = intent.getBooleanExtra(EXTRA_REUSE_CONFIGURATION, false)
                 startTun(startId)
             }
             return START_NOT_STICKY
@@ -217,22 +220,24 @@ class OneVpnService : VpnService() {
         try {
             updateWidget(VpnStatus.CONNECTING)
             showNotification()
-            val model = readStartRequest()
+            val file = VpnController.startFile(this)
+            val saved = SavedVpnConfig.read(file)
+            val model = if (backgroundStart) {
+                SavedVpnConfig.renewSession(saved, System.currentTimeMillis() * 1000).also {
+                    val atomic = AtomicFile(file)
+                    val output = atomic.startWrite()
+                    try {
+                        output.write(JsonTool.json.encodeToString(it).toByteArray(Charsets.UTF_8))
+                        atomic.finishWrite(output)
+                    } catch (error: Exception) {
+                        atomic.failWrite(output)
+                        throw error
+                    }
+                }
+            } else saved
             runTun(model, generation)
         } catch (e: Exception) {
             failStart("OneVpnService: startTun failed", e, generation)
-        }
-    }
-
-    private fun readStartRequest(): StartVpnRequest {
-        val runPath = File(this.filesDir.path, "run")
-        val file = File(runPath.path, "start.json")
-        val data = file.readText()
-        return try {
-            JsonTool.json.decodeFromString<StartVpnRequest>(data)
-        } catch (_: IllegalArgumentException) {
-            // Decoder errors may contain the input, including node credentials.
-            throw IllegalStateException("invalid VPN start request")
         }
     }
 
@@ -252,7 +257,7 @@ class OneVpnService : VpnService() {
         }
         startGeneration.incrementAndGet()
         trafficMonitor.stop()
-        updateWidget(VpnStatus.DISCONNECTED)
+        updateWidget(VpnStatus.DISCONNECTING)
         XLog.d("OneVpnService: stopTun")
         stopForeground(STOP_FOREGROUND_REMOVE)
         try {
@@ -276,6 +281,7 @@ class OneVpnService : VpnService() {
         tunnel = null
         controller.vpn = null
         running = false
+        updateWidget(VpnStatus.DISCONNECTED)
         sendStatusBroadcast(false, error)
         return true
     }
@@ -289,6 +295,7 @@ class OneVpnService : VpnService() {
         XLog.e(message, error)
         val reason = error.message ?: error.toString()
         if (!releaseTun(reason)) sendStatusBroadcast(false, reason)
+        if (backgroundStart) VpnController.reportStartFailure(this, reason)
         stopSelf()
     }
 

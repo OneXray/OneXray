@@ -59,17 +59,37 @@ class OneQuickSettingsTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        if (qsTile?.state == Tile.STATE_UNAVAILABLE) return
+        if (isLocked) {
+            unlockAndRun { toggleVpn() }
+        } else {
+            toggleVpn()
+        }
+    }
+
+    private fun toggleVpn() {
         if (VpnController.readVpnRunning(this)) {
             updateTileState(
                 state = Tile.STATE_UNAVAILABLE,
                 subtitle = getString(R.string.quick_settings_tile_status_disconnecting),
                 iconRes = R.drawable.pause_light,
             )
-            VpnController.stopVpn(this)
+            if (!VpnController.stopVpn(this)) refreshTile()
             return
         }
 
-        launchMainActivity()
+        when (VpnController.startSavedVpn(this)) {
+            VpnController.SavedStartResult.STARTED -> updateTileState(
+                state = Tile.STATE_UNAVAILABLE,
+                subtitle = getString(R.string.quick_settings_tile_status_connecting),
+                iconRes = R.drawable.play_light,
+            )
+            VpnController.SavedStartResult.OPEN_APP -> launchMainActivity()
+            VpnController.SavedStartResult.FAILED -> {
+                refreshTile()
+                VpnController.reportStartFailure(this, VpnController.lastError)
+            }
+        }
     }
 
     private fun refreshTile() {
@@ -111,7 +131,7 @@ class OneQuickSettingsTileService : TileService() {
             state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE,
             subtitle = when {
                 running -> getString(R.string.quick_settings_tile_status_connected)
-                else -> getString(R.string.quick_settings_tile_status_open_app)
+                else -> getString(R.string.quick_settings_tile_status_disconnected)
             },
             iconRes = if (running) R.drawable.pause_light else R.drawable.play_light,
         )

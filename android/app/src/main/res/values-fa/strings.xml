@@ -1,8 +1,15 @@
 <resources>
+    <string name="notification_vpn_start_failed">اتصال ناموفق بود</string>
+    <string name="traffic_download">دانلود</string>
+    <string name="traffic_upload">آپلود</string>
+    <string name="traffic_session_value">این اتصال %1$s</string>
+    <string name="traffic_session_placeholder">این اتصال —</string>
+    <string name="traffic_start_vpn">شروع VPN</string>
+    <string name="traffic_stop_vpn">توقف VPN</string>
+    <string name="traffic_widget_disconnected">قطع است</string>
     <string name="traffic_widget_name">ترافیک OneXray</string>
     <string name="traffic_widget_description">وضعیت VPN، سرعت و ترافیک این اتصال</string>
     <string name="traffic_this_connection">این اتصال</string>
-    <string name="traffic_current_speed">سرعت فعلی</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">متصل</string>
     <string name="quick_settings_tile_status_connecting">در حال اتصال</string>

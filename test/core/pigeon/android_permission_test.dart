@@ -31,20 +31,27 @@ void main() {
     final native = File(
       'android/app/src/main/kotlin/net/yuandev/onexray/pigeon/HostApi.kt',
     ).readAsStringSync();
+    final controller = File(
+      'android/app/src/main/kotlin/net/yuandev/onexray/vpn/VpnController.kt',
+    ).readAsStringSync();
     final manifest = File('android/app/src/main/AndroidManifest.xml')
         .readAsStringSync();
     expect(manifest, contains('android.permission.ACCESS_LOCAL_NETWORK'));
     expect(
-      native,
+      controller,
       contains('Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN'),
     );
     expect(
-      native,
+      controller,
       contains(
         'context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK)',
       ),
     );
-    expect(native, contains('PlatformPermissionKind.ANDROID_LOCAL_NETWORK'));
+    expect(
+      controller,
+      contains('PlatformPermissionKind.ANDROID_LOCAL_NETWORK'),
+    );
+    expect(native, contains('VpnController.queryPermission(context)'));
     expect(native, contains('callback?.invoke(queryPermissionNow())'));
   });
 

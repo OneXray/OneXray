@@ -1,7 +1,13 @@
 <resources>
-    <color name="traffic_background">#10151E</color>
+    <color name="traffic_background">#E610151E</color>
     <color name="traffic_foreground">#F2F5F8</color>
     <color name="traffic_secondary">#C2CAD5</color>
     <color name="traffic_primary">#69A5FF</color>
-    <color name="traffic_border">#2B3543</color>
+    <color name="traffic_border">#1FFFFFFF</color>
+    <color name="traffic_action">#69A5FF</color>
+    <color name="traffic_on_action">#10151E</color>
+    <color name="traffic_action_border">#657185</color>
+    <color name="traffic_ripple">#3069A5FF</color>
+    <color name="traffic_status_connected">#56D77E</color>
+    <color name="traffic_status_idle">#8794A8</color>
 </resources>

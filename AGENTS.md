@@ -16,6 +16,8 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
 - Route connection actions, shortcuts and tray actions through
   `ConnectionCoordinator`. Native VPN state is authoritative. After a failed
   stop/start transition, do not restart the previous connection.
+  Android Widget/Tile may restart the existing complete `run/start.json` directly
+  in the VPN service; missing inputs or permissions fall back to the App.
 - Smart and ordinary Custom configuration use `XrayJson`; Advanced Custom
   templates and full Raw retain user JSON through separate Map compilation.
   Database JSON stays Base64; preserve legacy
