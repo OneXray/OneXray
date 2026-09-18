@@ -80,6 +80,7 @@ dependencies:
   # desktop
   tray_manager: ^0.5.3
   window_manager: ^0.5.2
+  macos_window_utils: ^1.9.1
   win32: ^6.4.0
 
 dev_dependencies:

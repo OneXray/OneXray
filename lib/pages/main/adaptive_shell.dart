@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/main/desktop_window.dart';
 import 'package:onexray/pages/main/menu_actions.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -200,14 +201,16 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
         ? AppLayout.desktopSidebarWidth
         : AppLayout.compactSidebarWidth;
     final palette = ColorManager.palette(context);
+    final nativeSidebar = DesktopWindowFrame.hasNativeSidebar(context);
     return Scaffold(
+      backgroundColor: nativeSidebar ? Colors.transparent : null,
       body: Row(
         children: [
           Container(
             key: const ValueKey('primary-desktop-navigation'),
             width: sidebarWidth,
             decoration: BoxDecoration(
-              color: palette.sidebar,
+              color: nativeSidebar ? Colors.transparent : palette.sidebar,
               border: BorderDirectional(
                 end: BorderSide(color: palette.sidebarBorder),
               ),
