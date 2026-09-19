@@ -5,52 +5,93 @@
     android:layout_height="match_parent"
     android:background="@drawable/traffic_widget_background"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp">
 
     <LinearLayout
-        android:id="@+id/traffic_header"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="32dp"
+        android:layout_height="48dp"
         android:gravity="center_vertical">
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:background="@drawable/traffic_app_icon_mask"
-            android:clipToOutline="true"
-            android:importantForAccessibility="no"
-            android:src="@drawable/traffic_app_icon" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:fontFamily="sans-serif-medium"
-            android:includeFontPadding="false"
-            android:text="@string/quick_settings_tile_label"
-            android:textColor="@color/traffic_foreground"
-            android:textSize="16sp" />
         <LinearLayout
+            android:id="@+id/traffic_header"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:gravity="end|center_vertical">
+            android:layout_marginEnd="8dp"
+            android:gravity="center_vertical">
             <ImageView
-                android:id="@+id/traffic_status_dot"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:layout_marginEnd="6dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="@drawable/traffic_app_icon_mask"
+                android:clipToOutline="true"
                 android:importantForAccessibility="no"
-                android:src="@drawable/traffic_status_dot" />
-            <TextView
-                android:id="@+id/traffic_status"
-                android:layout_width="wrap_content"
+                android:src="@drawable/traffic_app_icon" />
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:maxLines="2"
-                android:text="@string/traffic_widget_disconnected"
-                android:textColor="@color/traffic_secondary"
-                android:textSize="12sp" />
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/traffic_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false"
+                    android:text="@string/quick_settings_tile_label"
+                    android:textColor="@color/traffic_foreground"
+                    android:textSize="16sp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical">
+                    <ImageView
+                        android:id="@+id/traffic_status_dot"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:layout_marginEnd="6dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/traffic_status_dot" />
+                    <TextView
+                        android:id="@+id/traffic_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:includeFontPadding="false"
+                        android:maxLines="2"
+                        android:text="@string/traffic_widget_disconnected"
+                        android:textColor="@color/traffic_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
+        <FrameLayout
+            android:id="@+id/traffic_action"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/traffic_action_start"
+            android:contentDescription="@string/traffic_start_vpn"
+            android:focusable="true"
+            android:clickable="true">
+            <ImageView
+                android:id="@+id/traffic_action_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/traffic_power"
+                android:enabled="false"
+                android:tint="@color/traffic_action_content" />
+            <ProgressBar
+                android:id="@+id/traffic_action_progress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:indeterminate="true"
+                android:indeterminateTint="@color/traffic_secondary"
+                android:visibility="gone" />
+        </FrameLayout>
     </LinearLayout>
 
     <LinearLayout
@@ -58,8 +99,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginTop="4dp"
         android:gravity="center_vertical">
         <LinearLayout
             android:layout_width="0dp"
@@ -101,52 +141,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <FrameLayout
-        android:id="@+id/traffic_action"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="@drawable/traffic_action_start"
-        android:contentDescription="@string/traffic_start_vpn"
-        android:focusable="true"
-        android:clickable="true">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingHorizontal="12dp"
-            android:gravity="center"
-            android:importantForAccessibility="noHideDescendants">
-            <ImageView
-                android:id="@+id/traffic_action_icon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="8dp"
-                android:src="@drawable/traffic_power"
-                android:enabled="false"
-                android:tint="@color/traffic_action_content" />
-            <ProgressBar
-                android:id="@+id/traffic_action_progress"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginEnd="8dp"
-                android:indeterminate="true"
-                android:indeterminateTint="@color/traffic_secondary"
-                android:visibility="gone" />
-            <TextView
-                android:id="@+id/traffic_action_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:autoSizeTextType="uniform"
-                android:autoSizeMinTextSize="12sp"
-                android:autoSizeMaxTextSize="14sp"
-                android:autoSizeStepGranularity="1sp"
-                android:fontFamily="sans-serif-medium"
-                android:includeFontPadding="false"
-                android:enabled="false"
-                android:maxLines="1"
-                android:text="@string/traffic_start_vpn"
-                android:textColor="@color/traffic_action_content"
-                android:textSize="14sp" />
-        </LinearLayout>
-    </FrameLayout>
 </LinearLayout>

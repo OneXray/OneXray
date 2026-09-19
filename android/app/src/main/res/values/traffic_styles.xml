@@ -11,12 +11,12 @@
     <style name="TrafficWidgetRate">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:layout_marginTop">2dp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:includeFontPadding">false</item>
         <item name="android:autoSizeTextType">uniform</item>
-        <item name="android:autoSizeMinTextSize">24sp</item>
-        <item name="android:autoSizeMaxTextSize">28sp</item>
+        <item name="android:autoSizeMinTextSize">22sp</item>
+        <item name="android:autoSizeMaxTextSize">24sp</item>
         <item name="android:autoSizeStepGranularity">1sp</item>
         <item name="android:maxLines">1</item>
         <item name="android:text">—</item>
@@ -25,12 +25,12 @@
         <item name="android:gravity">start</item>
         <item name="android:enabled">false</item>
         <item name="android:textColor">@color/traffic_rate</item>
-        <item name="android:textSize">28sp</item>
+        <item name="android:textSize">24sp</item>
     </style>
     <style name="TrafficWidgetSession">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:layout_marginTop">2dp</item>
         <item name="android:includeFontPadding">false</item>
         <item name="android:textColor">@color/traffic_secondary</item>
         <item name="android:textSize">12sp</item>

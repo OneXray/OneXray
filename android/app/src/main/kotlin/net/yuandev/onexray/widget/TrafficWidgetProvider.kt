@@ -104,11 +104,9 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(R.id.traffic_upload_session, sessionText(context, sample?.uplink))
                 setOnClickPendingIntent(R.id.traffic_header, openApp)
                 setOnClickPendingIntent(R.id.traffic_data, openApp)
-                setTextViewText(R.id.traffic_action_label, actionLabel)
-                // Passive child states select resource colors at inflation time,
-                // including cached RemoteViews after a system theme change.
-                setBoolean(R.id.traffic_action_label, "setEnabled", connected || busy)
                 setContentDescription(R.id.traffic_action, actionLabel)
+                // The passive icon state selects resource colors at inflation
+                // time, including cached RemoteViews after a theme change.
                 setBoolean(R.id.traffic_action_icon, "setEnabled", connected || busy)
                 setInt(R.id.traffic_action, "setBackgroundResource",
                     if (connected || busy) R.drawable.traffic_action_stop else R.drawable.traffic_action_start)

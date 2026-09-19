@@ -50,7 +50,7 @@ class TrafficWidgetUpdateTest {
                 )
                 view.layout(0, 0, view.measuredWidth, view.measuredHeight)
                 val action = if (status == VpnStatus.CONNECTED) R.string.traffic_stop_vpn else R.string.traffic_start_vpn
-                assertEquals(context.getString(action), view.findViewById<TextView>(R.id.traffic_action_label).text.toString())
+                assertEquals(context.getString(action), view.findViewById<View>(R.id.traffic_action).contentDescription)
                 assertEquals(context.getString(R.string.traffic_download), view.findViewById<TextView>(R.id.traffic_download_label).text.toString())
                 assertEquals(context.resources.configuration.layoutDirection, view.layoutDirection)
                 if (sample != null) {
@@ -106,7 +106,7 @@ class TrafficWidgetUpdateTest {
                 val view = manager.getViewFor(id)
                 val label = if (status == VpnStatus.CONNECTED) R.string.traffic_stop_vpn
                     else R.string.quick_settings_tile_status_disconnecting
-                assertEquals(context.getString(label), view.findViewById<TextView>(R.id.traffic_action_label).text.toString())
+                assertEquals(context.getString(label), view.findViewById<View>(R.id.traffic_action).contentDescription)
                 assertEquals(status == VpnStatus.CONNECTED, view.findViewById<View>(R.id.traffic_action).isEnabled)
             }
         } finally {

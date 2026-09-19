@@ -54,7 +54,6 @@ class TrafficWidgetThemeTest {
         val actionColor = context.getColor(
             if (connected || busy) R.color.traffic_foreground else R.color.traffic_on_action,
         )
-        assertEquals(actionColor, view.findViewById<TextView>(R.id.traffic_action_label).currentTextColor)
         assertEquals(actionColor, imageColor(view.findViewById(R.id.traffic_action_icon)))
         assertEquals(!busy, view.findViewById<View>(R.id.traffic_action).isEnabled)
         val rateColor = context.getColor(
