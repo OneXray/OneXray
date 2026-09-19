@@ -24,6 +24,10 @@ git diff --check
 
 仅修改文档时检查本地路径、链接和 `git diff --check`，不运行 Flutter 测试或原生构建。
 
+Android Widget 的主题回归使用仅用于测试的 Robolectric，加载正式资源并重新应用缓存的
+RemoteViews，覆盖 Android 10 与 Android 14，不启动 Flutter、VPN 或访问用户数据库。
+在 `android/` 下运行 `./gradlew :app:testDebugUnitTest`；JVM 资源测试不替代真实桌面验收。
+
 ## 平台边界
 
 - Android UI 使用模拟器验证，允许启动 VPN；真实导入文件、导出文件和扫码等系统交互可跳过。

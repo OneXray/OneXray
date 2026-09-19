@@ -120,7 +120,8 @@
                 android:layout_height="20dp"
                 android:layout_marginEnd="8dp"
                 android:src="@drawable/traffic_power"
-                android:tint="@color/traffic_on_action" />
+                android:enabled="false"
+                android:tint="@color/traffic_action_content" />
             <ProgressBar
                 android:id="@+id/traffic_action_progress"
                 style="?android:attr/progressBarStyleSmall"
@@ -140,9 +141,10 @@
                 android:autoSizeStepGranularity="1sp"
                 android:fontFamily="sans-serif-medium"
                 android:includeFontPadding="false"
+                android:enabled="false"
                 android:maxLines="1"
                 android:text="@string/traffic_start_vpn"
-                android:textColor="@color/traffic_on_action"
+                android:textColor="@color/traffic_action_content"
                 android:textSize="14sp" />
         </LinearLayout>
     </FrameLayout>

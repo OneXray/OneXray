@@ -23,7 +23,8 @@
         <item name="android:textDirection">ltr</item>
         <item name="android:textAlignment">viewStart</item>
         <item name="android:gravity">start</item>
-        <item name="android:textColor">@color/traffic_secondary</item>
+        <item name="android:enabled">false</item>
+        <item name="android:textColor">@color/traffic_rate</item>
         <item name="android:textSize">28sp</item>
     </style>
     <style name="TrafficWidgetSession">

@@ -86,30 +86,29 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
                 connected -> R.string.traffic_stop_vpn
                 else -> R.string.traffic_start_vpn
             })
-            val actionColor = context.getColor(
-                if (connected || busy) R.color.traffic_foreground else R.color.traffic_on_action
-            )
             val openApp = HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
             val views = RemoteViews(context.packageName, R.layout.traffic_widget).apply {
                 setInt(R.id.traffic_widget, "setLayoutDirection", context.resources.configuration.layoutDirection)
                 setTextViewText(R.id.traffic_download_label, context.getString(R.string.traffic_download))
                 setTextViewText(R.id.traffic_upload_label, context.getString(R.string.traffic_upload))
                 setTextViewText(R.id.traffic_status, context.getString(label))
-                setInt(R.id.traffic_status_dot, "setColorFilter", context.getColor(when {
-                    connected -> R.color.traffic_status_connected
-                    busy -> R.color.traffic_primary
-                    else -> R.color.traffic_status_idle
-                }))
-                setRate(context, R.id.traffic_download_speed, sample?.downloadSpeed)
-                setRate(context, R.id.traffic_upload_speed, sample?.uploadSpeed)
+                setInt(R.id.traffic_status_dot, "setImageLevel", when {
+                    connected -> 2
+                    busy -> 1
+                    else -> 0
+                })
+                setRate(R.id.traffic_download_speed, sample?.downloadSpeed)
+                setRate(R.id.traffic_upload_speed, sample?.uploadSpeed)
                 setTextViewText(R.id.traffic_download_session, sessionText(context, sample?.downlink))
                 setTextViewText(R.id.traffic_upload_session, sessionText(context, sample?.uplink))
                 setOnClickPendingIntent(R.id.traffic_header, openApp)
                 setOnClickPendingIntent(R.id.traffic_data, openApp)
                 setTextViewText(R.id.traffic_action_label, actionLabel)
-                setTextColor(R.id.traffic_action_label, actionColor)
+                // Passive child states select resource colors at inflation time,
+                // including cached RemoteViews after a system theme change.
+                setBoolean(R.id.traffic_action_label, "setEnabled", connected || busy)
                 setContentDescription(R.id.traffic_action, actionLabel)
-                setInt(R.id.traffic_action_icon, "setColorFilter", actionColor)
+                setBoolean(R.id.traffic_action_icon, "setEnabled", connected || busy)
                 setInt(R.id.traffic_action, "setBackgroundResource",
                     if (connected || busy) R.drawable.traffic_action_stop else R.drawable.traffic_action_start)
                 setViewVisibility(R.id.traffic_action_icon, if (busy) View.GONE else View.VISIBLE)
@@ -156,15 +155,13 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
             openApp.send(context, 0, null, null, null, null, sendOptions.toBundle())
         }
 
-        private fun RemoteViews.setRate(context: Context, viewId: Int, bytes: Long?) {
+        private fun RemoteViews.setRate(viewId: Int, bytes: Long?) {
             val text = bytes?.let { "${TrafficSample.formatBytes(it)}/s" } ?: "—"
             val styled = SpannableString(text)
             val unit = text.indexOf(' ')
             if (unit >= 0) styled.setSpan(RelativeSizeSpan(0.5f), unit, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setTextViewText(viewId, styled)
-            setTextColor(viewId, context.getColor(
-                if (bytes == null) R.color.traffic_secondary else R.color.traffic_primary
-            ))
+            setBoolean(viewId, "setEnabled", bytes != null)
         }
 
         private fun sessionText(context: Context, bytes: Long?): String {

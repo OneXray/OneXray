@@ -45,14 +45,66 @@ class PageAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: title,
       leading: forwardClicks && effectiveLeading != null
-          ? MacosToolbarPassthrough(child: effectiveLeading)
+          ? _AnimatedToolbarPassthrough(child: effectiveLeading)
           : effectiveLeading,
       actions: forwardClicks
           ? actions
-                ?.map((child) => MacosToolbarPassthrough(child: child))
+                ?.map((child) => _AnimatedToolbarPassthrough(child: child))
                 .toList()
           : actions,
       bottom: bottom,
     );
   }
+}
+
+/// Route transitions transform the page without laying out its buttons again.
+class _AnimatedToolbarPassthrough extends StatefulWidget {
+  const _AnimatedToolbarPassthrough({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AnimatedToolbarPassthrough> createState() =>
+      _AnimatedToolbarPassthroughState();
+}
+
+class _AnimatedToolbarPassthroughState
+    extends State<_AnimatedToolbarPassthrough> {
+  final _passthrough = GlobalKey<MacosToolbarPassthroughState>();
+  List<Animation<double>> _animations = [];
+  bool _updateScheduled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    for (final animation in _animations) {
+      animation.removeListener(_updateAfterFrame);
+    }
+    final route = ModalRoute.of(context);
+    _animations = [?route?.animation, ?route?.secondaryAnimation];
+    for (final animation in _animations) {
+      animation.addListener(_updateAfterFrame);
+    }
+  }
+
+  void _updateAfterFrame() {
+    if (_updateScheduled) return;
+    _updateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateScheduled = false;
+      if (mounted) _passthrough.currentState?.requestUpdate();
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final animation in _animations) {
+      animation.removeListener(_updateAfterFrame);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      MacosToolbarPassthrough(key: _passthrough, child: widget.child);
 }
