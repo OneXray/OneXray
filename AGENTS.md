@@ -62,16 +62,22 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   [Windows builds](docs/windows-build.md). Apple/Android release scripts may
   upload to stores; they are not local validation commands.
 
-## GitHub and reviews
+## Agent skills
 
-- Use explicit `--repo OneXray/OneXray` or repository API endpoints; the Git
-  remote uses an SSH alias. Write issue/PR titles, descriptions and comments in
-  English. Keep PR content self-contained without references to other repos' PRs.
-- Review the PR's actual remote base/head, not unpushed local changes; record
-  the commit IDs without switching the checkout. Report Standards and Spec
-  separately, with severity, location, concrete impact and evidence.
-- A review does not authorize edits, comments, label changes, closure or pushes.
-  Check actual labels when an authorized action needs them; no triage setup is required.
+### Issue tracker
+
+GitHub Issues for `OneXray/OneXray`. Before issue, PR or review work, read
+[issue tracker](docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Use the five canonical triage labels. Before triage, read
+[label mapping](docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context layout. Before codebase exploration or domain/ADR work,
+read [domain guidance](docs/agents/domain.md).
 
 ## Verification
 
