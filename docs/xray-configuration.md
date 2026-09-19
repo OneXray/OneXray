@@ -396,10 +396,13 @@ HTTP 明文例外仅开放 `127.0.0.1`，不放宽外部域名的传输策略。
 Widget 使用 `home_widget` 的原生 Provider、启动 PendingIntent 和 Flutter 固定入口；Provider
 与 VPN 服务共处 `:native`，内存传递当前展示值，不将流量写入 SharedPreferences 或文件，
 不增加另一套 VPN 状态查询依据。Android 通知和 Widget 使用系统语言、Widget 使用系统明暗主题。
+系统语言变化时主动刷新已添加的 Widget，即使当前未连接也更新文案与左右布局，不启动 VPN 或采样器。
 Widget 顶部显示应用图标与连接状态，中间按下载、上传分栏显示速率及本次流量；底部按钮在
 未连接时启动、已连接时关闭 VPN，原生启停期间显示按钮内进度并禁止重复点击。
 Widget 和快捷设置 Tile 共用原生启动入口：现有 `run/start.json` 包含完整启动请求且 VPN、
 局域网权限就绪时，直接启动 `OneVpnService`，不启动 Flutter 引擎、不显示 App。
+Widget 的启动动作不通过 TUN 名称、地址或上次展示状态判断 VPN 归属；重复启动由服务读取自身
+资源状态处理，并刷新 Widget，不重启已运行的 Core。
 必要输入不存在、不可读或不完整，以及需要授权时，才打开 App 并复用 `startVpn` 快捷入口。
 只检查原生启动所需的包装字段，Xray 配置与本地依赖错误由实际启动报告，不额外运行校验或下载。
 

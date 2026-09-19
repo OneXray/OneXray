@@ -20,6 +20,7 @@ void main() {
     expect(provider, contains('PendingIntent.getService('));
     expect(provider, contains('OneVpnService.ACTION_STOP'));
     expect(provider, isNot(contains('VpnController.startVpn(')));
+    expect(provider, isNot(contains('VpnController.readVpnRunning(')));
     expect(provider, isNot(contains('run/start.json')));
     expect(
       provider,

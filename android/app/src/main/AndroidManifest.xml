@@ -24,6 +24,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="OneXray"
         android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="true"
         tools:targetApi="tiramisu">
         <activity
             android:name=".MainActivity"
@@ -65,6 +66,7 @@
             android:process=":native">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

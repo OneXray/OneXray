@@ -25,15 +25,16 @@ import net.yuandev.onexray.vpn.VpnController
 
 class TrafficWidgetProvider : HomeWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_LOCALE_CHANGED) {
+            publish(context, status, sample)
+            return
+        }
         if (intent.action != ACTION_START) {
             super.onReceive(context, intent)
             return
         }
-        if (status == VpnStatus.CONNECTING || status == VpnStatus.DISCONNECTING) return
-        if (VpnController.readVpnRunning(context)) {
-            publish(context, VpnStatus.CONNECTED, sample)
-            return
-        }
+        // Neither a TUN address nor the widget's last rendering identifies a
+        // running OneXray instance. The service handles repeated starts itself.
         when (VpnController.startSavedVpn(context)) {
             VpnController.SavedStartResult.STARTED -> publish(context, VpnStatus.CONNECTING)
             VpnController.SavedStartResult.OPEN_APP -> {

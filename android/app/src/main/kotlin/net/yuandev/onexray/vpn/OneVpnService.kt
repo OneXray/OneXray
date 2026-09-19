@@ -76,6 +76,14 @@ class OneVpnService : VpnService() {
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
 
+    private val resourceStatus: VpnStatus
+        get() = when {
+            running && !released.get() -> VpnStatus.CONNECTED
+            released.get() && tunnel != null -> VpnStatus.DISCONNECTING
+            !released.get() -> VpnStatus.CONNECTING
+            else -> VpnStatus.DISCONNECTED
+        }
+
     private fun sendStatusBroadcast(running: Boolean, error: String? = null) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
             setPackage(packageName) // 限定仅本包接收
@@ -122,14 +130,8 @@ class OneVpnService : VpnService() {
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
             if (code != VpnStatusConnection.READ_STATUS) return super.onTransact(code, data, reply, flags)
             data.enforceInterface(VpnStatusConnection.DESCRIPTOR)
-            val status = when {
-                running && !released.get() -> VpnStatus.CONNECTED
-                released.get() && tunnel != null -> VpnStatus.DISCONNECTING
-                !released.get() -> VpnStatus.CONNECTING
-                else -> VpnStatus.DISCONNECTED
-            }
             reply?.writeNoException()
-            reply?.writeInt(status.ordinal)
+            reply?.writeInt(resourceStatus.ordinal)
             return true
         }
     }
@@ -179,9 +181,12 @@ class OneVpnService : VpnService() {
                 stopTun()
                 return START_NOT_STICKY
             }
-            if (!running && tunnel == null) {
+            val status = resourceStatus
+            if (status == VpnStatus.DISCONNECTED) {
                 backgroundStart = intent.getBooleanExtra(EXTRA_REUSE_CONFIGURATION, false)
                 startTun(startId)
+            } else {
+                updateWidget(status)
             }
             return START_NOT_STICKY
         }
