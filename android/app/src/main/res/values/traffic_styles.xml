@@ -8,6 +8,13 @@
         <item name="android:textColor">@color/traffic_secondary</item>
         <item name="android:textSize">12sp</item>
     </style>
+    <style name="TrafficWidgetCompactRate" parent="TrafficWidgetRate">
+        <item name="android:layout_marginTop">0dp</item>
+        <item name="android:drawablePadding">4dp</item>
+        <item name="android:autoSizeMinTextSize">14sp</item>
+        <item name="android:autoSizeMaxTextSize">18sp</item>
+        <item name="android:textSize">18sp</item>
+    </style>
     <style name="TrafficWidgetRate">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
@@ -15,7 +22,7 @@
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:includeFontPadding">false</item>
         <item name="android:autoSizeTextType">uniform</item>
-        <item name="android:autoSizeMinTextSize">22sp</item>
+        <item name="android:autoSizeMinTextSize">18sp</item>
         <item name="android:autoSizeMaxTextSize">24sp</item>
         <item name="android:autoSizeStepGranularity">1sp</item>
         <item name="android:maxLines">1</item>

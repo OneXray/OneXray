@@ -8,9 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
+import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.text.BidiFormatter
@@ -58,6 +60,13 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
         widgetData: SharedPreferences,
     ) = render(context, appWidgetManager, appWidgetIds)
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle,
+    ) = render(context, appWidgetManager, intArrayOf(appWidgetId))
+
     companion object {
         private const val ACTION_START = "net.yuandev.onexray.widget.START_VPN"
         // The provider and VPN service share :native. No counters are written to
@@ -74,6 +83,30 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
 
         private fun render(context: Context, manager: AppWidgetManager, ids: IntArray) {
             if (ids.isEmpty()) return
+            val compact = createViews(context, R.layout.traffic_widget_compact)
+            val regular = createViews(context, R.layout.traffic_widget)
+            if (Build.VERSION.SDK_INT >= 31) {
+                // Let the host select and cache the layout for its actual size,
+                // including resizing/rotation while the VPN service is stopped.
+                manager.updateAppWidget(ids, RemoteViews(mapOf(
+                    SizeF(260f, 116f) to compact,
+                    SizeF(280f, 180f) to regular,
+                )))
+            } else {
+                for (id in ids) {
+                    val options = manager.getAppWidgetOptions(id)
+                    fun layout(widthKey: String, heightKey: String): RemoteViews =
+                        if (options.getInt(widthKey) >= 280 && options.getInt(heightKey) >= 180)
+                            regular else compact
+                    manager.updateAppWidget(id, RemoteViews(
+                        layout(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT),
+                        layout(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT),
+                    ))
+                }
+            }
+        }
+
+        private fun createViews(context: Context, layout: Int): RemoteViews {
             val label = when (status) {
                 VpnStatus.CONNECTED -> R.string.quick_settings_tile_status_connected
                 VpnStatus.CONNECTING -> R.string.quick_settings_tile_status_connecting
@@ -88,7 +121,7 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
                 else -> R.string.traffic_start_vpn
             })
             val openApp = HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
-            val views = RemoteViews(context.packageName, R.layout.traffic_widget).apply {
+            return RemoteViews(context.packageName, layout).apply {
                 setInt(R.id.traffic_widget, "setLayoutDirection", context.resources.configuration.layoutDirection)
                 setTextViewText(R.id.traffic_download_label, context.getString(R.string.traffic_download))
                 setTextViewText(R.id.traffic_upload_label, context.getString(R.string.traffic_upload))
@@ -98,8 +131,8 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
                     busy -> 1
                     else -> 0
                 })
-                setRate(R.id.traffic_download_speed, sample?.downloadSpeed)
-                setRate(R.id.traffic_upload_speed, sample?.uploadSpeed)
+                setRate(R.id.traffic_download_speed, sample?.downloadSpeed, context.getString(R.string.traffic_download))
+                setRate(R.id.traffic_upload_speed, sample?.uploadSpeed, context.getString(R.string.traffic_upload))
                 setTextViewText(R.id.traffic_download_session, sessionText(context, sample?.downlink))
                 setTextViewText(R.id.traffic_upload_session, sessionText(context, sample?.uplink))
                 setOnClickPendingIntent(R.id.traffic_header, openApp)
@@ -123,7 +156,6 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
                     else -> startIntent(context)
                 })
             }
-            manager.updateAppWidget(ids, views)
         }
 
         private fun startIntent(context: Context): PendingIntent {
@@ -154,12 +186,13 @@ class TrafficWidgetProvider : HomeWidgetProvider() {
             openApp.send(context, 0, null, null, null, null, sendOptions.toBundle())
         }
 
-        private fun RemoteViews.setRate(viewId: Int, bytes: Long?) {
+        private fun RemoteViews.setRate(viewId: Int, bytes: Long?, direction: String) {
             val text = bytes?.let { "${TrafficSample.formatBytes(it)}/s" } ?: "—"
             val styled = SpannableString(text)
             val unit = text.indexOf(' ')
             if (unit >= 0) styled.setSpan(RelativeSizeSpan(0.5f), unit, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setTextViewText(viewId, styled)
+            setContentDescription(viewId, "$direction $text")
             setBoolean(viewId, "setEnabled", bytes != null)
         }
 

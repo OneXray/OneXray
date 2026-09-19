@@ -64,20 +64,21 @@ void main() {
   });
 
   test('widget has independent rates, session totals and a 48dp action', () {
-    final layout = File('$resources/layout/traffic_widget.xml')
-        .readAsStringSync();
-    for (final id in [
-      'traffic_download_speed',
-      'traffic_upload_speed',
-      'traffic_download_session',
-      'traffic_upload_session',
-      'traffic_action',
-      'traffic_action_progress',
-    ]) {
-      expect(layout, contains('@+id/$id'));
+    for (final file in ['traffic_widget.xml', 'traffic_widget_compact.xml']) {
+      final layout = File('$resources/layout/$file').readAsStringSync();
+      for (final id in [
+        'traffic_download_speed',
+        'traffic_upload_speed',
+        'traffic_download_session',
+        'traffic_upload_session',
+        'traffic_action',
+        'traffic_action_progress',
+      ]) {
+        expect(layout, contains('@+id/$id'));
+      }
+      expect(layout, contains('@drawable/traffic_app_icon'));
+      expect(layout, contains('android:layout_height="48dp"'));
     }
-    expect(layout, contains('@drawable/traffic_app_icon'));
-    expect(layout, contains('android:layout_height="48dp"'));
   });
 
   test('widget text is available in every supported system language', () {
