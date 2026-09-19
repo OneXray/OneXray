@@ -6,6 +6,7 @@ import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/core/network/user_agent.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/data_update/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -29,7 +30,7 @@ class AutoUpdatePage extends StatelessWidget {
         final mobile = width <= AppLayout.mobileBreakpoint;
         final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeDataUpdates),
             actions: const [AppActivityIndicator(pinging: false)],
           ),

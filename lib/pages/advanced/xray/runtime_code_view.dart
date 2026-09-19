@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -78,7 +79,7 @@ class RuntimeCodeScaffold extends StatelessWidget {
       ),
     );
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: PageAppBar(title: Text(title)),
       body: SafeArea(
         child: ResponsiveContent(
           desktopMaxWidth: AppLayout.advancedMaxWidth,

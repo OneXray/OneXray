@@ -6,6 +6,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/android/app_icon/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/android/app_icon/view.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -132,7 +133,7 @@ class AndroidAppsPage extends StatelessWidget {
         final rows = controller.visible;
         final missing = controller.missing;
         return Scaffold(
-          appBar: AppBar(title: Text(l.prototypeSelectApps)),
+          appBar: PageAppBar(title: Text(l.prototypeSelectApps)),
           body: SafeArea(
             child: ResponsiveContent(
               child: CustomScrollView(

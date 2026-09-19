@@ -53,15 +53,19 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 
 ### winget
 
-[`update-winget.yml`](../.github/workflows/update-winget.yml) 沿用 v26.8.4 的发布方式：
+[`update-winget.yml`](../.github/workflows/update-winget.yml) 使用“生成 → 固定安装字段 → 校验 → 提交”流程：
 
 - 正式 Release 发布或从预发布转为正式版时自动触发；也可手动指定已存在的 Release tag。现有 `Publish` 流程仍只创建预发布，不直接更新 winget。
 - 跳过预发布，拒绝草稿；正式版本必须同时具备 x64 和 ARM64 的 EXE 安装包，缺失任一架构时失败。ZIP 与 MSIX 不提交到此渠道。
 - 使用 `YuanDevLLC.OneXray` 标识向 `microsoft/winget-pkgs` 提交更新 PR，不自动合并，不清理历史版本。
+- Komac 只在生成阶段解析 EXE，通过 `update --dry-run --output` 保存清单，不直接提交。随后由 [`winget_manifest.py`](../build_scripts/winget_manifest.py) 固定用户级作用域、默认安装目录和不含版本号的显示名称；同样处理 installer 层的覆盖值，保留下载地址、摘要及其它元数据。
+- 校验覆盖 Microsoft JSON Schema、包名与版本、两种架构、有效安装字段，以及发布资产的下载地址和 SHA-256。缺少发布摘要、Schema 下载失败或清单不一致均阻止提交；不能跳过检查后继续。生成和校验只使用只读令牌。
+- 校验后的目录保存为 workflow artifact，最后用 `komac submit <目录> --yes` 提交该目录，不再次执行 `update`。同版本已有打开的 PR 时停止并显示链接，避免重复创建；修正现有 PR 仍为独立操作。
 - 清单的用户级作用域、安装路径和显示名称必须与实际安装器一致，不继承旧版本的机器级提权字段。既有未内置 VC++ runtime 的版本应按架构声明 `Microsoft.VCRedist.2015+` 依赖；这不能修复直接下载的旧 EXE/ZIP，也不能用成功退出码掩盖 helper 崩溃。内置 runtime 的新版本经验证后应移除不再需要的全局运行库依赖，避免额外提权。已发布的安装包和摘要不替换，二进制修复通过新版本发布。
 - 仓库需配置 `PACKAGE_MANAGER_GITHUB_TOKEN` secret（具有 `public_repo` scope 的 classic PAT），且对 `OneXray/winget-pkgs` fork 有写权限。工作流在提交前检查令牌是否配置、fork 来源和写权限。
 
 恢复或修改工作流时只验证配置与发布条件；实际执行会创建外部 PR，不能作为本地回归测试。
+本地可执行生成、固定字段、校验以及 `komac submit <目录> --dry-run`，不可把不带 dry-run 的提交作为验证命令。清单静态校验不替代 Windows 安装验证。
 
 ## 工程约束
 

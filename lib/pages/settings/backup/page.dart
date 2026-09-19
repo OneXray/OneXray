@@ -9,6 +9,7 @@ import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -46,7 +47,7 @@ class BackupPage extends StatelessWidget {
             .add_Hm();
         final busy = state.busy;
         return Scaffold(
-          appBar: AppBar(title: Text(l.backupTitle)),
+          appBar: PageAppBar(title: Text(l.backupTitle)),
           bottomNavigationBar: supported
               ? PageActionBar(
                   children: [

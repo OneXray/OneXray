@@ -61,6 +61,13 @@ cd build_scripts
 python -m unittest discover -s tests -p 'test_*.py'
 ```
 
+`winget_manifest.py` is a standalone release helper. Run it with
+`uv run --script build_scripts/winget_manifest.py` from the repository root;
+its inline dependency metadata installs PyYAML and jsonschema separately from
+the standard-library build environment. The manifest policy tests above do not
+need these dependencies. See [Windows builds](../docs/windows-build.md#winget)
+for the generate/fix/validate/submit boundary.
+
 ## English
 
 The scripts in this directory run the standard libXray build, generate the

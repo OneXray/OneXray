@@ -14,9 +14,17 @@
 - [Windows 构建](windows-build.md)：EXE / MSIX 运行模式、EXE / ZIP / MSIX 打包、本地签名和 CI。
 - [验证边界](refactor-validation.md)：按改动选择检查项、平台验证限制和验证数据隔离。
 
-维护要求见 [文档规则](AGENTS.md)，仓库操作与审查要求见 [工程约定](../AGENTS.md)。
+维护要求见 [文档规则](AGENTS.md)，仓库工程入口见 [工程约定](../AGENTS.md)。
 [旧原型](../../references/onexray-app-prototype/) 仅供历史视觉参考，不覆盖当前合同，
 不据此恢复累计流量、旧 ZIP 备份或旧 Setup 等已删除功能。
+
+## 工程技能配置
+
+- [Issue tracker](agents/issue-tracker.md)：本仓库的 GitHub 操作、审查边界与 Wayfinder 约定。
+- [Triage 标签](agents/triage-labels.md)：五个标准角色对应的标签名称。
+- [领域文档](agents/domain.md)：单一上下文下 `CONTEXT.md` 和 ADR 的按需读取规则。
+
+这些配置供 Matt Pocock 工程技能读取，不替代上述业务合同；领域术语和决策在需要时记录，不预先创建空文档。
 
 ## 进行中的开发计划
 

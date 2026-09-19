@@ -176,6 +176,9 @@ final class PlatformPolicy {
       }
       tun.addAll({
         'includeAllNetworks': apple['captureAllTraffic'],
+        if (platform == ConnectionPlatform.ios &&
+            apple['captureAllTraffic'] == false)
+          'hideVpnIcon': apple['hideVpnIcon'],
         if (apple['captureAllTraffic'] == false)
           'excludedRoutes': _appleExcludedRoutes(
             (apple['excludedCidrs'] as List).cast<String>(),
@@ -224,6 +227,7 @@ const _defaults = <String, dynamic>{
   },
   'apple': {
     'captureAllTraffic': false,
+    'hideVpnIcon': false,
     'excludedCidrs': <String>[],
     'allowLocalNetwork': true,
     'bypassCellularServices': true,

@@ -190,7 +190,20 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
                 settings.dnsSettings = NEDNSSettings(servers: servers)
             }
             if tun.includeAllNetworks != true {
-                try applyExcludedRoutes(tun.excludedRoutes ?? [], to: settings)
+                var excludedRoutes = tun.excludedRoutes ?? []
+                #if os(iOS)
+                // Keep the default routes; these exceptions affect iOS's VPN badge.
+                // They are runtime-only and never alter the user's exclusion list.
+                if tun.hideVpnIcon == true {
+                    if !excludedRoutes.contains("0.0.0.0/31") {
+                        excludedRoutes.append("0.0.0.0/31")
+                    }
+                    if tun.enableIPv6 == true, !excludedRoutes.contains("::/127") {
+                        excludedRoutes.append("::/127")
+                    }
+                }
+                #endif
+                try applyExcludedRoutes(excludedRoutes, to: settings)
             }
         }
         return settings

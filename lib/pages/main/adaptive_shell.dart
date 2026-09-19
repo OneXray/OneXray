@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
+import 'package:onexray/pages/main/desktop_window.dart';
 import 'package:onexray/pages/main/menu_actions.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
@@ -200,14 +201,16 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
         ? AppLayout.desktopSidebarWidth
         : AppLayout.compactSidebarWidth;
     final palette = ColorManager.palette(context);
+    final nativeSidebar = DesktopWindowFrame.hasNativeSidebar(context);
     return Scaffold(
+      backgroundColor: nativeSidebar ? Colors.transparent : null,
       body: Row(
         children: [
           Container(
             key: const ValueKey('primary-desktop-navigation'),
             width: sidebarWidth,
             decoration: BoxDecoration(
-              color: palette.sidebar,
+              color: nativeSidebar ? Colors.transparent : palette.sidebar,
               border: BorderDirectional(
                 end: BorderSide(color: palette.sidebarBorder),
               ),
@@ -215,9 +218,11 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.sidebarHorizontal,
-                  vertical: AppSpacing.sidebarVertical,
+                  vertical: nativeSidebar
+                      ? AppSpacing.macOSSidebarVertical
+                      : AppSpacing.sidebarVertical,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -231,7 +236,9 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
                         compact
                             ? AppSpacing.sidebarCompactBrandStart
                             : AppSpacing.sidebarBrandStart,
-                        AppSpacing.sidebarBrandBottom,
+                        nativeSidebar
+                            ? AppSpacing.macOSSidebarBrandBottom
+                            : AppSpacing.sidebarBrandBottom,
                       ),
                       child: Text(
                         'OneXray',
@@ -255,7 +262,18 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
               ),
             ),
           ),
-          Expanded(child: navigationShell),
+          Expanded(
+            child:
+                nativeSidebar && Directionality.of(context) == TextDirection.ltr
+                ? MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    child: navigationShell,
+                  )
+                // In RTL the content, not the sidebar, is below the native
+                // controls on the physical left. Keep its local top inset.
+                : navigationShell,
+          ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 
 import 'package:material_ui/material_ui.dart';
@@ -38,7 +39,7 @@ class _ConnectPageState extends State<ConnectPage> {
     child: PageVisibility(
       onChanged: controller.setPageVisible,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: PageAppBar(
           title: Text(AppLocalizations.of(context)!.prototypeConnect),
           actions: const [AppActivityIndicator()],
         ),

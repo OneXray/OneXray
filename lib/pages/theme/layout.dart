@@ -1,6 +1,7 @@
 /// Shared logical-pixel values mapped from the approved prototype theme.
 /// Keep platform safe areas and text scaling outside these constants.
 abstract final class AppLayout {
+  static const macOSTitlebarHeight = 28.0;
   static const mobileBreakpoint = 720.0;
   static const compactDesktopBreakpoint = 900.0;
   static const desktopSidebarWidth = 225.0;
@@ -59,6 +60,8 @@ abstract final class AppSpacing {
   static const desktopPageBottom = 42.0;
   static const sidebarHorizontal = 17.0;
   static const sidebarVertical = 36.0;
+  static const macOSSidebarVertical = 16.0;
+  static const macOSSidebarBrandBottom = 24.0;
   static const sidebarBrandStart = 24.0;
   static const sidebarCompactBrandStart = 14.0;
   static const sidebarBrandTop = 5.0;

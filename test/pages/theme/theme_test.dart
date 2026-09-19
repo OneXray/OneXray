@@ -5,7 +5,9 @@ import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
+import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -339,6 +341,71 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets('toolbar buttons share height and shape while loading', (
+    tester,
+  ) async {
+    for (final brightness in Brightness.values) {
+      Rect? idleOutline;
+      for (final busy in [false, true]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.material(brightness),
+            home: Scaffold(
+              appBar: PageAppBar(
+                title: const Text('Servers'),
+                actions: [
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: busy
+                        ? const ButtonProgressIndicator()
+                        : const Icon(LucideIcons.refreshCw),
+                    label: const Text('Updates & sources'),
+                  ),
+                  const SizedBox(width: AppSpacing.actionGap),
+                  FilledButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(LucideIcons.plus),
+                    label: const Text('Add server'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        final outline = find.descendant(
+          of: find.byType(OutlinedButton),
+          matching: find.byType(Material),
+        );
+        final filled = find.descendant(
+          of: find.byType(FilledButton),
+          matching: find.byType(Material),
+        );
+        final outlineRect = tester.getRect(outline);
+        final filledRect = tester.getRect(filled);
+        expect(outlineRect.height, AppLayout.buttonMinHeight);
+        expect(outlineRect.height, filledRect.height);
+        expect(outlineRect.top, filledRect.top);
+        final outlineShape =
+            tester.widget<Material>(outline).shape! as RoundedRectangleBorder;
+        final filledShape =
+            tester.widget<Material>(filled).shape! as RoundedRectangleBorder;
+        expect(outlineShape.borderRadius, filledShape.borderRadius);
+        expect(
+          outlineShape.borderRadius,
+          BorderRadius.circular(AppRadii.control),
+        );
+        if (busy) {
+          expect(outlineRect.height, idleOutline!.height);
+          expect(outlineRect.top, idleOutline.top);
+        } else {
+          idleOutline = outlineRect;
+        }
+        expect(tester.takeException(), isNull);
+      }
+    }
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets(
     'scaled Shad footer fits text and avoids keyboard and safe area',

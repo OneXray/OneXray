@@ -1,4 +1,15 @@
 <resources>
+    <string name="notification_vpn_start_failed">Не удалось подключиться</string>
+    <string name="traffic_download">Загрузка</string>
+    <string name="traffic_upload">Отправка</string>
+    <string name="traffic_session_value">За сеанс %1$s</string>
+    <string name="traffic_session_placeholder">За сеанс —</string>
+    <string name="traffic_start_vpn">Старт VPN</string>
+    <string name="traffic_stop_vpn">Стоп VPN</string>
+    <string name="traffic_widget_disconnected">Не подключено</string>
+    <string name="traffic_widget_name">Трафик OneXray</string>
+    <string name="traffic_widget_description">Состояние VPN, скорость и трафик текущего подключения</string>
+    <string name="traffic_this_connection">Текущее подключение</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">Подключено</string>
     <string name="quick_settings_tile_status_connecting">Подключение</string>

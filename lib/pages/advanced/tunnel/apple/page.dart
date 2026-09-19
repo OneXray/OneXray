@@ -12,6 +12,7 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
+import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/failure.dart';
 
 class AppleVpnController extends PolicyEditorController {
@@ -182,6 +183,15 @@ class AppleVpnView extends StatelessWidget {
                         supported: capabilities?.deviceCommunication ?? false,
                       ),
                     ],
+                    if (controller.platform == ConnectionPlatform.ios)
+                      toggle(
+                        'hideVpnIcon',
+                        l.appleHideVpnIcon,
+                        apple['captureAllTraffic'] == true
+                            ? l.appleHideVpnIconInactive
+                            : l.appleHideVpnIconHint,
+                        supported: apple['captureAllTraffic'] == false,
+                      ),
                     toggle(
                       'dnsOverTls',
                       l.prototypeUseDnsOverTls,

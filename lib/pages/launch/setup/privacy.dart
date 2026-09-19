@@ -5,6 +5,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/launch/setup/widgets.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -77,7 +78,7 @@ class SetupPrivacyView extends StatelessWidget {
     return Scaffold(
       appBar: mobile
           ? null
-          : AppBar(
+          : PageAppBar(
               leading: IconButton(
                 tooltip: l.prototypeBack,
                 onPressed: onBack,

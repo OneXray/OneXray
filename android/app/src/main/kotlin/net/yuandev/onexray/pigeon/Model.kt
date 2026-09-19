@@ -35,6 +35,7 @@ data class TunJson(
     val excludeAPNs: Boolean?,
     val excludeDeviceCommunication: Boolean?,
     val excludedRoutes: List<String>? = null,
+    val hideVpnIcon: Boolean? = null,
     val onDemandEnabled: Boolean?,
     val onDemandRules: List<OnDemandRule>?,
     val perAppVPNMode: PerAppVPNMode?,

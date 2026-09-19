@@ -1,4 +1,15 @@
 <resources>
+    <string name="notification_vpn_start_failed">连接失败</string>
+    <string name="traffic_download">下载</string>
+    <string name="traffic_upload">上传</string>
+    <string name="traffic_session_value">本次 %1$s</string>
+    <string name="traffic_session_placeholder">本次 —</string>
+    <string name="traffic_start_vpn">启动 VPN</string>
+    <string name="traffic_stop_vpn">关闭 VPN</string>
+    <string name="traffic_widget_disconnected">未连接</string>
+    <string name="traffic_widget_name">OneXray 流量</string>
+    <string name="traffic_widget_description">VPN 状态、本次连接的网速和流量</string>
+    <string name="traffic_this_connection">本次连接</string>
     <string name="quick_settings_tile_label">OneXray</string>
     <string name="quick_settings_tile_status_connected">已连接</string>
     <string name="quick_settings_tile_status_connecting">连接中</string>

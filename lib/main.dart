@@ -6,8 +6,8 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/main/router.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/shared/menu/short_cut/service.dart';
+import 'package:onexray/service/shared/menu/window/service.dart';
 import 'package:onexray/service/shared/share/service.dart';
-import 'package:window_manager/window_manager.dart';
 
 const _desktopWindowSize = Size(1160, 720);
 const _minimumDesktopWindowSize = Size(480, 600);
@@ -22,19 +22,16 @@ Future<void> main(List<String> _) async {
   await appStartup.prepare();
 
   if (AppPlatform.isDesktop) {
-    await windowManager.ensureInitialized();
-
-    WindowOptions windowOptions = WindowOptions(
+    await WindowService().prepare(
       size: _desktopWindowSize,
       minimumSize: _minimumDesktopWindowSize,
-      center: true,
     );
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await appStartup.onWindowReady();
-    });
   }
 
   runApp(GoRouteApp());
+  // Hidden windows may not render frames. Keep visibility independent from
+  // first-frame callbacks and preserve the existing hidden-start policy.
+  await appStartup.onWindowReady();
 }
 
 Future<void> _initBridge() async {

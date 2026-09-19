@@ -3,7 +3,6 @@ package net.yuandev.onexray.pigeon
 import android.Manifest
 import android.app.Activity.RESULT_OK
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.VpnService
@@ -291,27 +290,7 @@ class AppHostApi(
         callback(Result.success(""))
     }
 
-    private fun queryPermissionNow(): PlatformPermissionResult {
-        val prepare = VpnService.prepare(context)
-        if (prepare != null) {
-            return PlatformPermissionResult(
-                PlatformPermissionKind.ANDROID_VPN,
-                PlatformPermissionState.NOT_DETERMINED,
-                null,
-            )
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN &&
-            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return PlatformPermissionResult(
-                PlatformPermissionKind.ANDROID_LOCAL_NETWORK,
-                PlatformPermissionState.NOT_DETERMINED,
-                null,
-            )
-        }
-        return androidPermissionGranted()
-    }
+    private fun queryPermissionNow(): PlatformPermissionResult = VpnController.queryPermission(context)
 
     private fun commandFailed(permission: PlatformPermissionResult): NativeVpnCommandResult =
         NativeVpnCommandResult(
@@ -319,12 +298,6 @@ class AppHostApi(
             permission = permission,
             message = VpnController.lastError,
         )
-
-    private fun androidPermissionGranted() = PlatformPermissionResult(
-        PlatformPermissionKind.ANDROID_VPN,
-        PlatformPermissionState.GRANTED,
-        null,
-    )
 
     private fun androidPermissionDenied() = PlatformPermissionResult(
         PlatformPermissionKind.ANDROID_VPN,

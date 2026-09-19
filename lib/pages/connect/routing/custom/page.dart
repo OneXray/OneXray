@@ -8,6 +8,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/routing/custom/controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_page.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -75,7 +76,7 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         final name = state.name.trim();
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(name.isEmpty ? l.prototypeCustomRouting : name),
             leading: BackButton(onPressed: () => controller.cancel(context)),
           ),

@@ -17,6 +17,7 @@ import 'package:onexray/service/servers/subscription/failure.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/failure.dart' show appFailureMessage;
 import 'package:onexray/service/shared/menu/tray/menu.dart';
+import 'package:onexray/service/shared/menu/tray/traffic.dart';
 import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/shared/notification/service.dart';
@@ -66,6 +67,10 @@ final class TrayService with TrayListener {
   bool _refreshRequested = false;
   bool _menuOpen = false;
   Future<void>? _refreshing;
+  Future<void>? _refreshingTraffic;
+  bool _trafficRefreshRequested = false;
+  bool _trayReady = false;
+  ({String title, String tooltip})? _lastTrafficText;
 
   final Future<void> Function() _connect;
   final Future<void> Function(String) _notify;
@@ -88,6 +93,7 @@ final class TrayService with TrayListener {
     trayManager.addListener(this);
     _coordinator.state.addListener(_connectionChanged);
     _initialized = true;
+    if (AppPlatform.isMacOS) _coordinator.setBackgroundTraffic(this, true);
     _listeners.add(
       TrayMenuData.watch(_db).listen(
         (data) {
@@ -103,7 +109,10 @@ final class TrayService with TrayListener {
       AppEventBus.instance.stream
           .map((state) => state.languageCode)
           .distinct()
-          .listen((_) => _requestRefresh()),
+          .listen((_) {
+            _requestRefresh();
+            _requestTrafficRefresh();
+          }),
     );
   }
 
@@ -113,6 +122,7 @@ final class TrayService with TrayListener {
     }
     trayManager.removeListener(this);
     _coordinator.state.removeListener(_connectionChanged);
+    if (AppPlatform.isMacOS) _coordinator.setBackgroundTraffic(this, false);
     for (final listener in _listeners) {
       unawaited(listener.cancel());
     }
@@ -121,9 +131,12 @@ final class TrayService with TrayListener {
     _lastPhase = null;
     _lastCanDisconnect = null;
     _initialized = false;
+    _trayReady = false;
+    _lastTrafficText = null;
   }
 
   void _connectionChanged() {
+    _requestTrafficRefresh();
     final view = _coordinator.state.value;
     if (_lastPhase == view.phase && _lastCanDisconnect == view.canDisconnect) {
       return;
@@ -131,6 +144,32 @@ final class TrayService with TrayListener {
     _lastPhase = view.phase;
     _lastCanDisconnect = view.canDisconnect;
     _requestRefresh();
+  }
+
+  // Title/tooltip updates do not replace the menu being tracked by AppKit.
+  void _requestTrafficRefresh() {
+    if (!AppPlatform.isMacOS || !_initialized || !_trayReady) return;
+    _trafficRefreshRequested = true;
+    _refreshingTraffic ??= _publishTraffic()
+        .catchError((Object error, StackTrace stack) {
+          ygLogger('Update menu bar traffic failed: $error\n$stack');
+        })
+        .whenComplete(() => _refreshingTraffic = null);
+  }
+
+  Future<void> _publishTraffic() async {
+    while (_trafficRefreshRequested && _initialized) {
+      _trafficRefreshRequested = false;
+      final text = trayTrafficText(
+        _coordinator.state.value,
+        appLocalizationsNoContext(),
+      );
+      if (text == _lastTrafficText) continue;
+      await trayManager.setTitle(text.title);
+      if (!_initialized) return;
+      await trayManager.setToolTip(text.tooltip);
+      _lastTrafficText = text;
+    }
   }
 
   void _requestRefresh() {
@@ -242,6 +281,8 @@ final class TrayService with TrayListener {
       }
     }
     await trayManager.setIcon(icon);
+    _trayReady = true;
+    _requestTrafficRefresh();
   }
 
   @override

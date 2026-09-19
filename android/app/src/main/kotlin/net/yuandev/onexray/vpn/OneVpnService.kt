@@ -17,6 +17,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.Parcel
 import android.os.ParcelFileDescriptor
+import android.util.AtomicFile
 import androidx.core.content.ContextCompat
 import com.elvishew.xlog.XLog
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -33,6 +35,7 @@ import libXray.DialerController
 import libXray.LibXray
 import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
+import net.yuandev.onexray.widget.TrafficWidgetProvider
 import net.yuandev.onexray.pigeon.JsonTool
 import net.yuandev.onexray.pigeon.LibXrayInvokeRequest
 import net.yuandev.onexray.pigeon.LibXrayInvokeResponse
@@ -42,7 +45,6 @@ import net.yuandev.onexray.pigeon.StartVpnRequest
 import net.yuandev.onexray.pigeon.TunJson
 import net.yuandev.onexray.pigeon.XrayEnv
 import net.yuandev.onexray.pigeon.VpnStatus
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -50,6 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class OneVpnService : VpnService() {
     companion object {
         const val ACTION_START: String = "vpn_start"
+        const val EXTRA_REUSE_CONFIGURATION: String = "reuse_configuration"
         const val ACTION_STOP: String = "vpn_stop"
         const val ACTION_STOP_REQUEST: String = "net.yuandev.onexray.VPN_STOP_REQUEST"
 
@@ -60,6 +63,7 @@ class OneVpnService : VpnService() {
         const val EXTRA_ERROR: String = "error"
         const val NOTIFICATION_OPEN_REQUEST_CODE = 1
         const val NOTIFICATION_STOP_REQUEST_CODE = 2
+        const val NOTIFICATION_ID = 1
     }
 
     @Volatile
@@ -68,8 +72,17 @@ class OneVpnService : VpnService() {
     private val tunMtu = 1500
     @Volatile
     private var running = false
+    private var backgroundStart = false
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
+
+    private val resourceStatus: VpnStatus
+        get() = when {
+            running && !released.get() -> VpnStatus.CONNECTED
+            released.get() && tunnel != null -> VpnStatus.DISCONNECTING
+            !released.get() -> VpnStatus.CONNECTING
+            else -> VpnStatus.DISCONNECTED
+        }
 
     private fun sendStatusBroadcast(running: Boolean, error: String? = null) {
         val intent = Intent(ACTION_VPN_STATUS).apply {
@@ -82,6 +95,27 @@ class OneVpnService : VpnService() {
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val trafficMonitor by lazy {
+        TrafficMonitor(this, scope) { sample ->
+            if (running && !released.get()) {
+                updateWidget(VpnStatus.CONNECTED, sample)
+                try {
+                    getSystemService(NotificationManager::class.java)
+                        .notify(NOTIFICATION_ID, makeNotification(sample))
+                } catch (error: Exception) {
+                    XLog.e("Update VPN notification failed", error)
+                }
+            }
+        }
+    }
+
+    private fun updateWidget(status: VpnStatus, sample: TrafficSample? = null) {
+        try {
+            TrafficWidgetProvider.publish(this, status, sample)
+        } catch (error: Exception) {
+            XLog.e("Update traffic widget failed", error)
+        }
+    }
     private val stopRequestReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == ACTION_STOP_REQUEST) {
@@ -96,14 +130,8 @@ class OneVpnService : VpnService() {
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
             if (code != VpnStatusConnection.READ_STATUS) return super.onTransact(code, data, reply, flags)
             data.enforceInterface(VpnStatusConnection.DESCRIPTOR)
-            val status = when {
-                running && !released.get() -> VpnStatus.CONNECTED
-                released.get() && tunnel != null -> VpnStatus.DISCONNECTING
-                !released.get() -> VpnStatus.CONNECTING
-                else -> VpnStatus.DISCONNECTED
-            }
             reply?.writeNoException()
-            reply?.writeInt(status.ordinal)
+            reply?.writeInt(resourceStatus.ordinal)
             return true
         }
     }
@@ -153,8 +181,12 @@ class OneVpnService : VpnService() {
                 stopTun()
                 return START_NOT_STICKY
             }
-            if (!running && tunnel == null) {
+            val status = resourceStatus
+            if (status == VpnStatus.DISCONNECTED) {
+                backgroundStart = intent.getBooleanExtra(EXTRA_REUSE_CONFIGURATION, false)
                 startTun(startId)
+            } else {
+                updateWidget(status)
             }
             return START_NOT_STICKY
         }
@@ -176,6 +208,11 @@ class OneVpnService : VpnService() {
 
     private fun initService() {
         XLog.init()
+        val appName = getString(R.string.quick_settings_tile_label)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel("net.yuandev.onexray", appName, NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = appName }
+        )
     }
 
     private fun startTun(startId: Int) {
@@ -186,28 +223,33 @@ class OneVpnService : VpnService() {
         }
         val generation = startGeneration.incrementAndGet()
         try {
-            showNotification(startId)
-            val model = readStartRequest()
+            updateWidget(VpnStatus.CONNECTING)
+            showNotification()
+            val file = VpnController.startFile(this)
+            val saved = SavedVpnConfig.read(file)
+            val model = if (backgroundStart) {
+                SavedVpnConfig.renewSession(saved, System.currentTimeMillis() * 1000).also {
+                    val atomic = AtomicFile(file)
+                    val output = atomic.startWrite()
+                    try {
+                        output.write(JsonTool.json.encodeToString(it).toByteArray(Charsets.UTF_8))
+                        atomic.finishWrite(output)
+                    } catch (error: Exception) {
+                        atomic.failWrite(output)
+                        throw error
+                    }
+                }
+            } else saved
             runTun(model, generation)
         } catch (e: Exception) {
             failStart("OneVpnService: startTun failed", e, generation)
         }
     }
 
-    private fun readStartRequest(): StartVpnRequest {
-        val runPath = File(this.filesDir.path, "run")
-        val file = File(runPath.path, "start.json")
-        val data = file.readText()
-        return try {
-            JsonTool.json.decodeFromString<StartVpnRequest>(data)
-        } catch (_: IllegalArgumentException) {
-            // Decoder errors may contain the input, including node credentials.
-            throw IllegalStateException("invalid VPN start request")
-        }
-    }
-
     private fun stopTun() {
         if (!releaseTun()) {
+            trafficMonitor.stop()
+            updateWidget(VpnStatus.DISCONNECTED)
             stopForeground(STOP_FOREGROUND_REMOVE)
             sendStatusBroadcast(false)
         }
@@ -219,6 +261,8 @@ class OneVpnService : VpnService() {
             return false
         }
         startGeneration.incrementAndGet()
+        trafficMonitor.stop()
+        updateWidget(VpnStatus.DISCONNECTING)
         XLog.d("OneVpnService: stopTun")
         stopForeground(STOP_FOREGROUND_REMOVE)
         try {
@@ -242,6 +286,7 @@ class OneVpnService : VpnService() {
         tunnel = null
         controller.vpn = null
         running = false
+        updateWidget(VpnStatus.DISCONNECTED)
         sendStatusBroadcast(false, error)
         return true
     }
@@ -255,39 +300,26 @@ class OneVpnService : VpnService() {
         XLog.e(message, error)
         val reason = error.message ?: error.toString()
         if (!releaseTun(reason)) sendStatusBroadcast(false, reason)
+        if (backgroundStart) VpnController.reportStartFailure(this, reason)
         stopSelf()
     }
 
-    private fun showNotification(startId: Int) {
+    private fun showNotification() {
         val notification = makeNotification()
-        var notificationId = startId
-        if (notificationId <= 0) {
-            notificationId = 1
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
-                notificationId,
+                NOTIFICATION_ID,
                 notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
             )
         } else {
-            startForeground(notificationId, notification)
+            startForeground(NOTIFICATION_ID, notification)
         }
     }
 
-    private fun makeNotification(): Notification {
+    private fun makeNotification(sample: TrafficSample? = null): Notification {
         val appName = getString(R.string.quick_settings_tile_label)
         val channelId = "net.yuandev.onexray"
-        val channel = NotificationChannel(
-            channelId,
-            appName,
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-        channel.description = appName
-        val notificationManager = getSystemService(
-            NotificationManager::class.java
-        )
-        notificationManager.createNotificationChannel(channel)
 
         val openPendingIntent = PendingIntent.getActivity(
             this,
@@ -306,12 +338,20 @@ class OneVpnService : VpnService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val text = if (running) TrafficSample.speedText(sample)
+            else getString(R.string.quick_settings_tile_status_connecting)
+        val details = if (running)
+            "$text\n${getString(R.string.traffic_this_connection)}: ${TrafficSample.sessionText(sample)}"
+            else text
         return Notification.Builder(this, channelId)
             .setContentTitle(appName)
-            .setContentText(getString(R.string.notification_vpn_connected))
+            .setSubText(if (running) getString(R.string.notification_vpn_connected) else null)
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(details))
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(openPendingIntent)
-            .setTicker(appName)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
             .setOngoing(true)
             .addAction(
                 Notification.Action.Builder(
@@ -358,7 +398,7 @@ class OneVpnService : VpnService() {
         }
         controller.vpn = this
         configureDNS(tun)
-        runXray(coreInvokeText, establishedTunnel, generation)
+        runXray(coreInvokeText, establishedTunnel, generation, request.metricsPort)
     }
 
     private fun configureDNS(tun: TunJson) {
@@ -436,6 +476,7 @@ class OneVpnService : VpnService() {
         coreInvokeText: String,
         establishedTunnel: ParcelFileDescriptor,
         generation: Int,
+        metricsPort: String?,
     ) {
         scope.launch {
             try {
@@ -452,11 +493,22 @@ class OneVpnService : VpnService() {
                     }
                     return@launch
                 }
-                XLog.d("OneVpnService: Xray started")
-                running = true
-                sendStatusBroadcast(true)
+                withContext(Dispatchers.Main) {
+                    if (generation != startGeneration.get() || tunnel !== establishedTunnel) return@withContext
+                    XLog.d("OneVpnService: Xray started")
+                    running = true
+                    sendStatusBroadcast(true)
+                    try {
+                        trafficMonitor.start(metricsPort)
+                    } catch (error: Exception) {
+                        // Presentation failure must not tear down a running VPN.
+                        XLog.e("Start traffic display failed", error)
+                    }
+                }
             } catch (e: Exception) {
-                failStart("OneVpnService: runXray failed", e, generation)
+                withContext(Dispatchers.Main) {
+                    failStart("OneVpnService: runXray failed", e, generation)
+                }
             }
         }
     }

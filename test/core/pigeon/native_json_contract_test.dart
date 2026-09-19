@@ -24,6 +24,7 @@ void main() {
       false,
       ['10.250.0.0/16', '2001:db8::/64'],
       true,
+      true,
       [
         OnDemandRule('connect', 'wifi', ['test']),
       ],
@@ -55,6 +56,7 @@ void main() {
       'excludeAPNs',
       'excludeDeviceCommunication',
       'excludedRoutes',
+      'hideVpnIcon',
       'onDemandEnabled',
       'onDemandRules',
       'perAppVPNMode',

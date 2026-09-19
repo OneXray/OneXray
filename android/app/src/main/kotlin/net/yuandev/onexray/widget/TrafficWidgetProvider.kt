@@ -1,0 +1,204 @@
+package net.yuandev.onexray.widget
+
+import android.app.ActivityOptions
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.os.Build
+import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.util.SizeF
+import android.view.View
+import android.widget.RemoteViews
+import androidx.core.text.BidiFormatter
+import es.antonborri.home_widget.HomeWidgetLaunchIntent
+import es.antonborri.home_widget.HomeWidgetProvider
+import net.yuandev.onexray.MainActivity
+import net.yuandev.onexray.R
+import net.yuandev.onexray.pigeon.VpnStatus
+import net.yuandev.onexray.vpn.OneVpnService
+import net.yuandev.onexray.vpn.TrafficSample
+import net.yuandev.onexray.vpn.VpnController
+
+class TrafficWidgetProvider : HomeWidgetProvider() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_LOCALE_CHANGED) {
+            publish(context, status, sample)
+            return
+        }
+        if (intent.action != ACTION_START) {
+            super.onReceive(context, intent)
+            return
+        }
+        // Neither a TUN address nor the widget's last rendering identifies a
+        // running OneXray instance. The service handles repeated starts itself.
+        when (VpnController.startSavedVpn(context)) {
+            VpnController.SavedStartResult.STARTED -> publish(context, VpnStatus.CONNECTING)
+            VpnController.SavedStartResult.OPEN_APP -> {
+                try {
+                    openAppForStart(context)
+                } catch (error: Exception) {
+                    VpnController.reportStartFailure(context, error.message)
+                }
+            }
+            VpnController.SavedStartResult.FAILED -> {
+                publish(context, VpnStatus.DISCONNECTED)
+                VpnController.reportStartFailure(context, VpnController.lastError)
+            }
+        }
+    }
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+        widgetData: SharedPreferences,
+    ) = render(context, appWidgetManager, appWidgetIds)
+
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle,
+    ) = render(context, appWidgetManager, intArrayOf(appWidgetId))
+
+    companion object {
+        private const val ACTION_START = "net.yuandev.onexray.widget.START_VPN"
+        // The provider and VPN service share :native. No counters are written to
+        // SharedPreferences, and the stopped Flutter process is not a producer.
+        private var status = VpnStatus.DISCONNECTED
+        private var sample: TrafficSample? = null
+
+        fun publish(context: Context, status: VpnStatus, sample: TrafficSample? = null) {
+            this.status = status
+            this.sample = sample
+            val manager = AppWidgetManager.getInstance(context)
+            render(context, manager, manager.getAppWidgetIds(ComponentName(context, TrafficWidgetProvider::class.java)))
+        }
+
+        private fun render(context: Context, manager: AppWidgetManager, ids: IntArray) {
+            if (ids.isEmpty()) return
+            val compact = createViews(context, R.layout.traffic_widget_compact)
+            val regular = createViews(context, R.layout.traffic_widget)
+            if (Build.VERSION.SDK_INT >= 31) {
+                // Let the host select and cache the layout for its actual size,
+                // including resizing/rotation while the VPN service is stopped.
+                manager.updateAppWidget(ids, RemoteViews(mapOf(
+                    SizeF(260f, 116f) to compact,
+                    SizeF(280f, 180f) to regular,
+                )))
+            } else {
+                for (id in ids) {
+                    val options = manager.getAppWidgetOptions(id)
+                    fun layout(widthKey: String, heightKey: String): RemoteViews =
+                        if (options.getInt(widthKey) >= 280 && options.getInt(heightKey) >= 180)
+                            regular else compact
+                    manager.updateAppWidget(id, RemoteViews(
+                        layout(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT),
+                        layout(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT),
+                    ))
+                }
+            }
+        }
+
+        private fun createViews(context: Context, layout: Int): RemoteViews {
+            val label = when (status) {
+                VpnStatus.CONNECTED -> R.string.quick_settings_tile_status_connected
+                VpnStatus.CONNECTING -> R.string.quick_settings_tile_status_connecting
+                VpnStatus.DISCONNECTING -> R.string.quick_settings_tile_status_disconnecting
+                else -> R.string.traffic_widget_disconnected
+            }
+            val connected = status == VpnStatus.CONNECTED
+            val busy = status == VpnStatus.CONNECTING || status == VpnStatus.DISCONNECTING
+            val actionLabel = context.getString(when {
+                busy -> label
+                connected -> R.string.traffic_stop_vpn
+                else -> R.string.traffic_start_vpn
+            })
+            val openApp = HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java)
+            return RemoteViews(context.packageName, layout).apply {
+                setInt(R.id.traffic_widget, "setLayoutDirection", context.resources.configuration.layoutDirection)
+                setTextViewText(R.id.traffic_download_label, context.getString(R.string.traffic_download))
+                setTextViewText(R.id.traffic_upload_label, context.getString(R.string.traffic_upload))
+                setTextViewText(R.id.traffic_status, context.getString(label))
+                setInt(R.id.traffic_status_dot, "setImageLevel", when {
+                    connected -> 2
+                    busy -> 1
+                    else -> 0
+                })
+                setRate(R.id.traffic_download_speed, sample?.downloadSpeed, context.getString(R.string.traffic_download))
+                setRate(R.id.traffic_upload_speed, sample?.uploadSpeed, context.getString(R.string.traffic_upload))
+                setTextViewText(R.id.traffic_download_session, sessionText(context, sample?.downlink))
+                setTextViewText(R.id.traffic_upload_session, sessionText(context, sample?.uplink))
+                setOnClickPendingIntent(R.id.traffic_header, openApp)
+                setOnClickPendingIntent(R.id.traffic_data, openApp)
+                setContentDescription(R.id.traffic_action, actionLabel)
+                // The passive icon state selects resource colors at inflation
+                // time, including cached RemoteViews after a theme change.
+                setBoolean(R.id.traffic_action_icon, "setEnabled", connected || busy)
+                setInt(R.id.traffic_action, "setBackgroundResource",
+                    if (connected || busy) R.drawable.traffic_action_stop else R.drawable.traffic_action_start)
+                setViewVisibility(R.id.traffic_action_icon, if (busy) View.GONE else View.VISIBLE)
+                setViewVisibility(R.id.traffic_action_progress, if (busy) View.VISIBLE else View.GONE)
+                setBoolean(R.id.traffic_action, "setEnabled", !busy)
+                setOnClickPendingIntent(R.id.traffic_action, when {
+                    busy -> null
+                    connected -> PendingIntent.getService(
+                        context, 102,
+                        Intent(context, OneVpnService::class.java).setAction(OneVpnService.ACTION_STOP),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    )
+                    else -> startIntent(context)
+                })
+            }
+        }
+
+        private fun startIntent(context: Context): PendingIntent {
+            return PendingIntent.getBroadcast(
+                context, 101, Intent(context, TrafficWidgetProvider::class.java).setAction(ACTION_START),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        }
+
+        private fun openAppForStart(context: Context) {
+            val creationOptions = ActivityOptions.makeBasic()
+            if (Build.VERSION.SDK_INT >= 35) {
+                creationOptions.setPendingIntentCreatorBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                )
+            }
+            val openApp = PendingIntent.getActivity(
+                context, 101, VpnController.buildShortcutStartIntent(context),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                creationOptions.toBundle(),
+            )
+            val sendOptions = ActivityOptions.makeBasic()
+            if (Build.VERSION.SDK_INT >= 34) {
+                sendOptions.setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                )
+            }
+            openApp.send(context, 0, null, null, null, null, sendOptions.toBundle())
+        }
+
+        private fun RemoteViews.setRate(viewId: Int, bytes: Long?, direction: String) {
+            val text = bytes?.let { "${TrafficSample.formatBytes(it)}/s" } ?: "—"
+            val styled = SpannableString(text)
+            val unit = text.indexOf(' ')
+            if (unit >= 0) styled.setSpan(RelativeSizeSpan(0.5f), unit, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setTextViewText(viewId, styled)
+            setContentDescription(viewId, "$direction $text")
+            setBoolean(viewId, "setEnabled", bytes != null)
+        }
+
+        private fun sessionText(context: Context, bytes: Long?): String {
+            val amount = bytes?.let(TrafficSample::formatBytes) ?: "—"
+            return context.getString(R.string.traffic_session_value, BidiFormatter.getInstance().unicodeWrap(amount))
+        }
+    }
+}

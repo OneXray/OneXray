@@ -381,6 +381,89 @@ void main() {
     },
   );
 
+  test('VPN icon changes require reconnect only while effective on iOS', () {
+    for (final captureAll in [false, true]) {
+      final original = PlatformPolicy.fromJson({
+        'xrayOutboundInterfaceName': 'en0',
+        'apple': {'captureAllTraffic': captureAll},
+      });
+      final changed = original.toJson();
+      changed['apple']['hideVpnIcon'] = true;
+      for (final platform in ConnectionPlatform.values) {
+        expect(
+          PolicyEditorService.sameRuntime(
+            original,
+            PlatformPolicy.fromJson(changed),
+            platform,
+          ),
+          platform != ConnectionPlatform.ios || captureAll,
+        );
+      }
+    }
+  });
+
+  test('VPN icon preference saves and survives capture-all mode', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.ios,
+    );
+    var draft = await service.load();
+    draft.policy['apple']['hideVpnIcon'] = true;
+    expect(
+      await service.save(draft: draft, confirm: (_) async => false),
+      isTrue,
+    );
+    draft = await service.load();
+    expect(draft.policy['apple']['hideVpnIcon'], isTrue);
+    expect(
+      draft.original.policy.toTun(ConnectionPlatform.ios).hideVpnIcon,
+      isTrue,
+    );
+    draft.policy['apple']['captureAllTraffic'] = true;
+    expect(
+      await service.save(draft: draft, confirm: (_) async => false),
+      isTrue,
+    );
+    draft = await service.load();
+    expect(draft.policy['apple']['hideVpnIcon'], isTrue);
+    expect(
+      draft.original.policy.toTun(ConnectionPlatform.ios).hideVpnIcon,
+      isNull,
+    );
+    expect(stops, 0);
+  });
+
+  test('active VPN icon changes ask before reconnecting', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.ios,
+    );
+    final draft = await service.load();
+    draft.policy['apple']['hideVpnIcon'] = true;
+    host = HostConnection(
+      VpnStatus.connected,
+      runtime: _runtime(draft.original),
+    );
+    var confirmations = 0;
+    expect(
+      await service.save(
+        draft: draft,
+        confirm: (disconnect) async {
+          confirmations++;
+          expect(disconnect, isFalse);
+          return false;
+        },
+      ),
+      isFalse,
+    );
+    expect(confirmations, 1);
+    expect(stops, 0);
+    expect(
+      (await coordinator.configuration).policy.toJson()['apple']['hideVpnIcon'],
+      isFalse,
+    );
+  });
+
   test(
     'Apple exclusions save, trim fields and retain disabled lists',
     () async {

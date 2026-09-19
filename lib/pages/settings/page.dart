@@ -8,6 +8,7 @@ import 'package:onexray/pages/settings/widgets.dart';
 import 'package:onexray/pages/settings/app_icon/page.dart';
 import 'package:onexray/pages/settings/desktop/controller.dart';
 import 'package:onexray/pages/settings/language/page.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -32,7 +33,7 @@ class SettingsPage extends StatelessWidget {
         final l10n = AppLocalizations.of(context)!;
         final controller = context.read<SettingsController>();
         return Scaffold(
-          appBar: AppBar(title: Text(l10n.prototypeSettings)),
+          appBar: PageAppBar(title: Text(l10n.prototypeSettings)),
           body: SafeArea(
             child: BlocBuilder<AppEventBus, AppEventBusState>(
               builder: (context, preferences) {
@@ -57,6 +58,20 @@ class SettingsPage extends StatelessWidget {
                       onSelected: (theme) =>
                           controller.setTheme(context, theme),
                     ),
+                    if (AppPlatform.isAndroid)
+                      SettingRow(
+                        title: l10n.trafficWidgetAdd,
+                        minHeight: rowHeight,
+                        contentPadding: rowPadding,
+                        titleStyle: AppTypography.settingsRow,
+                        trailing: state.addingWidget
+                            ? const ButtonProgressIndicator(size: 20)
+                            : null,
+                        showChevron: true,
+                        onTap: state.addingWidget
+                            ? null
+                            : () => controller.addTrafficWidget(context),
+                      ),
                     if (controller.showAppIcon)
                       SettingRow(
                         title: l10n.prototypeAppIcon,
