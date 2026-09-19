@@ -5,6 +5,7 @@ import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/ping/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -28,7 +29,7 @@ class PingPage extends StatelessWidget {
         final mobile = width <= AppLayout.mobileBreakpoint;
         final gutter = mobile ? 14.0 : AppSpacing.advancedDesktopGutter(width);
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeSpeedTest),
             actions: const [AppActivityIndicator(downloading: false)],
           ),

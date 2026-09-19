@@ -4,6 +4,7 @@ import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/core/model/geo_dat.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/geodata/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -46,7 +47,7 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
                 MediaQuery.sizeOf(context).width,
               );
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(file?.fileName ?? l.prototypeRoutingData),
             actions: const [AppActivityIndicator(pinging: false)],
           ),

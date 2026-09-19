@@ -60,6 +60,8 @@ abstract final class AppSpacing {
   static const desktopPageBottom = 42.0;
   static const sidebarHorizontal = 17.0;
   static const sidebarVertical = 36.0;
+  static const macOSSidebarVertical = 16.0;
+  static const macOSSidebarBrandBottom = 24.0;
   static const sidebarBrandStart = 24.0;
   static const sidebarCompactBrandStart = 14.0;
   static const sidebarBrandTop = 5.0;

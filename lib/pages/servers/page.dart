@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/view.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/responsive_content.dart';
@@ -47,7 +48,7 @@ class _ServersPageState extends State<ServersPage> {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         final empty = state.ready && !state.failed && state.servers.isEmpty;
         final page = Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeServers),
             actions: [
               if (!mobileRoot && !empty) ...[
@@ -133,7 +134,7 @@ class ServerGroupPage extends StatelessWidget {
               .where((row) => row.id == params.groupId)
               .firstOrNull;
           return Scaffold(
-            appBar: AppBar(
+            appBar: PageAppBar(
               title: Text(group?.name ?? l.prototypeServers),
               actions: const [AppActivityIndicator(pinging: false)],
             ),

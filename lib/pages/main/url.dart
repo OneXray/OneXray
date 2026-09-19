@@ -27,6 +27,7 @@ import 'package:onexray/pages/main/advanced.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/launch/setup/page.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
@@ -391,7 +392,7 @@ class _InvalidRoutePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: PageAppBar(
         title: Text(
           AppLocalizations.of(context)!.prototypeTemporarilyUnavailable,
         ),

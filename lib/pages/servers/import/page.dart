@@ -7,6 +7,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/servers/import/controller.dart';
 import 'package:onexray/pages/servers/subscription/form_view.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -671,7 +672,7 @@ class ServerImportScannerPage extends StatelessWidget {
     value: controller,
     child: BlocBuilder<ServerImportController, ServerImportPageState>(
       builder: (context, state) => Scaffold(
-        appBar: AppBar(
+        appBar: PageAppBar(
           title: Text(AppLocalizations.of(context)!.prototypeScanQrCode),
           actions: [
             IconButton(

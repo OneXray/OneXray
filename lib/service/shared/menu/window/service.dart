@@ -50,14 +50,21 @@ final class WindowService with WindowListener {
         backgroundColor: _hasSidebarMaterial ? const Color(0x00000000) : null,
       ),
     );
-    if (_hasSidebarMaterial) {
-      try {
-        _titlebarHeight = await WindowManipulator.getTitlebarHeight();
-      } catch (error, stackTrace) {
-        ygLogger('read window titlebar height failed: $error\n$stackTrace');
-      }
-    }
+    await refreshTitlebarHeight();
     await _listen();
+  }
+
+  /// Window geometry changes on resize and fullscreen transitions, not a timer.
+  Future<double?> refreshTitlebarHeight() async {
+    if (!_hasSidebarMaterial) return _titlebarHeight;
+    try {
+      _titlebarHeight = await windowManager.isFullScreen()
+          ? 0
+          : await WindowManipulator.getTitlebarHeight();
+    } catch (error, stackTrace) {
+      ygLogger('read window titlebar height failed: $error\n$stackTrace');
+    }
+    return _titlebarHeight;
   }
 
   Future<void> _listen() async {

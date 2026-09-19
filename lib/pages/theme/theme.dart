@@ -502,6 +502,7 @@ abstract final class AppTheme {
               backgroundColor: palette.card,
               disabledForegroundColor: palette.mutedForeground,
               minimumSize: minimumButtonSize,
+              visualDensity: VisualDensity.standard,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.buttonHorizontal,
               ),

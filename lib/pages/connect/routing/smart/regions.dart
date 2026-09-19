@@ -7,6 +7,7 @@ import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/pages/launch/setup/selectors.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -160,7 +161,7 @@ class _DirectRegionsPageState extends State<DirectRegionsPage> {
         final mobile =
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return Scaffold(
-          appBar: AppBar(title: Text(l.prototypeDirectRegions)),
+          appBar: PageAppBar(title: Text(l.prototypeDirectRegions)),
           body: SafeArea(
             child: ResponsiveContent(
               desktopMaxWidth:

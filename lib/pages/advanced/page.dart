@@ -7,6 +7,7 @@ import 'package:onexray/pages/advanced/tab_visibility.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
 import 'package:onexray/pages/advanced/tunnel/page.dart';
 import 'package:onexray/pages/advanced/tunnel/widgets.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
@@ -26,7 +27,7 @@ class AdvancedPage extends StatelessWidget {
       child: DefaultTabController(
         length: 2,
         child: Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeAdvanced),
             bottom: TabBar(
               isScrollable: !mobile,

@@ -218,9 +218,11 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: AppSpacing.sidebarHorizontal,
-                  vertical: AppSpacing.sidebarVertical,
+                  vertical: nativeSidebar
+                      ? AppSpacing.macOSSidebarVertical
+                      : AppSpacing.sidebarVertical,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,7 +236,9 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
                         compact
                             ? AppSpacing.sidebarCompactBrandStart
                             : AppSpacing.sidebarBrandStart,
-                        AppSpacing.sidebarBrandBottom,
+                        nativeSidebar
+                            ? AppSpacing.macOSSidebarBrandBottom
+                            : AppSpacing.sidebarBrandBottom,
                       ),
                       child: Text(
                         'OneXray',
@@ -258,7 +262,18 @@ class _AdaptiveMainShellState extends State<AdaptiveMainShell> {
               ),
             ),
           ),
-          Expanded(child: navigationShell),
+          Expanded(
+            child:
+                nativeSidebar && Directionality.of(context) == TextDirection.ltr
+                ? MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    child: navigationShell,
+                  )
+                // In RTL the content, not the sidebar, is below the native
+                // controls on the physical left. Keep its local top inset.
+                : navigationShell,
+          ),
         ],
       ),
     );

@@ -9,6 +9,7 @@ import 'package:onexray/pages/connect/routing/widgets.dart';
 import 'package:onexray/pages/connect/routing/smart/exit_picker_controller.dart';
 import 'package:onexray/pages/servers/catalog.dart';
 import 'package:onexray/pages/servers/page.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -62,7 +63,7 @@ class ServerExitPickerView extends StatelessWidget {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         final groups = controller.selectionGroups(l);
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeVpnFinalExit),
             actions: const [AppActivityIndicator()],
           ),

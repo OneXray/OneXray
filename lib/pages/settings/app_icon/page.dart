@@ -5,6 +5,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/gen/assets.gen.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/app_icon/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -25,7 +26,7 @@ class AppIconPage extends StatelessWidget {
           final l10n = AppLocalizations.of(context)!;
           final useDockIconLabel = AppPlatform.isMacOS;
           return Scaffold(
-            appBar: AppBar(
+            appBar: PageAppBar(
               title: Text(l10n.prototypeAppIcon),
               leading: BackButton(onPressed: () => controller.cancel(context)),
             ),

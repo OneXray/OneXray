@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -51,7 +52,7 @@ class _CustomRoutingRulePageState extends State<CustomRoutingRulePage> {
     return BlocProvider.value(
       value: controller,
       child: Scaffold(
-        appBar: AppBar(title: Text(l.prototypeEditRule)),
+        appBar: PageAppBar(title: Text(l.prototypeEditRule)),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(

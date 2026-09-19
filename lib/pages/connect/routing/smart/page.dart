@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/routing/smart/controller.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -53,7 +54,7 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
         final mobile =
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return Scaffold(
-          appBar: AppBar(
+          appBar: PageAppBar(
             title: Text(l.prototypeSmartRouting),
             leading: BackButton(onPressed: () => controller.cancel(context)),
           ),

@@ -6,6 +6,7 @@ import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/geodata/controller.dart';
 import 'package:onexray/pages/advanced/xray/geodata/view.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -42,7 +43,7 @@ class _GeoDataPageState extends State<GeoDataPage> {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         final palette = ColorManager.palette(context);
         return Scaffold(
-          appBar: AppBar(title: Text(l.prototypeRoutingData)),
+          appBar: PageAppBar(title: Text(l.prototypeRoutingData)),
           body: SafeArea(
             child: ResponsiveContent(
               desktopMaxWidth: AppLayout.advancedMaxWidth,

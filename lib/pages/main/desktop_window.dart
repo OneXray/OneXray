@@ -7,8 +7,8 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/shared/menu/window/service.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Window chrome outside the Router, so dialogs, Setup and compact layouts
-/// cannot cover window controls. Page AppBars and navigation stay unchanged.
+/// Native macOS controls use local safe areas, not a second full-width bar.
+/// Other desktops retain their separate caption outside the Router.
 class DesktopWindowFrame extends StatefulWidget {
   const DesktopWindowFrame({super.key, required this.child});
 
@@ -22,13 +22,47 @@ class DesktopWindowFrame extends StatefulWidget {
   State<DesktopWindowFrame> createState() => _DesktopWindowFrameState();
 }
 
-class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
+class _DesktopWindowFrameState extends State<DesktopWindowFrame>
+    with WindowListener {
+  double? _titlebarHeight;
+  bool _listening = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (Theme.of(context).platform == TargetPlatform.macOS) {
       unawaited(WindowService().updateAppearance(Theme.of(context).brightness));
+      if (!_listening && WindowService().hasSidebarMaterial) {
+        _titlebarHeight = WindowService().titlebarHeight;
+        windowManager.addListener(this);
+        _listening = true;
+      }
     }
+  }
+
+  Future<void> _refreshTitlebar() async {
+    final height = await WindowService().refreshTitlebarHeight();
+    if (mounted && height != _titlebarHeight) {
+      setState(() => _titlebarHeight = height);
+    }
+  }
+
+  @override
+  void onWindowResize() => unawaited(_refreshTitlebar());
+
+  @override
+  void onWindowResized() => unawaited(_refreshTitlebar());
+
+  @override
+  void onWindowEnterFullScreen() => unawaited(_refreshTitlebar());
+
+  @override
+  void onWindowLeaveFullScreen() => unawaited(_refreshTitlebar());
+
+  @override
+  void dispose() {
+    if (_listening) windowManager.removeListener(this);
+    super.dispose();
   }
 
   @override
@@ -42,6 +76,22 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
     final palette = ColorManager.palette(context);
     final macOS = theme.platform == TargetPlatform.macOS;
     final nativeSidebar = DesktopWindowFrame.hasNativeSidebar(context);
+    if (nativeSidebar) {
+      final height = _titlebarHeight ?? AppLayout.macOSTitlebarHeight;
+      final media = MediaQuery.of(context);
+      return MacOSWindowInsets(
+        titlebarHeight: height,
+        child: MediaQuery(
+          // Scaffold backgrounds can extend behind the controls; AppBars,
+          // SafeAreas and dialogs still avoid them unless the shell opts out.
+          data: media.copyWith(
+            padding: media.padding.copyWith(top: height),
+            viewPadding: media.viewPadding.copyWith(top: height),
+          ),
+          child: widget.child,
+        ),
+      );
+    }
     return Column(
       children: [
         SizedBox(
@@ -51,11 +101,7 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
               : kWindowCaptionHeight,
           width: double.infinity,
           child: macOS
-              ? DragToMoveArea(
-                  child: ColoredBox(
-                    color: nativeSidebar ? Colors.transparent : palette.header,
-                  ),
-                )
+              ? DragToMoveArea(child: ColoredBox(color: palette.header))
               : Directionality(
                   // OS caption buttons stay on the right in RTL languages.
                   textDirection: TextDirection.ltr,
@@ -87,4 +133,22 @@ class _DesktopWindowFrameState extends State<DesktopWindowFrame> {
       ],
     );
   }
+}
+
+/// Geometry shared by the native window, shell and toolbar controls.
+class MacOSWindowInsets extends InheritedWidget {
+  const MacOSWindowInsets({
+    super.key,
+    required this.titlebarHeight,
+    required super.child,
+  });
+
+  final double titlebarHeight;
+
+  static MacOSWindowInsets? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<MacOSWindowInsets>();
+
+  @override
+  bool updateShouldNotify(MacOSWindowInsets oldWidget) =>
+      titlebarHeight != oldWidget.titlebarHeight;
 }

@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -30,7 +31,7 @@ class PolicyDetailScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(
+      appBar: PageAppBar(
         title: Text(title),
         leading: BackButton(onPressed: () => controller.cancel(context)),
       ),

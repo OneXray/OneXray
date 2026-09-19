@@ -3,6 +3,7 @@ import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/language/controller.dart';
+import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -24,7 +25,7 @@ class LanguagePage extends StatelessWidget {
           final controller = context.read<LanguageController>();
           final l10n = AppLocalizations.of(context)!;
           return Scaffold(
-            appBar: AppBar(
+            appBar: PageAppBar(
               title: Text(l10n.prototypeLanguage),
               leading: BackButton(onPressed: () => controller.cancel(context)),
             ),
