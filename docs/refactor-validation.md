@@ -31,6 +31,10 @@ RemoteViews，覆盖 Android 10 与 Android 14 的明暗主题、语言变更广
 测试不启动 Flutter、VPN 或访问用户数据库。
 在 `android/` 下运行 `./gradlew :app:testDebugUnitTest`；JVM 资源测试不替代真实桌面验收。
 
+修改 Android Manifest 或网络安全等 XML 资源配置时，补跑 `./gradlew :app:lintVitalRelease`。
+Debug 构建和 JVM 测试不覆盖 Release Lint；Android 发布修复还需验证 Release AAB 构建，
+只执行本地构建命令，不调用会上传商店的发布脚本。
+
 ## 平台边界
 
 - Android UI 使用模拟器验证，允许启动 VPN；真实导入文件、导出文件和扫码等系统交互可跳过。
