@@ -2,6 +2,6 @@
 <network-security-config>
     <!-- Only the local Xray metrics endpoint needs native cleartext HTTP. -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain>127.0.0.1</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
     </domain-config>
 </network-security-config>

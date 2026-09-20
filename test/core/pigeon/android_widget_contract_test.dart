@@ -6,6 +6,28 @@ void main() {
   const native = 'android/app/src/main/kotlin/net/yuandev/onexray';
   const resources = 'android/app/src/main/res';
 
+  test('native metrics allow cleartext only for exact loopback', () {
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    expect(
+      manifest,
+      contains('android:networkSecurityConfig="@xml/network_security_config"'),
+    );
+    final config = File('$resources/xml/network_security_config.xml')
+        .readAsStringSync();
+    final domains = RegExp(r'<domain\b[^>]*>[^<]*</domain>')
+        .allMatches(config)
+        .map((match) => match.group(0))
+        .toList();
+    // Release Lint requires an explicit includeSubdomains attribute.
+    expect(domains, ['<domain includeSubdomains="false">127.0.0.1</domain>']);
+    expect(
+      config,
+      contains('<domain-config cleartextTrafficPermitted="true">'),
+    );
+    expect(config, isNot(contains('<base-config')));
+  });
+
   test('widget shares native saved start and keeps an App fallback', () {
     final provider = File('$native/widget/TrafficWidgetProvider.kt')
         .readAsStringSync();
