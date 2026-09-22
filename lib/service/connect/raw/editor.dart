@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -18,7 +19,7 @@ import 'package:onexray/service/connect/raw/validator.dart';
 
 class RawEditorException extends AppFailure {
   final String reason;
-  const RawEditorException(this.reason)
+  const RawEditorException(this.reason, {super.cause})
     : super(
         reason == 'changed' || reason == 'missing'
             ? FailureCategory.conflict
@@ -221,9 +222,19 @@ class RawEditorService {
     if (name.isEmpty || name.runes.length > 32) {
       throw const RawEditorException('name');
     }
-    final json = jsonDecode(text);
+    late final dynamic json;
+    try {
+      json = jsonDecode(text);
+    } on FormatException catch (error) {
+      // Decode before injecting the separate name field so syntax offsets
+      // continue to address the exact text in the editor.
+      throw JsonDiagnostic.fromError(error)!;
+    }
     if (json is! Map<String, dynamic>) {
-      throw const RawEditorException('invalid');
+      throw const RawEditorException(
+        'invalid',
+        cause: JsonDiagnostic('Xray config root must be an object', path: []),
+      );
     }
     if (json['name'] == name) {
       return text;
@@ -239,7 +250,7 @@ class RawEditorService {
       throw AppFailure(
         FailureCategory.configuration,
         'xrayValidation',
-        cause: result.error,
+        cause: result.diagnostic ?? result.error,
       );
     }
     return true;

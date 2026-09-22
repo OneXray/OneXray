@@ -1,4 +1,5 @@
 import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -11,19 +12,23 @@ class XrayRawValidationResult {
   final String error;
   final String? normalizedText;
   final String? name;
+  final JsonDiagnostic? diagnostic;
 
   const XrayRawValidationResult._(
     this.isValid,
     this.error,
     this.normalizedText,
     this.name,
+    this.diagnostic,
   );
 
   const XrayRawValidationResult.valid(String normalizedText, String name)
-    : this._(true, "", normalizedText, name);
+    : this._(true, "", normalizedText, name, null);
 
-  const XrayRawValidationResult.invalid(String error)
-    : this._(false, error, null, null);
+  const XrayRawValidationResult.invalid(
+    String error, {
+    JsonDiagnostic? diagnostic,
+  }) : this._(false, error, null, null, diagnostic);
 }
 
 class XrayRawValidator {
@@ -37,19 +42,27 @@ class XrayRawValidator {
     try {
       final decoded = JsonTool.decoder.convert(rawText);
       if (decoded is! Map<String, dynamic>) {
-        throw const FormatException("Xray config root must be an object");
+        throw const JsonDiagnostic(
+          "Xray config root must be an object",
+          path: [],
+        );
       }
       jsonMap = decoded;
       if (overrideName) {
         jsonMap['name'] = normalizedNameOverride;
       }
     } catch (error) {
-      return XrayRawValidationResult.invalid(failureDetails(error));
+      return XrayRawValidationResult.invalid(
+        failureDetails(error),
+        diagnostic: JsonDiagnostic.fromError(error),
+      );
     }
     final name = jsonMap['name'];
     if (name is! String || !EmptyTool.checkString(name)) {
+      final message = appLocalizationsNoContext().validationNameRequired;
       return XrayRawValidationResult.invalid(
-        appLocalizationsNoContext().validationNameRequired,
+        message,
+        diagnostic: JsonDiagnostic(message, path: const ['name']),
       );
     }
 

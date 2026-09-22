@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
@@ -16,6 +15,7 @@ class ServerEditorPageState {
     this.busy = false,
     this.loading = true,
     this.error,
+    this.diagnostic,
   });
 
   final ServerEditDraft? draft;
@@ -23,29 +23,18 @@ class ServerEditorPageState {
   final bool busy;
   final bool loading;
   final String? error;
+  final JsonDiagnostic? diagnostic;
 
   bool get loaded => draft != null;
   String? get name => draft?.original.name;
   bool get fromSubscription => draft != null && draft!.original.subId != 0;
-  bool get validJson {
-    try {
-      final value = jsonDecode(jsonText);
-      return value is Map &&
-          value['tag'] is String &&
-          (value['tag'] as String).trim().isNotEmpty &&
-          value['protocol'] is String &&
-          (value['protocol'] as String).trim().isNotEmpty;
-    } catch (error) {
-      return false;
-    }
-  }
-
   ServerEditorPageState copyWith({
     ServerEditDraft? draft,
     String? jsonText,
     bool? busy,
     bool? loading,
     String? error,
+    JsonDiagnostic? diagnostic,
     bool clearError = false,
   }) => ServerEditorPageState(
     draft: draft ?? this.draft,
@@ -53,6 +42,7 @@ class ServerEditorPageState {
     busy: busy ?? this.busy,
     loading: loading ?? this.loading,
     error: clearError ? null : error ?? this.error,
+    diagnostic: clearError ? null : diagnostic ?? this.diagnostic,
   );
 }
 
@@ -66,8 +56,13 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
   final int serverId;
   final ServerAssetService service;
   final text = CodeLineEditingController();
+  int _revision = 0;
 
-  void _textChanged() => emit(state.copyWith(jsonText: text.text));
+  void _textChanged() {
+    if (!isPageActive || text.text == state.jsonText) return;
+    _revision++;
+    emit(state.copyWith(jsonText: text.text, clearError: true));
+  }
 
   void closePage(BuildContext context) {
     if (!state.busy) Navigator.of(context).pop();
@@ -95,11 +90,13 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
 
   Future<void> save(BuildContext context) async {
     if (state.busy || state.loading || !state.loaded) return;
+    final revision = _revision;
+    final submitted = ServerEditDraft(state.draft!.original, state.jsonText);
     final l = AppLocalizations.of(context)!;
     emit(state.copyWith(busy: true, clearError: true));
     try {
       final saved = await service.save(
-        ServerEditDraft(state.draft!.original, state.jsonText),
+        submitted,
         confirmReconnect: () => isPageActive && context.mounted
             ? ContextAlert.showConfirmDialog(
                 context,
@@ -109,13 +106,22 @@ class ServerEditorController extends PageCubit<ServerEditorPageState> {
               )
             : Future.value(false),
       );
-      if (saved && isPageActive && context.mounted) {
+      if (saved && isPageActive && context.mounted && revision == _revision) {
         ContextAlert.showToast(context, l.prototypeSettingsSaved);
         Navigator.of(context).pop(serverId);
+      } else if (saved && isPageActive) {
+        final savedDraft = await service.load(serverId);
+        if (!isPageActive) return;
+        emit(state.copyWith(draft: savedDraft));
+        if (context.mounted) {
+          ContextAlert.showToast(context, l.jsonEditorEarlierDraftSaved);
+        }
       }
     } catch (error) {
+      if (!isPageActive || revision != _revision) return;
       emit(
         state.copyWith(
+          diagnostic: JsonDiagnostic.fromError(error),
           error: appFailureMessage(l, error, operation: l.buttonSaveFailed),
         ),
       );

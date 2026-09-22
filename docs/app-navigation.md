@@ -29,6 +29,9 @@ Material 控件和主题统一使用 `material_ui`，与 `go_router` 的页面�
 对外分享统一使用 `ShareAction`；按钮状态、平台差异和迟到结果处理见
 [系统分享](subscriptions-and-sharing.md#系统分享)。
 
+JSON 编辑入口共用错误面板、定位/复制和上下文补全，保留原有页面与弹窗形式；
+语法行列、内核错误及异步草稿边界见 [JSON 编辑辅助](xray-configuration.md#json-编辑辅助)。
+
 ## 公共主题与布局
 
 原型公共配置按语义映射到 [主题目录](../lib/pages/theme/)，App 不在运行时读取原型 JSON。

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/shared/alert.dart';
@@ -10,6 +12,7 @@ import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
 import 'package:onexray/service/connect/routing/custom/advanced.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
@@ -22,6 +25,9 @@ class JsonConfigurationEditorState {
   final bool busy;
   final bool deleting;
   final String? error;
+  final JsonDiagnostic? diagnostic;
+  final List<String> domainSuggestions;
+  final List<String> ipSuggestions;
   final int? sharingDataCount;
   final String name;
   final String text;
@@ -32,6 +38,9 @@ class JsonConfigurationEditorState {
     this.busy = true,
     this.deleting = false,
     this.error,
+    this.diagnostic,
+    this.domainSuggestions = const [],
+    this.ipSuggestions = const [],
     this.sharingDataCount,
     this.name = '',
     this.text = '',
@@ -43,6 +52,9 @@ class JsonConfigurationEditorState {
     bool? busy,
     bool? deleting,
     Object? error = _unchanged,
+    Object? diagnostic = _unchanged,
+    List<String>? domainSuggestions,
+    List<String>? ipSuggestions,
     Object? sharingDataCount = _unchanged,
     String? name,
     String? text,
@@ -52,6 +64,11 @@ class JsonConfigurationEditorState {
     busy: busy ?? this.busy,
     deleting: deleting ?? this.deleting,
     error: identical(error, _unchanged) ? this.error : error as String?,
+    diagnostic: identical(diagnostic, _unchanged)
+        ? this.diagnostic
+        : diagnostic as JsonDiagnostic?,
+    domainSuggestions: domainSuggestions ?? this.domainSuggestions,
+    ipSuggestions: ipSuggestions ?? this.ipSuggestions,
     sharingDataCount: identical(sharingDataCount, _unchanged)
         ? this.sharingDataCount
         : sharingDataCount as int?,
@@ -104,6 +121,7 @@ class JsonConfigurationEditorController
   bool get canDelete => advanced && _routingDraft?.original != null && !working;
   bool _saving = false;
   int _textRevision = 0;
+  int _draftRevision = 0;
   late final StreamSubscription<ConfigurationTransferState>
   _transferSubscription;
   late final transfers = ConfigurationTransferController(
@@ -115,7 +133,7 @@ class JsonConfigurationEditorController
       if (name.text.trim().isEmpty && draft.name.isNotEmpty) {
         name.text = draft.name;
       }
-      emit(state.copyWith(error: null));
+      emit(state.copyWith(error: null, diagnostic: null));
     },
   );
 
@@ -131,14 +149,16 @@ class JsonConfigurationEditorController
       state.name.trim().isNotEmpty;
 
   void _textChanged() {
-    if (!isPageActive) return;
-    emit(state.copyWith(text: text.text));
+    if (!isPageActive || state.text == text.text) return;
+    _draftRevision++;
+    emit(state.copyWith(text: text.text, error: null, diagnostic: null));
     unawaited(_updateSharingDataCount());
   }
 
   void _nameChanged() {
     if (isPageActive && state.name != name.text) {
-      emit(state.copyWith(name: name.text));
+      _draftRevision++;
+      emit(state.copyWith(name: name.text, error: null, diagnostic: null));
     }
   }
 
@@ -222,26 +242,46 @@ class JsonConfigurationEditorController
         );
       }
     }
+    unawaited(_loadGeodataSuggestions());
   }
 
-  RawEditorDraft get draft => RawEditorDraft(
-    original: _draft!.original,
-    name: state.name,
-    text: state.text,
-  );
+  Future<void> _loadGeodataSuggestions() async {
+    try {
+      if (VpnConstants.datDir.isEmpty) return;
+      final index = await RoutingGeodataIndex.load(
+        database: advanced ? customService.db : service.db,
+        directory: VpnConstants.datDir,
+      );
+      if (!isPageActive) return;
+      emit(
+        state.copyWith(
+          domainSuggestions: index.suggestions('', domain: true),
+          ipSuggestions: index.suggestions('', domain: false),
+        ),
+      );
+    } catch (_) {
+      // Missing local indexes disable hints only; saving still uses libXray.
+    }
+  }
 
   Future<void> save(BuildContext context) async {
     if (!canSave) return;
+    final revision = _draftRevision;
+    final submittedText = state.text;
+    final submittedName = state.name;
     _saving = true;
-    emit(state.copyWith(busy: true, error: null));
+    emit(state.copyWith(busy: true, error: null, diagnostic: null));
     final l10n = AppLocalizations.of(context)!;
     try {
       Future<bool> confirmReconnect() => context.mounted
-          ? showApplyAndReconnectDialog(context, label: state.name.trim())
+          ? showApplyAndReconnectDialog(context, label: submittedName.trim())
           : Future.value(false);
       int? id;
       if (advanced) {
-        final doc = AdvancedRoutingDocument.parse(state.text, name: state.name);
+        final doc = AdvancedRoutingDocument.parse(
+          submittedText,
+          name: submittedName,
+        );
         if (doc.assets.isNotEmpty) {
           throw const FormatException(
             'Use Import to install geodata.assets before saving',
@@ -257,7 +297,11 @@ class JsonConfigurationEditorController
         );
       } else {
         id = await service.save(
-          draft,
+          RawEditorDraft(
+            original: _draft!.original,
+            name: submittedName,
+            text: submittedText,
+          ),
           imported: transfers.imported,
           confirmReconnect: confirmReconnect,
         );
@@ -265,16 +309,30 @@ class JsonConfigurationEditorController
       if (id != null &&
           isPageActive &&
           context.mounted &&
+          revision == _draftRevision &&
           ModalRoute.of(context)?.isCurrent == true) {
         ContextAlert.showToast(
           context,
-          l10n.prototypeNameSaved(state.name.trim()),
+          l10n.prototypeNameSaved(submittedName.trim()),
         );
         Navigator.of(context).pop(id);
+      } else if (id != null && isPageActive) {
+        // Keep newer edits visible, but advance the saved baseline so a later
+        // save updates this row instead of duplicating it or reporting conflict.
+        if (advanced) {
+          _routingDraft = await customService.load(id);
+        } else {
+          _draft = await service.load(id);
+        }
+        if (isPageActive && context.mounted && revision != _draftRevision) {
+          ContextAlert.showToast(context, l10n.jsonEditorEarlierDraftSaved);
+        }
       }
     } on RawEditorException catch (failure) {
+      if (!isPageActive || revision != _draftRevision) return;
       emit(
         state.copyWith(
+          diagnostic: JsonDiagnostic.fromError(failure),
           error: switch (failure.reason) {
             'limit' => l10n.prototypeRawJsonLimit,
             'name' => l10n.validationNameRequired,
@@ -288,8 +346,10 @@ class JsonConfigurationEditorController
         ),
       );
     } on CustomRoutingEditorException catch (failure) {
+      if (!isPageActive || revision != _draftRevision) return;
       emit(
         state.copyWith(
+          diagnostic: JsonDiagnostic.fromError(failure),
           error: switch (failure.reason) {
             'limit' => l10n.prototypeCustomRouteLimit,
             'name' => l10n.prototypeRouteNameRequired,
@@ -303,8 +363,10 @@ class JsonConfigurationEditorController
         ),
       );
     } catch (error) {
+      if (!isPageActive || revision != _draftRevision) return;
       emit(
         state.copyWith(
+          diagnostic: JsonDiagnostic.fromError(error),
           error: appFailureMessage(
             l10n,
             error,

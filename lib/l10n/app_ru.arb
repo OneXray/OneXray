@@ -1,4 +1,10 @@
 {
+  "jsonEditorErrorLocation": "Строка {line}, столбец {column}",
+  "jsonEditorLocateError": "Перейти к ошибке",
+  "jsonEditorCopyError": "Копировать ошибку",
+  "jsonEditorSuggestions": "Подсказки",
+  "jsonEditorSuggestion": "Вставить {value}",
+  "jsonEditorEarlierDraftSaved": "Предыдущий вариант сохранён. Новые изменения ещё не сохранены.",
   "subscriptionPackageTitle": "Тариф подписки",
   "subscriptionPackageUnlimited": "Безлимитный трафик",
   "subscriptionPackageExhausted": "Лимит трафика исчерпан",

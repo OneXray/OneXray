@@ -1,4 +1,10 @@
 {
+  "jsonEditorErrorLocation": "第 {line} 行，第 {column} 列",
+  "jsonEditorLocateError": "定位错误",
+  "jsonEditorCopyError": "复制错误",
+  "jsonEditorSuggestions": "补全建议",
+  "jsonEditorSuggestion": "插入 {value}",
+  "jsonEditorEarlierDraftSaved": "已保存提交时的草稿，后续修改尚未保存。",
   "subscriptionPackageTitle": "订阅套餐",
   "subscriptionPackageUnlimited": "不限流量",
   "subscriptionPackageExhausted": "额度已用尽",

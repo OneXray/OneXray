@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/metadata.dart';
@@ -17,20 +18,23 @@ final class RoutingProfileDocument {
     String? name,
     bool allowMetadata = true,
   }) {
-    final document = _object(jsonDecode(text), 'template');
+    final document = _object(jsonDecode(text), const []);
     _onlyKeys(
       document,
       allowMetadata
           ? const {'name', 'outbounds', 'routing', 'geodata', 'dns'}
           : const {'outbounds', 'routing', 'dns'},
-      'template',
+      const [],
     );
     final embeddedName = document['name'];
     if (document.containsKey('name') &&
         (embeddedName is! String ||
             embeddedName.trim().isEmpty ||
             embeddedName.trim().runes.length > 32)) {
-      throw const FormatException('name must contain 1–32 characters');
+      throw const JsonDiagnostic(
+        'name must contain 1–32 characters',
+        path: ['name'],
+      );
     }
     if (document.containsKey('geodata')) routingAssets(document['geodata']);
     document.remove('name');
@@ -64,29 +68,34 @@ final class RoutingProfileDocument {
 // Field values and rule semantics are validated by libXray when saving.
 void _checkEditableFields(Map<String, dynamic> document) {
   if (document.containsKey('dns')) {
-    final dns = _object(document['dns'], 'dns');
-    _onlyKeys(dns, const {'servers'}, 'dns');
+    final dns = _object(document['dns'], const ['dns']);
+    _onlyKeys(dns, const {'servers'}, const ['dns']);
     final servers = dns['servers'];
     if (servers is! List) {
-      throw const FormatException('dns.servers must be an array');
+      throw const JsonDiagnostic(
+        'dns.servers must be an array',
+        path: ['dns', 'servers'],
+      );
     }
     for (var index = 0; index < servers.length; index++) {
-      _onlyKeys(_object(servers[index], 'dns.servers[$index]'), const {
-        'tag',
-        'address',
-      }, 'dns.servers[$index]');
+      final path = <Object>['dns', 'servers', index];
+      _onlyKeys(_object(servers[index], path), const {'tag', 'address'}, path);
     }
   }
   final routing = document.containsKey('routing')
-      ? _object(document['routing'], 'routing')
+      ? _object(document['routing'], const ['routing'])
       : <String, dynamic>{};
-  _onlyKeys(routing, const {'domainStrategy', 'rules'}, 'routing');
+  _onlyKeys(routing, const {'domainStrategy', 'rules'}, const ['routing']);
   final rules = routing.containsKey('rules') ? routing['rules'] : <dynamic>[];
   if (rules is! List) {
-    throw const FormatException('routing.rules must be an array');
+    throw const JsonDiagnostic(
+      'routing.rules must be an array',
+      path: ['routing', 'rules'],
+    );
   }
   for (var index = 0; index < rules.length; index++) {
-    _onlyKeys(_object(rules[index], 'routing.rules[$index]'), const {
+    final path = <Object>['routing', 'rules', index];
+    _onlyKeys(_object(rules[index], path), const {
       'ruleTag',
       'domain',
       'ip',
@@ -96,21 +105,35 @@ void _checkEditableFields(Map<String, dynamic> document) {
       'localOS',
       'balancerTag',
       'outboundTag',
-    }, 'routing.rules[$index]');
+    }, path);
   }
 }
 
-Map<String, dynamic> _object(Object? value, String path) {
+Map<String, dynamic> _object(Object? value, List<Object> path) {
   if (value is! Map<String, dynamic>) {
-    throw FormatException('$path must be an object');
+    throw JsonDiagnostic('${_pathLabel(path)} must be an object', path: path);
   }
   return value;
 }
 
-void _onlyKeys(Map<String, dynamic> value, Set<String> allowed, String path) {
+void _onlyKeys(
+  Map<String, dynamic> value,
+  Set<String> allowed,
+  List<Object> path,
+) {
   for (final key in value.keys) {
     if (!allowed.contains(key)) {
-      throw FormatException('Unsupported field: $path.$key');
+      throw JsonDiagnostic(
+        'Unsupported field: ${_pathLabel(path)}.$key',
+        path: [...path, key],
+      );
     }
   }
 }
+
+String _pathLabel(List<Object> path) => path.isEmpty
+    ? 'template'
+    : path
+          .map((part) => part is int ? '[$part]' : '.$part')
+          .join()
+          .substring(1);

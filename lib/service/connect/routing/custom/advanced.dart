@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
@@ -120,7 +121,7 @@ final class AdvancedRoutingDocument {
     String? name,
     bool allowMetadata = true,
   }) {
-    final json = _object(jsonDecode(text), 'template');
+    final json = _object(jsonDecode(text), const []);
     _keys(json, {
       'outbounds',
       'inbounds',
@@ -128,30 +129,34 @@ final class AdvancedRoutingDocument {
       'routing',
       'fakedns',
       if (allowMetadata) ...['name', 'geodata'],
-    }, 'template');
+    }, const []);
     final hasName = json.containsKey('name');
     final embeddedName = json.remove('name');
     if (hasName &&
         (embeddedName is! String ||
             embeddedName.trim().isEmpty ||
             embeddedName.trim().runes.length > 32)) {
-      throw const FormatException('name must contain 1–32 characters');
+      throw const JsonDiagnostic(
+        'name must contain 1–32 characters',
+        path: ['name'],
+      );
     }
     final assets = json.containsKey('geodata')
         ? routingAssets(json.remove('geodata'))
         : <Map<String, String>>[];
-    final outbounds = _objects(json['outbounds'], 'outbounds');
+    final outbounds = _objects(json['outbounds'], const ['outbounds']);
     final count = outbounds.takeWhile((value) => value.isEmpty).length;
     if (count < 1 ||
         count > 3 ||
         outbounds.skip(count).any((value) => value.isEmpty)) {
-      throw const FormatException(
+      throw const JsonDiagnostic(
         'outbounds must start with 1–3 empty entry slots',
+        path: ['outbounds'],
       );
     }
     final tags = <String>{};
     for (final (index, outbound) in outbounds.indexed.skip(count)) {
-      final path = 'outbounds[$index]';
+      final path = <Object>['outbounds', index];
       _keys(outbound, {'tag', 'protocol', 'settings', 'streamSettings'}, path);
       _definition(outbound['tag'], path, tags);
       if (!const {
@@ -159,36 +164,38 @@ final class AdvancedRoutingDocument {
         'blackhole',
         'dns',
       }.contains(outbound['protocol'])) {
-        throw FormatException('$path supports only freedom, blackhole and dns');
+        throw JsonDiagnostic(
+          '${_pathLabel(path)} supports only freedom, blackhole and dns',
+          path: [...path, 'protocol'],
+        );
       }
       final stream = outbound['streamSettings'];
       if (stream != null) {
-        final map = _object(stream, '$path.streamSettings');
-        _keys(map, {'sockopt'}, '$path.streamSettings');
+        final streamPath = [...path, 'streamSettings'];
+        final map = _object(stream, streamPath);
+        _keys(map, {'sockopt'}, streamPath);
         if (map['sockopt'] != null) {
-          final sockopt = _object(
-            map['sockopt'],
-            '$path.streamSettings.sockopt',
-          );
-          _keys(sockopt, {'dialerProxy'}, '$path.streamSettings.sockopt');
-          _outboundReference(
-            sockopt['dialerProxy'],
-            '$path.streamSettings.sockopt.dialerProxy',
-          );
+          final sockoptPath = [...streamPath, 'sockopt'];
+          final sockopt = _object(map['sockopt'], sockoptPath);
+          _keys(sockopt, {'dialerProxy'}, sockoptPath);
+          _outboundReference(sockopt['dialerProxy'], [
+            ...sockoptPath,
+            'dialerProxy',
+          ]);
         }
       }
     }
     var tunSeen = false;
     if (json.containsKey('inbounds')) {
-      for (final (index, inbound) in _objects(
-        json['inbounds'],
+      for (final (index, inbound) in _objects(json['inbounds'], const [
         'inbounds',
-      ).indexed) {
-        final path = 'inbounds[$index]';
+      ]).indexed) {
+        final path = <Object>['inbounds', index];
         if (inbound['tag'] == 'tunIn') {
           if (tunSeen) {
-            throw const FormatException(
+            throw JsonDiagnostic(
               'Only one tunIn placeholder is allowed',
+              path: [...path, 'tag'],
             );
           }
           tunSeen = true;
@@ -205,57 +212,68 @@ final class AdvancedRoutingDocument {
           _definition(inbound['tag'], path, tags);
           final protocol = inbound['protocol'];
           if (!const {'socks', 'http', 'tunnel'}.contains(protocol)) {
-            throw FormatException('$path supports only socks, http and tunnel');
+            throw JsonDiagnostic(
+              '${_pathLabel(path)} supports only socks, http and tunnel',
+              path: [...path, 'protocol'],
+            );
           }
           if (inbound.containsKey('settings')) {
             _keys(
-              _object(inbound['settings'], '$path.settings'),
+              _object(inbound['settings'], [...path, 'settings']),
               switch (protocol) {
                 'socks' => {'auth', 'users', 'accounts', 'udp'},
                 'http' => {'users', 'accounts'},
                 _ => {'rewriteAddress', 'rewritePort', 'allowedNetwork'},
               },
-              '$path.settings',
+              [...path, 'settings'],
             );
           }
         }
         if (inbound.containsKey('sniffing')) {
-          _keys(_object(inbound['sniffing'], '$path.sniffing'), {
-            'enabled',
-            'routeOnly',
-            'destOverride',
-            'metadataOnly',
-            'domainsExcluded',
-            'ipsExcluded',
-          }, '$path.sniffing');
+          _keys(
+            _object(inbound['sniffing'], [...path, 'sniffing']),
+            {
+              'enabled',
+              'routeOnly',
+              'destOverride',
+              'metadataOnly',
+              'domainsExcluded',
+              'ipsExcluded',
+            },
+            [...path, 'sniffing'],
+          );
         }
       }
     }
     if (json.containsKey('dns')) {
-      final dns = _object(json['dns'], 'dns');
-      if (dns.containsKey('queryStrategy')) _managed('dns.queryStrategy');
-      if (dns.containsKey('tag')) _definition(dns['tag'], 'dns', <String>{});
+      final dns = _object(json['dns'], const ['dns']);
+      if (dns.containsKey('queryStrategy')) {
+        _managed(const ['dns', 'queryStrategy']);
+      }
+      if (dns.containsKey('tag')) {
+        _definition(dns['tag'], const ['dns'], <String>{});
+      }
       if (dns['servers'] is List) {
         for (final (index, server) in (dns['servers'] as List).indexed) {
           if (server is! Map) continue;
           if (server.containsKey('queryStrategy')) {
-            _managed('dns.servers[$index].queryStrategy');
+            _managed(['dns', 'servers', index, 'queryStrategy']);
           }
           if (server.containsKey('tag')) {
-            _definition(server['tag'], 'dns.servers[$index]', <String>{});
+            _definition(server['tag'], ['dns', 'servers', index], <String>{});
           }
         }
       }
     }
     if (json.containsKey('routing')) {
-      final routing = _object(json['routing'], 'routing');
-      _keys(routing, {'domainStrategy', 'rules'}, 'routing');
+      final routing = _object(json['routing'], const ['routing']);
+      _keys(routing, {'domainStrategy', 'rules'}, const ['routing']);
       if (routing.containsKey('rules')) {
-        for (final (index, rule) in _objects(
-          routing['rules'],
-          'routing.rules',
-        ).indexed) {
-          final path = 'routing.rules[$index]';
+        for (final (index, rule) in _objects(routing['rules'], const [
+          'routing',
+          'rules',
+        ]).indexed) {
+          final path = <Object>['routing', 'rules', index];
           _keys(rule, {
             'ruleTag',
             'domain',
@@ -272,13 +290,22 @@ final class AdvancedRoutingDocument {
           }, path);
           if (rule.containsKey('balancerTag') &&
               rule['balancerTag'] != 'proxy') {
-            throw FormatException('$path.balancerTag must use proxy');
+            throw JsonDiagnostic(
+              '${_pathLabel(path)}.balancerTag must use proxy',
+              path: [...path, 'balancerTag'],
+            );
           }
-          _outboundReference(rule['outboundTag'], '$path.outboundTag');
+          _outboundReference(rule['outboundTag'], [...path, 'outboundTag']);
           final inboundTags = rule['inboundTag'];
           if (inboundTags is List) {
-            for (final tag in inboundTags) {
-              if (tag is String && _internal(tag)) _managed('$path.inboundTag');
+            for (final (tagIndex, tag) in inboundTags.indexed) {
+              if (tag is String && _internal(tag)) {
+                _managed([
+                  ...path,
+                  'inboundTag',
+                  tagIndex,
+                ], label: '${_pathLabel(path)}.inboundTag');
+              }
             }
           }
         }
@@ -294,45 +321,75 @@ final class AdvancedRoutingDocument {
   }
 }
 
-Map<String, dynamic> _object(Object? value, String path) {
+Map<String, dynamic> _object(
+  Object? value,
+  List<Object> path, {
+  String? label,
+}) {
   if (value is! Map<String, dynamic>) {
-    throw FormatException('$path must be an object');
+    throw JsonDiagnostic(
+      '${label ?? _pathLabel(path)} must be an object',
+      path: path,
+    );
   }
   return value;
 }
 
-List<Map<String, dynamic>> _objects(Object? value, String path) {
-  if (value is! List) throw FormatException('$path must be an array');
-  return [for (final item in value) _object(item, path)];
+List<Map<String, dynamic>> _objects(Object? value, List<Object> path) {
+  if (value is! List) {
+    throw JsonDiagnostic('${_pathLabel(path)} must be an array', path: path);
+  }
+  return [
+    for (final (index, item) in value.indexed)
+      _object(item, [...path, index], label: _pathLabel(path)),
+  ];
 }
 
-void _keys(Map<String, dynamic> value, Set<String> allowed, String path) {
+void _keys(Map<String, dynamic> value, Set<String> allowed, List<Object> path) {
   for (final key in value.keys) {
     if (!allowed.contains(key)) {
-      throw FormatException('Unsupported or App-managed field: $path.$key');
+      throw JsonDiagnostic(
+        'Unsupported or App-managed field: ${_pathLabel(path)}.$key',
+        path: [...path, key],
+      );
     }
   }
 }
 
 bool _internal(String tag) =>
     tag.startsWith('app-entry-') || tag.startsWith('app-exit-');
-Never _managed(String path) =>
-    throw FormatException('$path is managed by OneXray; use App settings');
-void _definition(Object? tag, String path, Set<String> tags) {
+Never _managed(List<Object> path, {String? label}) => throw JsonDiagnostic(
+  '${label ?? _pathLabel(path)} is managed by OneXray; use App settings',
+  path: path,
+);
+void _definition(Object? tag, List<Object> path, Set<String> tags) {
   if (tag is! String || tag.isEmpty) {
-    throw FormatException('$path requires a tag');
+    throw JsonDiagnostic(
+      '${_pathLabel(path)} requires a tag',
+      path: [...path, 'tag'],
+    );
   }
   if (_internal(tag) ||
       const {'proxy', 'direct', 'block', 'tunIn'}.contains(tag)) {
-    _managed('$path.tag');
+    _managed([...path, 'tag']);
   }
-  if (!tags.add(tag)) throw FormatException('Duplicate tag: $tag');
+  if (!tags.add(tag)) {
+    throw JsonDiagnostic('Duplicate tag: $tag', path: [...path, 'tag']);
+  }
 }
 
-void _outboundReference(Object? tag, String path) {
+void _outboundReference(Object? tag, List<Object> path) {
   if (tag is String && (_internal(tag) || tag == 'proxy')) {
-    throw FormatException(
-      '$path cannot reference an internal node or the proxy balancer; use balancerTag: proxy',
+    throw JsonDiagnostic(
+      '${_pathLabel(path)} cannot reference an internal node or the proxy balancer; use balancerTag: proxy',
+      path: path,
     );
   }
 }
+
+String _pathLabel(List<Object> path) => path.isEmpty
+    ? 'template'
+    : path
+          .map((part) => part is int ? '[$part]' : '.$part')
+          .join()
+          .substring(1);

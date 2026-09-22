@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
+import 'package:onexray/service/shared/json_editing.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/json_editor/controller.dart';
 import 'package:onexray/pages/connect/routing/widgets.dart';
@@ -154,10 +156,25 @@ class _JsonConfigurationEditorState extends State<JsonConfigurationEditorPage> {
                           ),
                           const SizedBox(height: 8),
                           SizedBox(
-                            height: mobile ? 392 : 412,
+                            height: AppJsonEditor.heightForViewport(
+                              context,
+                              mobile ? 392 : 412,
+                            ),
                             child: AbsorbPointer(
                               absorbing: !state.loaded,
-                              child: AppJsonEditor(controller: controller.text),
+                              child: AppJsonEditor(
+                                controller: controller.text,
+                                kind: controller.advanced
+                                    ? JsonEditorKind.advancedRouting
+                                    : JsonEditorKind.raw,
+                                diagnostic:
+                                    state.diagnostic ??
+                                    (state.error == null
+                                        ? null
+                                        : JsonDiagnostic(state.error!)),
+                                domainSuggestions: state.domainSuggestions,
+                                ipSuggestions: state.ipSuggestions,
+                              ),
                             ),
                           ),
                           SizedBox(height: gap),
@@ -182,7 +199,7 @@ class _JsonConfigurationEditorState extends State<JsonConfigurationEditorPage> {
                             ),
                           if (!state.loaded && state.busy)
                             const LinearProgressIndicator(),
-                          if (state.error != null)
+                          if (!state.loaded && state.error != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 12),
                               child: Semantics(

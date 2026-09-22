@@ -1,4 +1,12 @@
 {
+  "jsonEditorErrorLocation": "Line {line}, column {column}",
+  "jsonEditorLocateError": "Locate error",
+  "jsonEditorCopyError": "Copy error",
+  "jsonEditorSuggestions": "Suggestions",
+  "jsonEditorSuggestion": "Insert {value}",
+  "jsonEditorEarlierDraftSaved": "The earlier draft was saved. Your newer edits have not been saved.",
+  "@jsonEditorErrorLocation": {"placeholders": {"line": {"type": "int"}, "column": {"type": "int"}}},
+  "@jsonEditorSuggestion": {"placeholders": {"value": {"type": "String"}}},
   "subscriptionPackageTitle": "Subscription plan",
   "subscriptionPackageUnlimited": "Unlimited data",
   "subscriptionPackageExhausted": "Data allowance used up",

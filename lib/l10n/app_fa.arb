@@ -1,4 +1,10 @@
 {
+  "jsonEditorErrorLocation": "خط {line}، ستون {column}",
+  "jsonEditorLocateError": "رفتن به خطا",
+  "jsonEditorCopyError": "کپی خطا",
+  "jsonEditorSuggestions": "پیشنهادها",
+  "jsonEditorSuggestion": "درج {value}",
+  "jsonEditorEarlierDraftSaved": "پیش‌نویس قبلی ذخیره شد. تغییرات جدید هنوز ذخیره نشده‌اند.",
   "subscriptionPackageTitle": "طرح اشتراک",
   "subscriptionPackageUnlimited": "ترافیک نامحدود",
   "subscriptionPackageExhausted": "حجم به پایان رسیده",
