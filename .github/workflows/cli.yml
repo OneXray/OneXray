@@ -1,0 +1,78 @@
+name: CLI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "cli/**"
+      - "build_scripts/build_cli.py"
+      - "build_scripts/tests/test_cli_build.py"
+      - ".github/workflows/cli.yml"
+      - "pubspec.yaml"
+  pull_request:
+    paths:
+      - "cli/**"
+      - "build_scripts/build_cli.py"
+      - "build_scripts/tests/test_cli_build.py"
+      - ".github/workflows/cli.yml"
+      - "pubspec.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, windows-2025, macos-26]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - name: Test CLI and credential storage
+        run: go test ./...
+      - name: Vet CLI
+        run: go vet ./...
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+
+  package:
+    needs: test
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [darwin-amd64, darwin-arm64, linux-amd64, linux-arm64, windows-amd64, windows-arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - name: Test packaging orchestration
+        working-directory: build_scripts
+        run: python -m unittest discover -s tests -p 'test_cli_build.py'
+      - name: Build standalone CLI archive
+        run: python build_scripts/build_cli.py --target "${{ matrix.target }}" --output cli-output
+      - uses: actions/upload-artifact@v7
+        with:
+          name: OneXrayCLI-${{ matrix.target }}
+          path: cli-output/*
+          if-no-files-found: error

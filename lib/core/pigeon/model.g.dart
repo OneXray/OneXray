@@ -191,11 +191,19 @@ const _$LibXrayMethodEnumMap = {
 };
 
 GetFreePortsRequest _$GetFreePortsRequestFromJson(Map<String, dynamic> json) =>
-    GetFreePortsRequest((json['count'] as num?)?.toInt());
+    GetFreePortsRequest(
+      (json['count'] as num?)?.toInt(),
+      excludePorts: (json['excludePorts'] as List<dynamic>?)
+          ?.map((e) => (e as num).toInt())
+          .toList(),
+    );
 
 Map<String, dynamic> _$GetFreePortsRequestToJson(
   GetFreePortsRequest instance,
-) => <String, dynamic>{'count': ?instance.count};
+) => <String, dynamic>{
+  'count': ?instance.count,
+  'excludePorts': ?instance.excludePorts,
+};
 
 ConvertShareLinksToXrayJsonRequest _$ConvertShareLinksToXrayJsonRequestFromJson(
   Map<String, dynamic> json,

@@ -11,6 +11,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/platform_requirements.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/advanced/local_api/service.dart';
 import 'package:onexray/service/launch/storage_preparation.dart';
 import 'package:onexray/service/shared/menu/short_cut/service.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
@@ -85,6 +86,7 @@ abstract final class ServiceManager {
           ConnectionPhase.connected,
     );
     _initialized = true;
+    await _runInit('LocalApiService', LocalApiService.instance.start);
     PingService().startAutomatic();
     unawaited(_checkUpdate());
   }
@@ -119,6 +121,7 @@ abstract final class ServiceManager {
   }
 
   static void serviceDispose() {
+    unawaited(LocalApiService.instance.stop());
     PingService().stopAutomatic();
     _initFuture = null;
     _initialized = false;

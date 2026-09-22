@@ -1,4 +1,5 @@
 import 'package:onexray/service/shared/failure.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
@@ -26,6 +27,7 @@ class XrayRuntimePage extends StatelessWidget {
     required this.onSpeedTest,
     required this.onLog,
     required this.onConfig,
+    this.onLocalApi,
     this.createController,
   });
   final void Function(BuildContext) onGeodata;
@@ -33,6 +35,7 @@ class XrayRuntimePage extends StatelessWidget {
   final void Function(BuildContext) onSpeedTest;
   final void Function(BuildContext, LogFileViewerParams) onLog;
   final void Function(BuildContext, ConfigFileViewerParams) onConfig;
+  final void Function(BuildContext)? onLocalApi;
   final XrayRuntimeController Function()? createController;
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -295,6 +298,22 @@ class XrayRuntimePage extends StatelessWidget {
                               ),
                             ],
                           ),
+                          if (AppPlatform.isDesktop && onLocalApi != null)
+                            _section(
+                              icon: LucideIcons.terminal,
+                              title: l.localApiTitle,
+                              children: [
+                                _pushRow(
+                                  context,
+                                  mobile: mobile,
+                                  title: l.localApiTitle,
+                                  subtitle: l.localApiSummary,
+                                  icon: LucideIcons.terminal,
+                                  enabled: true,
+                                  onTap: () => onLocalApi!(context),
+                                ),
+                              ],
+                            ),
                           if (controller.failed)
                             Padding(
                               padding: const EdgeInsets.all(20),

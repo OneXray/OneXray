@@ -186,6 +186,17 @@ class SettingsPage extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   dividerIndent: 0,
                   children: [
+                    SettingRow(
+                      title: l10n.donationTitle,
+                      minHeight: rowHeight,
+                      contentPadding: rowPadding,
+                      titleStyle: AppTypography.settingsRow,
+                      showChevron: true,
+                      onTap: () => controller.openSetting(
+                        context,
+                        AppPageDestination.donation,
+                      ),
+                    ),
                     Semantics(
                       label: preferences.appUpdateInfo == null
                           ? null

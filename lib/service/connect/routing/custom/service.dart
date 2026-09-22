@@ -31,22 +31,26 @@ class CustomRoutingService {
     RoutingConfiguration state, {
     Future<String> Function(String)? testXray,
   }) => GeoDataService().withFiles(() async {
+    final error = await (testXray ?? AppHostApi().testXray)(
+      validationJson(state),
+    );
+    if (error.isNotEmpty) {
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: error,
+      );
+    }
+  });
+
+  /// Shared by the editor and local API; this does not select stored nodes.
+  static String validationJson(RoutingConfiguration state) {
     if (state is AdvancedRoutingProfile) {
       final config = state.fillSlots([
         for (var i = 0; i < state.entryCount; i++)
           createFreedomOutbound(tag: 'app-entry-$i').toJson(),
       ]);
-      final error = await (testXray ?? AppHostApi().testXray)(
-        XrayValidation.raw(config),
-      );
-      if (error.isNotEmpty) {
-        throw AppFailure(
-          FailureCategory.configuration,
-          'xrayValidation',
-          cause: error,
-        );
-      }
-      return;
+      return XrayValidation.raw(config);
     }
     state as RoutingProfileState;
     final config = state.xrayJson;
@@ -74,17 +78,8 @@ class CustomRoutingService {
     ];
     // fallbackTag requires the same Observatory dependency as runtime routing.
     config.observatory = XrayObservatory(subjectSelector: []);
-    final error = await (testXray ?? AppHostApi().testXray)(
-      XrayValidation.normal(config),
-    );
-    if (error.isNotEmpty) {
-      throw AppFailure(
-        FailureCategory.configuration,
-        'xrayValidation',
-        cause: error,
-      );
-    }
-  });
+    return XrayValidation.normal(config);
+  }
 
   Future<int> save(RoutingConfiguration state) async {
     final name = state.name.trim();

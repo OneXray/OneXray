@@ -145,8 +145,19 @@ class PreferencesKey {
   }
 
   static const _backup = '${_namespace}backup';
+  static const _localApi = '${_namespace}localApi';
   static const _automaticBackup = '${_namespace}automaticBackup';
   static const _backupInterval = '${_namespace}backupInterval';
+
+  Future<Map<String, dynamic>?> readLocalApi() async {
+    final value = await _prefs.getString(_localApi);
+    return value == null
+        ? null
+        : JsonTool.decoder.convert(value) as Map<String, dynamic>;
+  }
+
+  Future<void> saveLocalApi(Map<String, dynamic> value) =>
+      _prefs.setString(_localApi, JsonTool.encoder.convert(value));
 
   Future<Map<String, dynamic>?> readBackup() async {
     final value = await _prefs.getString(_backup);
@@ -197,6 +208,7 @@ class PreferencesKey {
       _prefs.remove(_pingState),
       _prefs.remove(_autoUpdate),
       _prefs.remove(_backup),
+      _prefs.remove(_localApi),
       _prefs.remove(_automaticBackup),
       _prefs.remove(_backupInterval),
       _prefs.remove('app2.xraySettingId'),

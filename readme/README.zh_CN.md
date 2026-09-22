@@ -192,6 +192,18 @@ ZIP 不会自动注册 `onexray://` 链接。GNOME 用户可能需要安装 [App
 
 欢迎贡献代码、翻译和[文档改进](https://github.com/OneXray/onexray.com)。
 
+## 捐赠
+
+可以通过 **Solana 网络**捐赠 **USDC 或 USDT**，支持 OneXray 的开发。捐赠完全自愿。
+使用下方地址框的复制按钮，或打开[捐赠页面](https://onexray.com/zh/docs/donate/)。
+
+```text
+A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
+```
+
+请仅通过 Solana 网络发送 USDC 或 USDT。转账前核对网络和完整地址，使用其他网络可能导致资产丢失。
+App 内也可通过“设置 → 捐赠 → 复制地址”获取。捐赠不会解锁功能，也不提供服务器或订阅。
+
 ## 许可证
 
 [GNU General Public License v3.0](../LICENSE)。

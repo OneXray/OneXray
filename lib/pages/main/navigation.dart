@@ -58,12 +58,14 @@ enum AppPageDestination {
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
   autoUpdate("auto-update"),
+  localApi("local-api"),
   backup("backup"),
   desktopSettings("desktop-settings"),
   appIcon("app-icon"),
   theme("theme"),
   language("language"),
   aboutOneXray("about-onexray"),
+  donation("donation"),
   appUpdate("app-update");
 
   final String segment;

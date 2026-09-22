@@ -102,7 +102,7 @@ tasks.matching { it.name.startsWith("package") && it.name.endsWith("UnitTestForU
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("org.robolectric:robolectric:4.17")
     val coreVersion = "1.19.0"
     implementation("androidx.core:core-ktx:$coreVersion")
     implementation("androidx.core:core-splashscreen:1.2.0")

@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "status": "failed",
+  "stage": "input",
+  "diagnostics": [
+    {
+      "code": "invalidConfiguration",
+      "message": "Unsupported field: routing.rules[0].sourceIP",
+      "path": ["routing", "rules", 0, "sourceIP"],
+      "offset": 50,
+      "line": 1,
+      "column": 51
+    }
+  ]
+}

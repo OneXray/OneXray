@@ -22,6 +22,7 @@ class AdvancedRootPage extends StatelessWidget {
           context.pushScoped(AppPageDestination.routingData),
       onUpdates: (context) => context.pushScoped(AppPageDestination.autoUpdate),
       onSpeedTest: (context) => context.pushScoped(AppPageDestination.ping),
+      onLocalApi: (context) => context.pushScoped(AppPageDestination.localApi),
       onLog: (context, params) =>
           context.pushScoped(AppPageDestination.logFile, extra: params),
       onConfig: (context, params) => context.pushScoped(

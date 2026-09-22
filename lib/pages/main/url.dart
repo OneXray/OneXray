@@ -1,12 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/xray/log/page.dart';
 import 'package:onexray/pages/advanced/xray/log/params.dart';
 import 'package:onexray/pages/advanced/xray/config/page.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/ping/page.dart';
+import 'package:onexray/pages/advanced/local_api/page.dart';
 import 'package:onexray/pages/settings/about/page.dart';
+import 'package:onexray/pages/settings/donation/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/wifi.dart';
@@ -120,43 +123,50 @@ StatefulShellBranch _buildPrimaryBranch(AppPrimaryDestination primary) {
       GoRoute(
         path: primary.rootPath,
         builder: root.builder,
-        routes: _buildTabRoutes(),
+        routes: buildScopedPageRoutes(),
       ),
     ],
   );
 }
 
-List<GoRoute> _buildTabRoutes() {
-  return _pageRoutes.map((route) {
-    if (route.destination == AppPageDestination.appUpdate) {
-      return GoRoute(
-        path: route.destination.segment,
-        pageBuilder: (context, state) => AppDialogPage<void>(
-          key: state.pageKey,
-          builder: (context) => route.builder(context, state),
-        ),
-      );
-    }
-    if (AppPageDestination.adaptiveDialogs.contains(route.destination)) {
-      return GoRoute(
-        path: route.destination.segment,
-        pageBuilder: (context, state) => AppDialogPage<dynamic>(
-          key: state.pageKey,
-          barrierColor: ColorManager.palette(context).overlay,
-          useSafeArea: false,
-          builder: (context) =>
-              AppDialogFrame(child: route.builder(context, state)),
-        ),
-      );
-    }
-    return GoRoute(
-      path: route.destination.segment,
-      builder: (context, state) => Theme(
-        data: AppTheme.secondaryPage(context),
-        child: Builder(builder: (context) => route.builder(context, state)),
-      ),
-    );
-  }).toList();
+List<GoRoute> buildScopedPageRoutes({bool? desktop}) {
+  final onDesktop = desktop ?? AppPlatform.isDesktop;
+  return _pageRoutes
+      .where(
+        (route) =>
+            onDesktop || route.destination != AppPageDestination.localApi,
+      )
+      .map((route) {
+        if (route.destination == AppPageDestination.appUpdate) {
+          return GoRoute(
+            path: route.destination.segment,
+            pageBuilder: (context, state) => AppDialogPage<void>(
+              key: state.pageKey,
+              builder: (context) => route.builder(context, state),
+            ),
+          );
+        }
+        if (AppPageDestination.adaptiveDialogs.contains(route.destination)) {
+          return GoRoute(
+            path: route.destination.segment,
+            pageBuilder: (context, state) => AppDialogPage<dynamic>(
+              key: state.pageKey,
+              barrierColor: ColorManager.palette(context).overlay,
+              useSafeArea: false,
+              builder: (context) =>
+                  AppDialogFrame(child: route.builder(context, state)),
+            ),
+          );
+        }
+        return GoRoute(
+          path: route.destination.segment,
+          builder: (context, state) => Theme(
+            data: AppTheme.secondaryPage(context),
+            child: Builder(builder: (context) => route.builder(context, state)),
+          ),
+        );
+      })
+      .toList();
 }
 
 typedef _PageRouteBuilder = Widget Function(
@@ -180,6 +190,7 @@ final _pageRoutes = <_PageRoute>[
   _route(AppPageDestination.servers, (_, _) => const ServersPage()),
   _route(AppPageDestination.advanced, (_, _) => const AdvancedRootPage()),
   _route(AppPageDestination.settings, (_, _) => const SettingsPage()),
+  _route(AppPageDestination.localApi, (_, _) => const LocalApiPage()),
   _route(
     AppPageDestination.appleVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
@@ -358,6 +369,7 @@ final _pageRoutes = <_PageRoute>[
   _route(AppPageDestination.theme, (_, _) => const ThemePage()),
   _route(AppPageDestination.language, (_, _) => const LanguagePage()),
   _route(AppPageDestination.aboutOneXray, (_, _) => const AboutOneXrayPage()),
+  _route(AppPageDestination.donation, (_, _) => const DonationPage()),
   _route(
     AppPageDestination.appUpdate,
     (_, state) => _withDialogExtra<AppUpdateDialogParams>(
