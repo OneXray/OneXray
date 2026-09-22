@@ -4,7 +4,6 @@ import 'package:onexray/core/constants/donation.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/settings/donation/controller.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
-import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/page_app_bar.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/pages/shared/widgets/settings_page.dart';
@@ -26,23 +25,6 @@ class DonationPage extends StatelessWidget {
             MediaQuery.sizeOf(context).width <= AppLayout.mobileBreakpoint;
         return Scaffold(
           appBar: PageAppBar(title: Text(l10n.donationTitle)),
-          bottomNavigationBar: PageActionBar(
-            maxWidth: AppLayout.routingMaxWidth,
-            children: [
-              ShadButton(
-                onPressed: copying
-                    ? null
-                    : () => context.read<DonationController>().copyAddress(
-                        context,
-                      ),
-                leading: const Icon(LucideIcons.copy),
-                child: ButtonProgress(
-                  busy: copying,
-                  child: Text(l10n.donationCopyAddress),
-                ),
-              ),
-            ],
-          ),
           body: SafeArea(
             child: SettingsPageScroll(
               desktopMaxWidth: AppLayout.routingMaxWidth,
@@ -78,13 +60,33 @@ class DonationPage extends StatelessWidget {
                   const SizedBox(height: 24),
                   SettingSection(
                     title: l10n.donationAddress,
+                    padding: EdgeInsets.zero,
                     children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: SelectableText(
-                          DonationInfo.address,
-                          textDirection: TextDirection.ltr,
-                          style: AppTypography.code,
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                DonationInfo.address,
+                                textDirection: TextDirection.ltr,
+                                style: AppTypography.code,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.controlHorizontal),
+                            IconButton(
+                              iconSize: 18,
+                              tooltip: l10n.donationCopyAddress,
+                              onPressed: copying
+                                  ? null
+                                  : () => context
+                                        .read<DonationController>()
+                                        .copyAddress(context),
+                              icon: copying
+                                  ? const ButtonProgressIndicator()
+                                  : const Icon(LucideIcons.copy),
+                            ),
+                          ],
                         ),
                       ),
                     ],

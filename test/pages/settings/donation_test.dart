@@ -9,6 +9,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/main/url.dart';
 import 'package:onexray/pages/settings/donation/page.dart';
+import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -70,10 +71,49 @@ void main() {
         expect(address.data, 'A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj');
         expect(address.textDirection, TextDirection.ltr);
         expect(address.maxLines, isNull);
+        final addressRect = tester.getRect(find.byType(SelectableText));
+        final addressCardRect = tester.getRect(
+          find
+              .ancestor(
+                of: find.byType(SelectableText),
+                matching: find.byType(ShadCard),
+              )
+              .first,
+        );
+        expect(
+          addressRect.left - addressCardRect.left,
+          greaterThanOrEqualTo(16),
+        );
+        expect(
+          addressCardRect.right - addressRect.right,
+          greaterThanOrEqualTo(16),
+        );
+        expect(addressRect.top - addressCardRect.top, greaterThanOrEqualTo(16));
+        expect(
+          addressCardRect.bottom - addressRect.bottom,
+          greaterThanOrEqualTo(16),
+        );
+        final detailsRect = tester.getRect(find.byType(ShadCard).first);
+        expect(addressCardRect.left, detailsRect.left);
+        expect(addressCardRect.right, detailsRect.right);
+        expect(find.byType(PageActionBar), findsNothing);
         expect(tester.takeException(), isNull);
 
-        final copy = find.widgetWithText(ShadButton, l10n.donationCopyAddress);
+        final copy = find.byWidgetPredicate(
+          (widget) =>
+              widget is IconButton &&
+              widget.tooltip == l10n.donationCopyAddress,
+        );
         expect(copy.hitTestable(), findsOneWidget);
+        final copyRect = tester.getRect(copy);
+        expect(addressCardRect.contains(copyRect.topLeft), isTrue);
+        expect(addressCardRect.contains(copyRect.bottomRight), isTrue);
+        expect(copyRect.center.dy, closeTo(addressRect.center.dy, 0.01));
+        if (locale.languageCode == 'fa') {
+          expect(addressRect.left - copyRect.right, closeTo(12, 0.01));
+        } else {
+          expect(copyRect.left - addressRect.right, closeTo(12, 0.01));
+        }
         await tester.tap(copy);
         await tester.pumpAndSettle();
         expect(copied, DonationInfo.address);
@@ -107,10 +147,10 @@ void main() {
     );
     await tester.pumpWidget(app(const Locale('en')));
     await tester.pumpAndSettle();
-    final copy = find.widgetWithText(ShadButton, 'Copy address');
+    final copy = find.byType(IconButton);
     await tester.tap(copy);
     await tester.pump();
-    expect(tester.widget<ShadButton>(copy).onPressed, isNull);
+    expect(tester.widget<IconButton>(copy).onPressed, isNull);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(find.byType(SelectableText), findsOneWidget);
     result.completeError(
@@ -118,7 +158,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(copies, 1);
-    expect(tester.widget<ShadButton>(copy).onPressed, isNotNull);
+    expect(tester.widget<IconButton>(copy).onPressed, isNotNull);
     expect(find.text('Donation address copied'), findsNothing);
     expect(find.textContaining('Clipboard unavailable'), findsOneWidget);
     expect(tester.takeException(), isNull);
