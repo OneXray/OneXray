@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/pages/shared/widgets/json_editor_toolbar.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -7,16 +8,35 @@ import 'package:re_highlight/languages/json.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
 
-class AppJsonEditor extends StatelessWidget {
+class AppJsonEditor extends StatefulWidget {
   const AppJsonEditor({super.key, required this.controller, this.textStyle});
 
   final CodeLineEditingController controller;
   final TextStyle? textStyle;
 
   @override
+  State<AppJsonEditor> createState() => _AppJsonEditorState();
+}
+
+class _AppJsonEditorState extends State<AppJsonEditor> {
+  final _toolbar = AppJsonEditorToolbar();
+
+  @override
+  void deactivate() {
+    _toolbar.hide(context);
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _toolbar.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = ColorManager.palette(context);
-    final style = textStyle ?? AppTypography.code;
+    final style = widget.textStyle ?? AppTypography.code;
     final codeTheme = Map<String, TextStyle>.from(
       Theme.of(context).brightness == Brightness.dark
           ? atomOneDarkTheme
@@ -39,7 +59,8 @@ class AppJsonEditor extends StatelessWidget {
       child: Directionality(
         textDirection: TextDirection.ltr,
         child: CodeEditor(
-          controller: controller,
+          controller: widget.controller,
+          toolbarController: _toolbar,
           autofocus: false,
           autocompleteSymbols: true,
           wordWrap: false,
