@@ -32,7 +32,8 @@ UTF-8 JSON 根部的 `format` 固定为 `onexray-backup`，`version` 为 1，`cr
 
 - `coreConfigs` 只保存本地（`subId = 0`）outbound 和 Raw，保留全部旧 Raw，包括超过三份的记录。
 - `subscriptions` 保存来源、原有 Age 密钥对和 HWID；即使 HWID 发送开关关闭也不丢标识。
-  不保存订阅节点缓存、订阅节点的本地修改及成功更新时间。
+  不保存订阅节点缓存、订阅节点的本地修改、成功更新时间及套餐缓存；
+  套餐由恢复后的正常订阅更新重新获取，见 [套餐信息](subscriptions-and-sharing.md#套餐信息)。
 - `routingProfiles` 保留常规/高级类型和原文，共用现有名称约束及三份上限。
 - `smartRouting` 显式保存连接所需设置，不保存最终出口选择。最终出口若是本地节点，仍作为普通节点备份。
 - `geoData` 只保存自定义来源的名称、类型和 HTTPS URL，包含待下载来源，省略默认组。

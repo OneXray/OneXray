@@ -20,6 +20,7 @@ import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
+import 'package:onexray/service/servers/subscription/user_info.dart';
 import 'package:uuid/uuid.dart';
 
 final class SubscriptionLoadResult {
@@ -27,11 +28,13 @@ final class SubscriptionLoadResult {
     required this.status,
     this.rows = const [],
     this.error,
+    this.userInfo,
   });
 
   final SubscriptionUpdateResult status;
   final List<CoreConfigCompanion> rows;
   final Object? error;
+  final SubscriptionUserInfo? userInfo;
 
   bool get hasUsableRows =>
       status == SubscriptionUpdateResult.success &&
@@ -187,6 +190,11 @@ class SubscriptionService {
           hwidEnabled: Value(input.hwidEnabled),
           hwid: Value(input.hwid),
           timestamp: DateTime.now(),
+          uploadBytes: Value(loaded.userInfo?.uploadBytes),
+          downloadBytes: Value(loaded.userInfo?.downloadBytes),
+          totalBytes: Value(loaded.userInfo?.totalBytes),
+          expireTimestamp: Value(loaded.userInfo?.expireTimestamp),
+          userInfoUpdatedAt: Value(loaded.userInfo?.updatedAt),
         );
         final nextSubId = await db.subscriptionDao.insertRow(row);
         if (nextSubId <= DBConstants.defaultId) {
@@ -247,16 +255,24 @@ class SubscriptionService {
         // Once generated, the identity belongs to this subscription, not its URL.
         final hwid =
             row.hwid ?? input.hwid ?? (input.hwidEnabled ? createHwid() : null);
-        final updated = await _database.subscriptionDao.updateRow(
-          row.copyWith(
-            name: input.name,
-            url: input.url,
-            ageSecretKey: Value(input.normalizedAgeSecretKey),
-            agePublicKey: Value(input.normalizedAgePublicKey),
-            hwidEnabled: input.hwidEnabled,
-            hwid: Value(hwid),
-          ),
+        var next = row.copyWith(
+          name: input.name,
+          url: input.url,
+          ageSecretKey: Value(input.normalizedAgeSecretKey),
+          agePublicKey: Value(input.normalizedAgePublicKey),
+          hwidEnabled: input.hwidEnabled,
+          hwid: Value(hwid),
         );
+        if (!_sameSource(next, row)) {
+          next = next.copyWith(
+            uploadBytes: const Value(null),
+            downloadBytes: const Value(null),
+            totalBytes: const Value(null),
+            expireTimestamp: const Value(null),
+            userInfoUpdatedAt: const Value(null),
+          );
+        }
+        final updated = await _database.subscriptionDao.updateRow(next);
         _ensureCurrent(id, generation);
         return updated
             ? SubscriptionUpdateResult.success
@@ -451,7 +467,14 @@ class SubscriptionService {
       if (count != loaded.rows.length) {
         throw StateError('replace subscription configs failed');
       }
-      final updated = current.copyWith(timestamp: DateTime.now());
+      final updated = current.copyWith(
+        timestamp: DateTime.now(),
+        uploadBytes: Value(loaded.userInfo?.uploadBytes),
+        downloadBytes: Value(loaded.userInfo?.downloadBytes),
+        totalBytes: Value(loaded.userInfo?.totalBytes),
+        expireTimestamp: Value(loaded.userInfo?.expireTimestamp),
+        userInfoUpdatedAt: Value(loaded.userInfo?.updatedAt),
+      );
       _ensureCurrent(expected.id, generation);
       if (!await db.subscriptionDao.updateRow(updated)) {
         throw StateError('update subscription failed');
@@ -492,6 +515,7 @@ class SubscriptionService {
     final ageContext = input.normalizedAgeContext;
 
     final String text;
+    final SubscriptionUserInfo? userInfo;
     try {
       final response = await _client.getTextResponse(
         input.url,
@@ -504,6 +528,10 @@ class SubscriptionService {
       final denied = _hwidErrorStatus(response.headers);
       if (denied != null) return SubscriptionLoadResult(status: denied);
       text = response.data ?? '';
+      userInfo = SubscriptionUserInfo.parse(
+        response.headers['subscription-userinfo']?.join(';'),
+        updatedAt: DateTime.now(),
+      );
     } catch (error) {
       if (error is DioException) {
         final denied = _hwidErrorStatus(error.response?.headers);
@@ -524,6 +552,7 @@ class SubscriptionService {
             ? SubscriptionUpdateResult.invalidContent
             : SubscriptionUpdateResult.success,
         rows: rows,
+        userInfo: userInfo,
       );
     } on LibXrayInvokeException catch (error) {
       return SubscriptionLoadResult(

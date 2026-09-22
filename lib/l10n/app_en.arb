@@ -1,4 +1,35 @@
 {
+  "subscriptionPackageTitle": "Subscription plan",
+  "subscriptionPackageUnlimited": "Unlimited data",
+  "subscriptionPackageExhausted": "Data allowance used up",
+  "subscriptionPackageExpired": "Expired",
+  "subscriptionPackageNoExpiry": "No expiry",
+  "subscriptionPackageNotProvided": "Not provided",
+  "subscriptionPackageUsed": "Used",
+  "subscriptionPackageTotal": "Data allowance",
+  "subscriptionPackageRemaining": "Remaining",
+  "subscriptionPackageExpiry": "Expires",
+  "subscriptionPackageRemainingSummary": "{value} remaining",
+  "@subscriptionPackageRemainingSummary": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "subscriptionPackageUsedSummary": "{value} used",
+  "@subscriptionPackageUsedSummary": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "subscriptionPackageTotalSummary": "{value} allowance",
+  "@subscriptionPackageTotalSummary": {
+    "placeholders": {"value": {"type": "String"}}
+  },
+  "subscriptionPackageExpiresInDays": "{days, plural, one {Expires in 1 day} other {Expires in {days} days}}",
+  "@subscriptionPackageExpiresInDays": {
+    "placeholders": {"days": {"type": "int"}}
+  },
+  "subscriptionPackageUpdatedAt": "Retrieved: {time}",
+  "@subscriptionPackageUpdatedAt": {
+    "placeholders": {"time": {"type": "String"}}
+  },
+  "subscriptionPackageCacheHint": "Reported by your provider at the last successful subscription update, not in real time. Plan status does not prevent VPN connections.",
   "trafficWidgetAdd": "Add traffic widget",
   "trafficWidgetManualHint": "Add the OneXray traffic widget from your launcher's widget picker.",
   "backupAutomatic": "Automatic backup",

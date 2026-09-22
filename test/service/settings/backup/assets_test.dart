@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/backup/codec.dart';
@@ -103,6 +103,11 @@ void main() {
         hwid: const Value('keep'),
         hwidEnabled: const Value(false),
         timestamp: DateTime.now(),
+        uploadBytes: const Value(100),
+        downloadBytes: const Value(200),
+        totalBytes: const Value(1000),
+        expireTimestamp: const Value(1900000000),
+        userInfoUpdatedAt: Value(DateTime.utc(2026, 9, 22)),
       ),
     );
     await db.geoDataDao.insertRow(
@@ -131,6 +136,14 @@ void main() {
     expect(document.coreConfigs.last.data, outbound);
     expect(document.routingProfiles.map((row) => row.data), routeData);
     expect(jsonEncode(document.toJson()), isNot(contains('finalExitId')));
+    expect(document.subscriptions.single.toJson(), {
+      'name': 'Source',
+      'url': 'https://example.com/sub',
+      'ageSecretKey': 'secret-fixture',
+      'agePublicKey': 'public-fixture',
+      'hwidEnabled': false,
+      'hwid': 'keep',
+    });
     expect(document.geoData.single.name, 'blocked');
     final decoded = decodeBackup(encodeBackup(document));
     final preview = await assets.preview(decoded);
@@ -154,11 +167,15 @@ void main() {
     expect(connection.connection.expert, false);
     expect(connection.connection.smart.finalExitId, null);
     expect(connection.policy.toJson(), original.policy.toJson());
-    expect((await db.subscriptionDao.allRows).single.hwid, 'keep');
-    expect(
-      (await db.subscriptionDao.allRows).single.ageSecretKey,
-      'secret-fixture',
-    );
+    final subscription = (await db.subscriptionDao.allRows).single;
+    expect(subscription.hwid, 'keep');
+    expect(subscription.ageSecretKey, 'secret-fixture');
+    expect(subscription.timestamp, DateTime.fromMillisecondsSinceEpoch(0));
+    expect(subscription.uploadBytes, isNull);
+    expect(subscription.downloadBytes, isNull);
+    expect(subscription.totalBytes, isNull);
+    expect(subscription.expireTimestamp, isNull);
+    expect(subscription.userInfoUpdatedAt, isNull);
     final routes = await db.routingProfileDao.allRows;
     expect(routes.map((row) => row.data), routeData);
     expect(routes.map((row) => row.advanced), [false, true]);

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,6 +13,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
+import 'package:onexray/pages/servers/subscription/user_info.dart';
 import 'package:onexray/pages/servers/view.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -163,6 +165,109 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  for (final locale in const [
+    Locale('en'),
+    Locale('zh'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    Locale('ru'),
+    Locale('fa'),
+  ]) {
+    for (final width in [390.0, 1160.0]) {
+      testWidgets(
+        'subscription package fits list and detail ($locale, $width)',
+        (tester) async {
+          controller.sources = [
+            SubscriptionData(
+              id: 1,
+              name: 'Provider subscription with a long descriptive name',
+              url: 'https://example.test/subscription',
+              hwidEnabled: false,
+              timestamp: DateTime(2026, 9, 1),
+              uploadBytes: 1024,
+              downloadBytes: 2048,
+              totalBytes: 0x7fffffffffffffff,
+              expireTimestamp: 253402214400,
+              userInfoUpdatedAt: DateTime(2026, 9, 1),
+            ),
+          ];
+          controller.servers = [_server(1, 'JP').copyWith(subId: 1)];
+          await pumpBrowser(tester, width, locale: locale);
+          expect(find.byType(SubscriptionPackageSummary), findsWidgets);
+          expect(tester.takeException(), isNull);
+          await pumpBrowser(tester, width, locale: locale, groupPage: true);
+          expect(find.byType(SubscriptionPackageDetails), findsOneWidget);
+          expect(find.byType(SourceMenu), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          controller.groupBy(ServerGrouping.location);
+          await tester.pumpAndSettle();
+          expect(find.byType(SubscriptionPackageDetails), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  testWidgets('source updates refresh package UI without restricting use', (
+    tester,
+  ) async {
+    final source = SubscriptionData(
+      id: 1,
+      name: 'Provider',
+      url: 'https://example.test/subscription',
+      hwidEnabled: false,
+      timestamp: DateTime(2026, 9, 1),
+    );
+    controller.sources = [source];
+    controller.servers = [
+      _server(1, 'JP').copyWith(
+        subId: 1,
+        data: outboundCompanion({'tag': 'Node 1', 'protocol': 'vless'}).data,
+      ),
+    ];
+    await pumpBrowser(tester, 390, groupPage: true);
+    expect(find.byType(SubscriptionPackageDetails), findsNothing);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.descendant(
+              of: find.byType(ServerUseButton),
+              matching: find.byType(OutlinedButton),
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    controller.sources = [
+      source.copyWith(
+        uploadBytes: const Value(1024),
+        downloadBytes: const Value(2048),
+        totalBytes: const Value(1024),
+        expireTimestamp: const Value(1),
+        userInfoUpdatedAt: Value(DateTime(2026, 9, 2)),
+      ),
+    ];
+    await tester.pumpAndSettle();
+    expect(find.byType(SubscriptionPackageDetails), findsOneWidget);
+    final l = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+    expect(find.textContaining(l.subscriptionPackageExpired), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.descendant(
+              of: find.byType(ServerUseButton),
+              matching: find.byType(OutlinedButton),
+            ),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    controller.sources = [source];
+    await tester.pumpAndSettle();
+    expect(find.byType(SubscriptionPackageDetails), findsNothing);
+    expect(find.byType(ServerNodeRow), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   for (final brightness in Brightness.values) {
     for (final width in [427.0, 1160.0]) {
