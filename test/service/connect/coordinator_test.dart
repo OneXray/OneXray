@@ -83,16 +83,11 @@ void main() {
   });
 
   test(
-    'system traffic demand survives hidden pages without resetting rates',
+    'metrics require both a visible window and a visible connection page',
     () async {
       final runtime = _runtime('a');
       var status = VpnStatus.connected;
       var reads = 0;
-      var sample = const ConnectionTraffic(
-        uplink: 0,
-        downlink: 0,
-        sampledAtMs: 1000,
-      );
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
@@ -100,48 +95,47 @@ void main() {
           inspect: (_) async => HostConnection(status, runtime: runtime),
           readTraffic: (_) async {
             reads++;
-            return sample;
+            return ConnectionTraffic(
+              uplink: reads * 100,
+              downlink: reads * 300,
+              sampledAtMs: reads * 1000,
+            );
           },
         ),
       );
-      final systemUi = Object();
-      coordinator.setBackgroundTraffic(systemUi, true);
+      await coordinator.refreshTraffic();
+      expect(reads, 0);
+      coordinator.setTrafficVisible(coordinator, true);
       await Future<void>.delayed(Duration.zero);
       expect(reads, 1);
-      coordinator.setTrafficVisible(coordinator, true);
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.downloadSpeed, 300);
+
       coordinator.didChangeAppLifecycleState(AppLifecycleState.hidden);
       coordinator.setTrafficVisible(coordinator, false);
-      sample = const ConnectionTraffic(
-        uplink: 100,
-        downlink: 300,
-        sampledAtMs: 2000,
-      );
-      await coordinator.refreshTraffic();
-      expect(coordinator.state.value.downloadSpeed, 300);
-      expect(coordinator.state.value.uploadSpeed, 100);
-      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
       coordinator.setTrafficVisible(coordinator, true);
-      sample = const ConnectionTraffic(
-        uplink: 200,
-        downlink: 600,
-        sampledAtMs: 3000,
-      );
-      await coordinator.refreshTraffic();
-      expect(coordinator.state.value.downloadSpeed, 300);
-      coordinator.setBackgroundTraffic(systemUi, false);
-      sample = const ConnectionTraffic(
-        uplink: 300,
-        downlink: 900,
-        sampledAtMs: 4000,
-      );
-      await coordinator.refreshTraffic();
-      expect(coordinator.state.value.downloadSpeed, 300);
-      coordinator.setTrafficVisible(coordinator, false);
-      final stoppedReads = reads;
-      await coordinator.refreshTraffic();
-      expect(reads, stoppedReads);
-      coordinator.setBackgroundTraffic(systemUi, true);
       await Future<void>.delayed(Duration.zero);
+      await coordinator.refreshTraffic();
+      expect(reads, 2, reason: 'A visible page cannot sample a hidden window.');
+
+      coordinator.setTrafficVisible(coordinator, false);
+      coordinator.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      await coordinator.refreshTraffic();
+      expect(
+        reads,
+        2,
+        reason: 'A visible window cannot sample without a visible page.',
+      );
+
+      coordinator.setTrafficVisible(coordinator, true);
+      await Future<void>.delayed(Duration.zero);
+      expect(reads, 3);
+      expect(coordinator.state.value.uploadSpeed, 0);
+      expect(coordinator.state.value.downloadSpeed, 0);
+      await coordinator.refreshTraffic();
+      expect(coordinator.state.value.downloadSpeed, 300);
+
       status = VpnStatus.disconnected;
       await coordinator.refresh();
       final disconnectedReads = reads;

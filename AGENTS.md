@@ -24,7 +24,7 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   Raw rows above the new-item limit and keep retired Profile/Multi-node rows
   outside product flows.
 - Current-session traffic and speed come only from Xray metrics HTTP. Visible
-  connection pages and the macOS menu bar share one App sampler; Android's VPN
+  connection pages share one foreground App sampler; Android's VPN
   service owns notification/widget sampling independently of Flutter. Do not
   persist traffic or maintain device totals.
   iOS simulator SOCKS adaptation belongs in Swift, not App UI or business state.

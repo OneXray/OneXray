@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
@@ -21,9 +22,11 @@ void main() {
   const channel = MethodChannel('tray_manager');
   late AppDatabase db;
   late TrayService tray;
+  late ConnectionCoordinator coordinator;
   late Completer<void> popupClosed;
   Completer<void>? iconReady;
   final menus = <Map<dynamic, dynamic>>[];
+  final calls = <MethodCall>[];
   final choices = <Map<String, dynamic>>[];
   var popups = 0;
   var connections = 0;
@@ -41,6 +44,7 @@ void main() {
 
   setUp(() async {
     menus.clear();
+    calls.clear();
     choices.clear();
     popups = 0;
     connections = 0;
@@ -50,14 +54,12 @@ void main() {
     addTearDown(bus.close);
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    final coordinator = ConnectionCoordinator(
-      database: db,
-      disposeStatus: () {},
-    );
+    coordinator = ConnectionCoordinator(database: db, disposeStatus: () {});
     addTearDown(coordinator.dispose);
     binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
       call,
     ) async {
+      calls.add(call);
       switch (call.method) {
         case 'setIcon':
           await iconReady?.future;
@@ -97,6 +99,36 @@ void main() {
     tray.init();
     await pumpEventQueue();
     await tray.refreshTrayManager();
+  });
+
+  test('tray stays icon-only and ignores traffic-only updates', () async {
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+      metricsAvailable: true,
+      downloadSpeed: 1024,
+      uploadSpeed: 2048,
+    );
+    await pumpEventQueue();
+    final titles = calls.where((call) => call.method == 'setTitle');
+    expect(titles, AppPlatform.isMacOS ? isNotEmpty : isEmpty);
+    expect(titles.map((call) => call.arguments['title']), everyElement(''));
+    expect(
+      calls
+          .where((call) => call.method == 'setToolTip')
+          .map((call) => call.arguments['toolTip']),
+      everyElement('OneXray'),
+    );
+    expect(_items(menus.last).any((item) => item['key'] == 'stopVpn'), isTrue);
+
+    final published = calls.length;
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+      metricsAvailable: true,
+      downloadSpeed: 987654,
+      uploadSpeed: 123456,
+    );
+    await pumpEventQueue();
+    expect(calls, hasLength(published));
   });
 
   for (final rightClick in [false, true]) {

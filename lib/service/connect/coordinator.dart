@@ -97,7 +97,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   bool _refreshing = false;
   bool _readingTraffic = false;
   final Set<Object> _visibleTrafficPages = {};
-  final Set<Object> _backgroundTrafficConsumers = {};
   bool _ready = false;
   VpnStatus? _pendingStatus;
   int _commandGeneration = 0;
@@ -259,24 +258,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _syncTrafficSampling();
   }
 
-  /// System UI (currently the macOS menu bar) can outlive visible App pages.
-  void setBackgroundTraffic(Object consumer, bool enabled) {
-    if (_closed) return;
-    final hadDemand = _hasTrafficDemand;
-    if (enabled) {
-      _backgroundTrafficConsumers.add(consumer);
-    } else {
-      _backgroundTrafficConsumers.remove(consumer);
-    }
-    if (hadDemand == _hasTrafficDemand) return;
-    _trafficGeneration++;
-    _resetSpeed = true;
-    _syncTrafficSampling();
-  }
-
-  bool get _hasTrafficDemand =>
-      _backgroundTrafficConsumers.isNotEmpty ||
-      (_appVisible && _visibleTrafficPages.isNotEmpty);
+  bool get _hasTrafficDemand => _appVisible && _visibleTrafficPages.isNotEmpty;
 
   bool get _trafficWanted =>
       _ready &&
@@ -852,7 +834,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   void dispose() {
     _closed = true;
     _visibleTrafficPages.clear();
-    _backgroundTrafficConsumers.clear();
     if (_observingLifecycle) WidgetsBinding.instance.removeObserver(this);
     cancel();
     unawaited(_statusSubscription?.cancel());
