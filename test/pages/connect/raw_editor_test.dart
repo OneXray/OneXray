@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
@@ -18,6 +20,8 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+
+import '../../support/fake_geodata_import.dart';
 
 void main() {
   setUp(() {
@@ -197,6 +201,123 @@ void main() {
   for (final advanced in [false, true]) {
     final label = advanced ? 'advanced' : 'Raw';
     testWidgets(
+      '$label releases committed Geodata imports before saving newer edits',
+      (tester) async {
+        var disposed = 0;
+        final geodata = _SingleUseGeoDataImport(
+          onDispose: () async => disposed++,
+        );
+        final transfer = ConfigurationTransferService(
+          prepare: (_) async => geodata,
+          lookup: (_) async => GeoDataData(
+            id: 1,
+            name: 'rules',
+            type: 'domain',
+            url: 'https://example.com/rules.dat',
+            timestamp: DateTime(2026),
+            categoryCount: 1,
+            ruleCount: 1,
+            installed: true,
+          ),
+        );
+        final fixture = _DiagnosticFixture(advanced, transfer: transfer);
+        addTearDown(fixture.dispose);
+        final controller = fixture.controller;
+        final context = await _mountDiagnosticEditor(tester);
+        await controller.load(context);
+        controller.text.text = '';
+        const submitted =
+            '{"outbounds":[{}],"routing":{"rules":[{"domain":["ext:rules.dat:CN"],"balancerTag":"proxy"}]}}';
+        final shared = await transfer.shareLinks(
+          kind: controller.kind,
+          name: 'Imported',
+          text: submitted,
+        );
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async =>
+              call.method == 'Clipboard.getData' ? {'text': shared} : null,
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await controller.transfers.import(context, clipboard: true);
+        await tester.pump();
+        final imported = controller.transfers.imported;
+        expect(imported, isNotNull);
+        expect(controller.transfers.assets, hasLength(1));
+
+        // Cancelling a reconnect or failing validation must retain the import
+        // so the user can retry without downloading its dependencies again.
+        fixture.onSave(() async => null);
+        await controller.save(context);
+        expect(controller.transfers.imported, same(imported));
+        fixture.onSaveWithImport(
+          (draft) => draft!.save(
+            (_) async => throw const FormatException('Invalid test config'),
+          ),
+        );
+        await controller.save(context);
+        expect(controller.error, contains('Invalid test config'));
+        expect(controller.transfers.imported, same(imported));
+        expect(disposed, 0);
+
+        final entered = Completer<void>();
+        final release = Completer<int>();
+        final received = <ConfigurationImportDraft?>[];
+        fixture.onSaveWithImport((draft) async {
+          received.add(draft);
+          Future<int> commit(Future<void> Function() writeMetadata) async {
+            await writeMetadata();
+            if (received.length == 1) {
+              entered.complete();
+              return release.future;
+            }
+            return 7;
+          }
+
+          return draft?.save(commit) ?? commit(() async {});
+        });
+        final saving = controller.save(context);
+        await entered.future;
+        controller.name.text = 'Newer draft';
+        final newer = jsonEncode({
+          ...jsonDecode(submitted) as Map,
+          'name': 'Newer draft',
+        });
+        controller.text.text = newer;
+        release.complete(7);
+        await saving;
+        await tester.pump();
+        expect(controller.name.text, 'Newer draft');
+        expect(controller.text.text, newer);
+        expect(controller.canSave, isTrue);
+        expect(controller.error, isNull);
+        expect(find.text('Diagnostic draft'), findsOneWidget);
+
+        await controller.save(context);
+        expect(controller.error, isNull);
+        expect(received, [same(imported), isNull]);
+        expect(controller.transfers.imported, isNull);
+        expect(controller.transfers.assets, isEmpty);
+        expect(disposed, 1);
+        expect(geodata.events, [
+          'publish',
+          'rollback',
+          'publish',
+          'commit',
+          'complete',
+        ]);
+        await tester.pumpAndSettle();
+        expect(find.text('Root'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
       '$label diagnostics retain source offsets and clear with draft changes',
       (tester) async {
         final fixture = _DiagnosticFixture(advanced);
@@ -347,7 +468,7 @@ void main() {
 }
 
 class _DiagnosticFixture {
-  _DiagnosticFixture(bool advanced) {
+  _DiagnosticFixture(bool advanced, {ConfigurationTransferService? transfer}) {
     coordinator = ConnectionCoordinator(database: db);
     raw = _DiagnosticRawSave(database: db, coordinator: coordinator);
     custom = _DiagnosticAdvancedSave(database: db, coordinator: coordinator);
@@ -356,6 +477,7 @@ class _DiagnosticFixture {
       kind: advanced ? ConfigurationKind.customAdvanced : ConfigurationKind.raw,
       service: raw,
       customService: custom,
+      transferService: transfer,
     );
   }
   final db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -365,6 +487,10 @@ class _DiagnosticFixture {
   late final JsonConfigurationEditorController controller;
 
   void onSave(Future<int?> Function() save) {
+    onSaveWithImport((_) => save());
+  }
+
+  void onSaveWithImport(Future<int?> Function(ConfigurationImportDraft?) save) {
     raw.onSave = save;
     custom.onSave = save;
   }
@@ -380,7 +506,7 @@ class _DiagnosticRawSave extends RawEditorService {
   _DiagnosticRawSave({required super.database, required super.coordinator});
   RawEditorDraft current = const RawEditorDraft(name: '', text: '{}');
   final submitted = <RawEditorDraft>[];
-  Future<int?> Function()? onSave;
+  Future<int?> Function(ConfigurationImportDraft?)? onSave;
 
   @override
   Future<RawEditorDraft> load(int? id) async => current;
@@ -393,7 +519,7 @@ class _DiagnosticRawSave extends RawEditorService {
   }) async {
     submitted.add(draft);
     RawEditorService.namedText(draft.name, draft.text);
-    return onSave?.call();
+    return onSave?.call(imported);
   }
 }
 
@@ -406,7 +532,7 @@ class _DiagnosticAdvancedSave extends CustomRoutingEditorService {
     state: AdvancedRoutingDocument.parse('{"outbounds":[{}]}').state,
   );
   final submitted = <CustomRoutingEditorDraft>[];
-  Future<int?> Function()? onSave;
+  Future<int?> Function(ConfigurationImportDraft?)? onSave;
 
   @override
   Future<CustomRoutingEditorDraft> load(int? id) async => current;
@@ -418,7 +544,22 @@ class _DiagnosticAdvancedSave extends CustomRoutingEditorService {
     ConfigurationImportDraft? imported,
   }) async {
     submitted.add(draft);
-    return onSave?.call();
+    return onSave?.call(imported);
+  }
+}
+
+class _SingleUseGeoDataImport extends FakeGeoDataImport {
+  _SingleUseGeoDataImport({super.onDispose});
+  bool _completed = false;
+
+  @override
+  Future<T> save<T>(
+    Future<T> Function(Future<void> Function() writeMetadata) action,
+  ) async {
+    if (_completed) throw StateError('Routing data draft is unavailable');
+    final result = await super.save(action);
+    _completed = true;
+    return result;
   }
 }
 

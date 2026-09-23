@@ -82,6 +82,7 @@ class JsonConfigurationEditorController
     extends PageCubit<JsonConfigurationEditorState> {
   final RawEditorService? _rawService;
   final CustomRoutingEditorService? _customService;
+  final ConfigurationTransferService? _transferService;
   late final service =
       _rawService ??
       RawEditorService(
@@ -105,6 +106,7 @@ class JsonConfigurationEditorController
     this.initialName,
     RawEditorService? service,
     this._customService,
+    this._transferService,
     this.kind = ConfigurationKind.raw,
   }) : _rawService = service,
        super(const JsonConfigurationEditorState()) {
@@ -126,6 +128,7 @@ class JsonConfigurationEditorController
   _transferSubscription;
   late final transfers = ConfigurationTransferController(
     kind: kind,
+    service: _transferService,
     readText: () => text.text,
     readName: () => name.text,
     onImport: (draft) {
@@ -306,6 +309,7 @@ class JsonConfigurationEditorController
           confirmReconnect: confirmReconnect,
         );
       }
+      if (id != null) await transfers.completeImport();
       if (id != null &&
           isPageActive &&
           context.mounted &&

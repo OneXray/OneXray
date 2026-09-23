@@ -12,8 +12,11 @@ void main() {
   late LocalApiService service;
   late HttpClient client;
 
-  LocalApiService create({bool desktop = true}) => LocalApiService.forTesting(
-    readSettings: () async => stored,
+  LocalApiService create({
+    bool desktop = true,
+    Future<Map<String, dynamic>?> Function()? readSettings,
+  }) => LocalApiService.forTesting(
+    readSettings: readSettings ?? () async => stored,
     writeSettings: (value) async {
       if (failWrite) throw StateError('Storage unavailable');
       stored = value;
@@ -111,6 +114,71 @@ void main() {
       expect(await status(before), 200);
     },
   );
+
+  test('startup preserves the socket failure and recovers on retry', () async {
+    final occupied = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(occupied.close);
+    final settings = LocalApiSettings(
+      enabled: true,
+      port: occupied.port,
+      token: base64Url.encode(List.filled(32, 1)).replaceAll('=', ''),
+    );
+    stored = settings.toJson();
+    late SocketException conflict;
+    try {
+      final socket = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4,
+        occupied.port,
+      );
+      await socket.close();
+      fail('Expected the fixture port to be occupied');
+    } on SocketException catch (error) {
+      conflict = error;
+    }
+
+    await service.start();
+    expect(service.listening, isFalse);
+    expect(service.lastError, contains(conflict.message));
+    expect(service.lastError, contains(conflict.osError!.message));
+    expect(service.lastError, contains('${occupied.port}'));
+    expect(service.lastError, isNot(contains(settings.token)));
+    expect(stored, settings.toJson());
+
+    await occupied.close();
+    await service.start();
+    expect(service.lastError, isNull);
+    expect(service.listening, isTrue);
+    expect(await status(settings), 200);
+  });
+
+  test(
+    'startup reports malformed preferences without their JSON source',
+    () async {
+      const source = '{"token":"private-credential"';
+      service = create(
+        readSettings: () async => jsonDecode(source) as Map<String, dynamic>,
+      );
+      await service.start();
+      expect(service.listening, isFalse);
+      expect(service.lastError, contains('Unexpected end of input'));
+      expect(service.lastError, isNot(contains('private-credential')));
+      expect(service.lastError, isNot(contains(source)));
+    },
+  );
+
+  test('startup retains preference access failures', () async {
+    service = create(
+      readSettings: () async => throw const FileSystemException(
+        'Cannot read preferences',
+        'preferences.json',
+        OSError('Permission denied', 13),
+      ),
+    );
+    await service.start();
+    expect(service.listening, isFalse);
+    expect(service.lastError, contains('Cannot read preferences'));
+    expect(service.lastError, contains('Permission denied'));
+  });
 
   test(
     'failed persistence discards candidate socket and keeps old credentials',

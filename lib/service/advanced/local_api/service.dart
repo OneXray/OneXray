@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:onexray/core/constants/preferences.dart';
+import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/advanced/local_api/configuration.dart';
@@ -99,9 +100,10 @@ final class LocalApiService {
           _server.attach(await LocalApiServer.bind(settings.port));
         }
         _lastError = null;
-      } catch (_) {
-        _lastError =
-            'Unable to start the local API. Check the port and settings.';
+      } catch (error) {
+        // Shared diagnostics retain the cause without echoing JSON source,
+        // which may contain the persisted token when preferences are damaged.
+        _lastError = 'Unable to start the local API: ${failureDetails(error)}';
       }
     });
   }

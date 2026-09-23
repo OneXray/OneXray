@@ -256,6 +256,13 @@ class ConfigurationTransferController
     }
   }
 
+  /// A successful save installed the dependencies. Later edits must use those
+  /// files rather than reusing the completed import transaction.
+  Future<void> completeImport() async {
+    await _disposeDraft();
+    emit(state.copyWith(assets: const [], clearNotice: true));
+  }
+
   Future<void> _disposeDraft() async {
     final draft = _draft;
     _draft = null;
