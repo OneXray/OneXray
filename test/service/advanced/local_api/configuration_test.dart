@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -174,11 +173,21 @@ void main() {
       expect(result['status'], 'failed');
       expect(diagnostic['path'], ['routing', 'rules', 0, 'sourceIP']);
       expect(diagnostic['offset'], text.indexOf('["10.0.0.1"]'));
-      final sharedFixture = jsonDecode(
-        await File('cli/internal/cli/testdata/dart-routing-invalid-field.json')
-            .readAsString(),
-      );
-      expect(result, sharedFixture);
+      expect(result, {
+        'apiVersion': 1,
+        'status': 'failed',
+        'stage': 'input',
+        'diagnostics': [
+          {
+            'code': 'invalidConfiguration',
+            'message': 'Unsupported field: routing.rules[0].sourceIP',
+            'path': ['routing', 'rules', 0, 'sourceIP'],
+            'offset': 50,
+            'line': 1,
+            'column': 51,
+          },
+        ],
+      });
     },
   );
 
@@ -244,7 +253,7 @@ void main() {
       final valid = await api.validate({
         'kind': kind,
         'text': text,
-        'name': 'CLI name',
+        'name': 'API name',
       });
       expect(valid['status'], 'passed');
       final oversizedName = await api.validate({
@@ -323,14 +332,14 @@ void main() {
     final api = LocalApiConfiguration(
       withResources: resources,
       testXray: (config) async {
-        expect(jsonDecode(config)['name'], 'CLI raw');
+        expect(jsonDecode(config)['name'], 'API raw');
         expect(
           config,
           XrayValidation.raw(
             jsonDecode(
               XrayRawValidator.normalize(
                 text,
-                nameOverride: 'CLI raw',
+                nameOverride: 'API raw',
               ).normalizedText!,
             ),
           ),
@@ -342,7 +351,7 @@ void main() {
       (await api.validate({
         'kind': 'raw',
         'text': text,
-        'name': 'CLI raw',
+        'name': 'API raw',
       }))['status'],
       'passed',
     );

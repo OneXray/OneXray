@@ -1,8 +1,9 @@
-# 本地配置 API 与 CLI
+# 本地配置 HTTP API
 
-桌面 App 提供本机 HTTP 接口，Go CLI 只负责读取输入、认证、通信和输出，不包含 Xray-core，
-不维护第二套配置规则。App 必须已经启动并完成正常服务准备；关闭窗口到托盘不影响接口，
-退出 App 则接口不可用，即使系统 VPN 仍在运行。移动端不提供此入口。
+桌面 App 提供本机 HTTP 接口，外部工具直接提交配置文本并读取结构化结果。
+解析、编译、Geodata 访问和 libXray 校验均复用 App 实现，不要求安装独立命令行客户端。
+App 必须已经启动并完成正常服务准备；关闭窗口到托盘不影响接口，退出 App 则接口不可用，
+即使系统 VPN 仍在运行。移动端不提供此入口。
 
 ## 启用与凭据
 
@@ -11,19 +12,19 @@
 端口占用或偏好写入失败时，保留原有地址和凭据；界面分别展示已保存设置与实际监听状态。
 
 首次启用生成 32 随机字节的 Base64URL Token，保存在设备偏好中，重启不变化。
-CLI 的命令名为 `onexray-cli`（Windows 为 `onexray-cli.exe`），与 App 可执行文件名称区分。
-用户在 App 复制 Token 后，通过 `onexray-cli auth login` 的隐藏输入配置一次；后续命令自动读取
-CLI 自己的当前用户凭据文件，不扫描或读取 App 沙箱容器。命令格式、凭据位置和退出码见
-[CLI 使用说明](../cli/README.md)。不要将 Token 放进 AI 提示词、URL、命令行参数或日志。
+用户通过 App 的复制按钮将 Token 配置给受信任的本机调用工具；每次请求在
+`Authorization: Bearer <token>` 中携带它，不扫描或直接读取 App 沙箱容器。
+凭据的接收与保管由调用工具负责，App 不建立独立的客户端凭据目录或登录流程。
+不要将 Token 放进 AI 提示词、URL、命令行参数或日志。
 
-- 关闭接口只停止监听，保留 Token；重置立即撤销旧 Token，CLI 需要重新登录。
+- 关闭接口只停止监听，保留 Token；重置立即撤销旧 Token，调用工具需要更新凭据。
 - 清空 App 数据删除 API 偏好、关闭监听并清除内存凭据；连接配置备份/恢复不携带 API 设置或 Token。
-- CLI 凭据文件在 Unix 使用私有目录及 0600 文件权限，Windows 使用当前用户限制性 ACL。
-  这些权限不能防御已经控制同一用户账户的恶意程序。
+- 调用工具应避免在输出中暴露 Token，并限制持久凭据的读取权限；本机 Token 鉴权不能
+  防御已经控制同一用户账户的恶意程序。
 - 所有接口都要求 `Authorization: Bearer <token>`。没有免认证获取 Token 的 HTTP 接口，
   不提供 OAuth、自动配对或公网访问。
 - Host 必须与实际 `127.0.0.1:端口` 一致；拒绝带 Origin、查询参数和代理绝对 URI 的请求，
-  不启用跨域访问。CLI 不使用环境代理，不跟随重定向。
+  不启用跨域访问。调用工具应直连回环地址，禁用环境代理和自动重定向，避免泄露凭据。
 
 ## 接口合同
 
@@ -105,7 +106,8 @@ POST 使用 `Content-Type: application/json`，请求体上限 16 MiB。提交�
   不从 libXray 错误文字猜字段，不使用生成副本的位置。
   `path` 为属性名与整数索引组成的数组，例如 `["routing", "rules", 0, "domain"]`。
 - 校验可返回 `validationConfig`，编译可返回 `compiledConfig`，均为 JSON 文本；其中可能含节点凭据。
-  `limitations` 描述本次检查未覆盖的范围。CLI 只在用户明确给出输出文件时写入编译结果。
+  `limitations` 描述本次检查未覆盖的范围。服务只返回结果，不写输出文件；调用工具若要保存，
+  应使用用户明确选择的目标并保护其中的敏感内容。
 - 认证失败为 401，浏览器 Origin 为 403，忙碌为 409，超限为 413，服务暂停为 503；
   传输/服务不可用与配置被拒绝分别处理，未执行不算通过。
 
@@ -126,23 +128,18 @@ Geodata 读取继续进入既有文件访问队列。清空数据或恢复时暂
 
 API 不暴露通用 `invoke`，不允许保存/删除资产、修改正式配置或启停 VPN。
 
-## 构建与验证
+## 验证
 
-CLI 使用独立 Go module，`CGO_ENABLED=0`，不依赖 Flutter SDK 或 libXray 动态库。
-打包脚本和 CI 入口见 [CLI 使用说明](../cli/README.md)及[构建脚本](../build_scripts/README.md)。
-六种桌面目标的产物独立生成；CI artifact 不等于 GitHub Release 或商店发布，
-不绕过 App 原有发布来源与摘要校验。
-
-跨语言回环联调在仓库根目录显式执行：
+在仓库根目录执行 HTTP 服务、配置处理、生命周期与设置页测试：
 
 ```shell
-ONEXRAY_GO_INTEGRATION=1 flutter test test/service/advanced/local_api/cli_integration_test.dart
+flutter test test/service/advanced/local_api test/pages/advanced/local_api
 ```
 
-该测试启动正式 Dart HTTP 服务与配置处理器，由 Go 的正式命令处理器发起请求，凭据和输出
-使用 `references/client-improvements/` 中的隔离目录。内核结果通过测试注入，故只证明认证、
-传输、配置投影及诊断协议，不代表已在签名 App 内执行 Native 校验，也不测试终端隐藏输入。
-通常的 Flutter/Go 测试会跳过此联调入口；共享诊断 fixture 仍由两套常规测试分别检查。
+`http_integration_test.dart` 使用通用 HTTP 客户端访问正式服务及配置处理器，覆盖认证、
+info、校验、原文错误位置及编译预览。它默认随测试执行，不需要外部工具、持久凭据或输出文件。
+内核结果通过测试注入；测试只证明认证、传输、配置投影及诊断协议，不代表已在签名 App 内
+执行 Native 校验。四种输入类型与 UI 投影的一致性由配置处理测试覆盖。
 
-本机单元测试、HTTP 回环测试和 CLI 构建不能替代签名 App 中的实际监听、Windows MSIX
-安装环境或不同系统下的凭据权限验证。macOS 验证不启动 VPN，Windows/Linux 实机行为留待对应平台验收。
+本机单元测试和 HTTP 回环测试不能替代签名 App 中的实际监听、Windows MSIX 安装环境及
+各平台 Native 校验链路的验收。macOS 验证不启动 VPN，Windows/Linux 实机行为留待对应平台验收。

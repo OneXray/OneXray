@@ -2,23 +2,6 @@
 
 [English](#english) · [简体中文](#简体中文) · [Русский](#русский)
 
-## Standalone CLI
-
-`python3 build_scripts/build_cli.py` builds and packages the Go CLI for macOS,
-Linux and Windows (`amd64`/`arm64`), with `CGO_ENABLED=0`. It reads the App version
-from `pubspec.yaml` and writes six archives plus `SHA256SUMS` to `../output/cli`.
-The executable is named `onexray-cli` (`onexray-cli.exe` on Windows), distinct
-from the GUI executable.
-Use `--target darwin-arm64` (or another target) and `--output PATH` for a smaller
-local build. Only Go and Python are required; this entry point never invokes App
-builds, deployment, signing, downloads of Geodata or Flutter generation.
-
-CLI CI is isolated in [cli.yml](../.github/workflows/cli.yml), with native tests
-and downloadable archives. It does not modify the App Build/Publish provenance
-contract or automatically publish Release/store assets. See the
-[CLI README](../cli/README.md) for authentication, commands, compilation options,
-exit codes, platform limitations and dependency maintenance evidence.
-
 ## Release provenance / 发布溯源
 
 - `Build` resolves `LIBXRAY_REF` and `VCORE_REF` once in the metadata job. Every
