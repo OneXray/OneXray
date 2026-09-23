@@ -163,7 +163,8 @@ class _SourceParser {
         }
         if (key.kind == JsonTokenKind.comma) continue;
         if (key.kind != JsonTokenKind.string || key.value == null) break;
-        if (index >= tokens.length || tokens[index].kind != JsonTokenKind.colon) {
+        if (index >= tokens.length ||
+            tokens[index].kind != JsonTokenKind.colon) {
           break;
         }
         index++;

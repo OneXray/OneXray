@@ -494,7 +494,8 @@ class JsonEditing {
     if (field == 'loglevel' && _matches(parent, ['log'])) {
       return const ['debug', 'info', 'warning', 'error', 'none'];
     }
-    if (field == 'flow' && _accountFields(parent, kind, shape).contains('flow')) {
+    if (field == 'flow' &&
+        _accountFields(parent, kind, shape).contains('flow')) {
       return const ['xtls-rprx-vision'];
     }
     if (field == 'encryption' &&
