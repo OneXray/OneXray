@@ -422,6 +422,10 @@ class WindowsPackagingTest(unittest.TestCase):
         workflow = (
             Path(__file__).resolve().parents[2] / ".github/workflows/build.yml"
         ).read_text(encoding="utf-8")
+        self.assertIn("VCORE_REPOSITORY: OneXray/VCore", workflow)
+        self.assertEqual(
+            workflow.count("repository: ${{ env.VCORE_REPOSITORY }}"), 2
+        )
         self.assertIn("VCORE_REF: main", workflow)
         self.assertIn(
             'echo "$vcore_sha" > release-metadata/vcore-sha.txt',
