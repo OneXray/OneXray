@@ -71,6 +71,11 @@ void main() {
               name: 'Provider',
               url: 'https://provider.example/sub',
               timestamp: DateTime.utc(2025),
+              uploadBytes: const Value(10),
+              downloadBytes: const Value(20),
+              totalBytes: const Value(100),
+              expireTimestamp: const Value(0),
+              userInfoUpdatedAt: Value(DateTime.utc(2025)),
             ),
           );
           final row = (await database.subscriptionDao.searchRow(id))!;
@@ -86,7 +91,12 @@ void main() {
                 // Providers can return remark-only subscriptions even with HTTP 200.
                 'vless://00000000-0000-0000-0000-000000000000@example.com:443#Device%20limit',
                 status,
-                headers: headers,
+                headers: {
+                  ...headers,
+                  'Subscription-Userinfo': [
+                    'upload=0;download=0;total=0;expire=0',
+                  ],
+                },
               );
             });
           addTearDown(client.close);
@@ -170,6 +180,7 @@ void main() {
       });
       addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
       final sent = <String?>[];
+      String? userInfoHeader;
       final client = Dio()
         ..httpClientAdapter = _ResponseAdapter((options) {
           sent.add(options.headers['x-hwid'] as String?);
@@ -179,6 +190,8 @@ void main() {
             headers: {
               'x-hwid-active': ['true'],
               'x-hwid-limit': ['false'],
+              if (userInfoHeader != null)
+                'Subscription-Userinfo': [userInfoHeader],
             },
           );
         });
@@ -190,6 +203,10 @@ void main() {
         schedulePing: pings.add,
       );
       for (final enabled in [false, true]) {
+        userInfoHeader = 'upload=100; download=200; total=1000; expire=0';
+        final beforeDownload = DateTime.now().subtract(
+          const Duration(seconds: 1),
+        );
         final inserted = await service.insertSubscription(
           SubscriptionInput(
             name: 'Provider $enabled',
@@ -202,7 +219,21 @@ void main() {
         expect(row.hwidEnabled, enabled);
         expect(sent.last, row.hwid);
         expect(row.hwid, enabled ? isNotNull : isNull);
+        expect(row.uploadBytes, 100);
+        expect(row.downloadBytes, 200);
+        expect(row.totalBytes, 1000);
+        expect(row.expireTimestamp, 0);
+        expect(row.userInfoUpdatedAt!.isAfter(beforeDownload), isTrue);
+        // A successful node refresh must neither fail on malformed metadata nor
+        // retain a previous response's cache when metadata is absent.
+        userInfoHeader = enabled ? null : 'upload=bad;total=-1;expire=NaN';
         expect((await service.refreshSubscriptionResult(row)).success, isTrue);
+        final refreshed = (await database.subscriptionDao.searchRow(row.id))!;
+        expect(refreshed.uploadBytes, isNull);
+        expect(refreshed.downloadBytes, isNull);
+        expect(refreshed.totalBytes, isNull);
+        expect(refreshed.expireTimestamp, isNull);
+        expect(refreshed.userInfoUpdatedAt, isNull);
         expect(sent.last, row.hwid);
         if (enabled) {
           await service.saveSubscriptionInput(

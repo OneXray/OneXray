@@ -641,6 +641,62 @@ class $SubscriptionTable extends Subscription
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _uploadBytesMeta = const VerificationMeta(
+    'uploadBytes',
+  );
+  @override
+  late final GeneratedColumn<int> uploadBytes = GeneratedColumn<int>(
+    'upload_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _downloadBytesMeta = const VerificationMeta(
+    'downloadBytes',
+  );
+  @override
+  late final GeneratedColumn<int> downloadBytes = GeneratedColumn<int>(
+    'download_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _totalBytesMeta = const VerificationMeta(
+    'totalBytes',
+  );
+  @override
+  late final GeneratedColumn<int> totalBytes = GeneratedColumn<int>(
+    'total_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _expireTimestampMeta = const VerificationMeta(
+    'expireTimestamp',
+  );
+  @override
+  late final GeneratedColumn<int> expireTimestamp = GeneratedColumn<int>(
+    'expire_timestamp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _userInfoUpdatedAtMeta = const VerificationMeta(
+    'userInfoUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> userInfoUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'user_info_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -651,6 +707,11 @@ class $SubscriptionTable extends Subscription
     hwidEnabled,
     hwid,
     timestamp,
+    uploadBytes,
+    downloadBytes,
+    totalBytes,
+    expireTimestamp,
+    userInfoUpdatedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -724,6 +785,48 @@ class $SubscriptionTable extends Subscription
     } else if (isInserting) {
       context.missing(_timestampMeta);
     }
+    if (data.containsKey('upload_bytes')) {
+      context.handle(
+        _uploadBytesMeta,
+        uploadBytes.isAcceptableOrUnknown(
+          data['upload_bytes']!,
+          _uploadBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('download_bytes')) {
+      context.handle(
+        _downloadBytesMeta,
+        downloadBytes.isAcceptableOrUnknown(
+          data['download_bytes']!,
+          _downloadBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_bytes')) {
+      context.handle(
+        _totalBytesMeta,
+        totalBytes.isAcceptableOrUnknown(data['total_bytes']!, _totalBytesMeta),
+      );
+    }
+    if (data.containsKey('expire_timestamp')) {
+      context.handle(
+        _expireTimestampMeta,
+        expireTimestamp.isAcceptableOrUnknown(
+          data['expire_timestamp']!,
+          _expireTimestampMeta,
+        ),
+      );
+    }
+    if (data.containsKey('user_info_updated_at')) {
+      context.handle(
+        _userInfoUpdatedAtMeta,
+        userInfoUpdatedAt.isAcceptableOrUnknown(
+          data['user_info_updated_at']!,
+          _userInfoUpdatedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -765,6 +868,26 @@ class $SubscriptionTable extends Subscription
         DriftSqlType.dateTime,
         data['${effectivePrefix}timestamp'],
       )!,
+      uploadBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}upload_bytes'],
+      ),
+      downloadBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}download_bytes'],
+      ),
+      totalBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_bytes'],
+      ),
+      expireTimestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expire_timestamp'],
+      ),
+      userInfoUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}user_info_updated_at'],
+      ),
     );
   }
 
@@ -784,6 +907,11 @@ class SubscriptionData extends DataClass
   final bool hwidEnabled;
   final String? hwid;
   final DateTime timestamp;
+  final int? uploadBytes;
+  final int? downloadBytes;
+  final int? totalBytes;
+  final int? expireTimestamp;
+  final DateTime? userInfoUpdatedAt;
   const SubscriptionData({
     required this.id,
     required this.name,
@@ -793,6 +921,11 @@ class SubscriptionData extends DataClass
     required this.hwidEnabled,
     this.hwid,
     required this.timestamp,
+    this.uploadBytes,
+    this.downloadBytes,
+    this.totalBytes,
+    this.expireTimestamp,
+    this.userInfoUpdatedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -811,6 +944,21 @@ class SubscriptionData extends DataClass
       map['hwid'] = Variable<String>(hwid);
     }
     map['timestamp'] = Variable<DateTime>(timestamp);
+    if (!nullToAbsent || uploadBytes != null) {
+      map['upload_bytes'] = Variable<int>(uploadBytes);
+    }
+    if (!nullToAbsent || downloadBytes != null) {
+      map['download_bytes'] = Variable<int>(downloadBytes);
+    }
+    if (!nullToAbsent || totalBytes != null) {
+      map['total_bytes'] = Variable<int>(totalBytes);
+    }
+    if (!nullToAbsent || expireTimestamp != null) {
+      map['expire_timestamp'] = Variable<int>(expireTimestamp);
+    }
+    if (!nullToAbsent || userInfoUpdatedAt != null) {
+      map['user_info_updated_at'] = Variable<DateTime>(userInfoUpdatedAt);
+    }
     return map;
   }
 
@@ -828,6 +976,21 @@ class SubscriptionData extends DataClass
       hwidEnabled: Value(hwidEnabled),
       hwid: hwid == null && nullToAbsent ? const Value.absent() : Value(hwid),
       timestamp: Value(timestamp),
+      uploadBytes: uploadBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(uploadBytes),
+      downloadBytes: downloadBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(downloadBytes),
+      totalBytes: totalBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalBytes),
+      expireTimestamp: expireTimestamp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expireTimestamp),
+      userInfoUpdatedAt: userInfoUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userInfoUpdatedAt),
     );
   }
 
@@ -845,6 +1008,13 @@ class SubscriptionData extends DataClass
       hwidEnabled: serializer.fromJson<bool>(json['hwidEnabled']),
       hwid: serializer.fromJson<String?>(json['hwid']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      uploadBytes: serializer.fromJson<int?>(json['uploadBytes']),
+      downloadBytes: serializer.fromJson<int?>(json['downloadBytes']),
+      totalBytes: serializer.fromJson<int?>(json['totalBytes']),
+      expireTimestamp: serializer.fromJson<int?>(json['expireTimestamp']),
+      userInfoUpdatedAt: serializer.fromJson<DateTime?>(
+        json['userInfoUpdatedAt'],
+      ),
     );
   }
   @override
@@ -859,6 +1029,11 @@ class SubscriptionData extends DataClass
       'hwidEnabled': serializer.toJson<bool>(hwidEnabled),
       'hwid': serializer.toJson<String?>(hwid),
       'timestamp': serializer.toJson<DateTime>(timestamp),
+      'uploadBytes': serializer.toJson<int?>(uploadBytes),
+      'downloadBytes': serializer.toJson<int?>(downloadBytes),
+      'totalBytes': serializer.toJson<int?>(totalBytes),
+      'expireTimestamp': serializer.toJson<int?>(expireTimestamp),
+      'userInfoUpdatedAt': serializer.toJson<DateTime?>(userInfoUpdatedAt),
     };
   }
 
@@ -871,6 +1046,11 @@ class SubscriptionData extends DataClass
     bool? hwidEnabled,
     Value<String?> hwid = const Value.absent(),
     DateTime? timestamp,
+    Value<int?> uploadBytes = const Value.absent(),
+    Value<int?> downloadBytes = const Value.absent(),
+    Value<int?> totalBytes = const Value.absent(),
+    Value<int?> expireTimestamp = const Value.absent(),
+    Value<DateTime?> userInfoUpdatedAt = const Value.absent(),
   }) => SubscriptionData(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -880,6 +1060,17 @@ class SubscriptionData extends DataClass
     hwidEnabled: hwidEnabled ?? this.hwidEnabled,
     hwid: hwid.present ? hwid.value : this.hwid,
     timestamp: timestamp ?? this.timestamp,
+    uploadBytes: uploadBytes.present ? uploadBytes.value : this.uploadBytes,
+    downloadBytes: downloadBytes.present
+        ? downloadBytes.value
+        : this.downloadBytes,
+    totalBytes: totalBytes.present ? totalBytes.value : this.totalBytes,
+    expireTimestamp: expireTimestamp.present
+        ? expireTimestamp.value
+        : this.expireTimestamp,
+    userInfoUpdatedAt: userInfoUpdatedAt.present
+        ? userInfoUpdatedAt.value
+        : this.userInfoUpdatedAt,
   );
   SubscriptionData copyWithCompanion(SubscriptionCompanion data) {
     return SubscriptionData(
@@ -897,6 +1088,21 @@ class SubscriptionData extends DataClass
           : this.hwidEnabled,
       hwid: data.hwid.present ? data.hwid.value : this.hwid,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      uploadBytes: data.uploadBytes.present
+          ? data.uploadBytes.value
+          : this.uploadBytes,
+      downloadBytes: data.downloadBytes.present
+          ? data.downloadBytes.value
+          : this.downloadBytes,
+      totalBytes: data.totalBytes.present
+          ? data.totalBytes.value
+          : this.totalBytes,
+      expireTimestamp: data.expireTimestamp.present
+          ? data.expireTimestamp.value
+          : this.expireTimestamp,
+      userInfoUpdatedAt: data.userInfoUpdatedAt.present
+          ? data.userInfoUpdatedAt.value
+          : this.userInfoUpdatedAt,
     );
   }
 
@@ -910,7 +1116,12 @@ class SubscriptionData extends DataClass
           ..write('agePublicKey: $agePublicKey, ')
           ..write('hwidEnabled: $hwidEnabled, ')
           ..write('hwid: $hwid, ')
-          ..write('timestamp: $timestamp')
+          ..write('timestamp: $timestamp, ')
+          ..write('uploadBytes: $uploadBytes, ')
+          ..write('downloadBytes: $downloadBytes, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('expireTimestamp: $expireTimestamp, ')
+          ..write('userInfoUpdatedAt: $userInfoUpdatedAt')
           ..write(')'))
         .toString();
   }
@@ -925,6 +1136,11 @@ class SubscriptionData extends DataClass
     hwidEnabled,
     hwid,
     timestamp,
+    uploadBytes,
+    downloadBytes,
+    totalBytes,
+    expireTimestamp,
+    userInfoUpdatedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -937,7 +1153,12 @@ class SubscriptionData extends DataClass
           other.agePublicKey == this.agePublicKey &&
           other.hwidEnabled == this.hwidEnabled &&
           other.hwid == this.hwid &&
-          other.timestamp == this.timestamp);
+          other.timestamp == this.timestamp &&
+          other.uploadBytes == this.uploadBytes &&
+          other.downloadBytes == this.downloadBytes &&
+          other.totalBytes == this.totalBytes &&
+          other.expireTimestamp == this.expireTimestamp &&
+          other.userInfoUpdatedAt == this.userInfoUpdatedAt);
 }
 
 class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
@@ -949,6 +1170,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
   final Value<bool> hwidEnabled;
   final Value<String?> hwid;
   final Value<DateTime> timestamp;
+  final Value<int?> uploadBytes;
+  final Value<int?> downloadBytes;
+  final Value<int?> totalBytes;
+  final Value<int?> expireTimestamp;
+  final Value<DateTime?> userInfoUpdatedAt;
   const SubscriptionCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -958,6 +1184,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.hwidEnabled = const Value.absent(),
     this.hwid = const Value.absent(),
     this.timestamp = const Value.absent(),
+    this.uploadBytes = const Value.absent(),
+    this.downloadBytes = const Value.absent(),
+    this.totalBytes = const Value.absent(),
+    this.expireTimestamp = const Value.absent(),
+    this.userInfoUpdatedAt = const Value.absent(),
   });
   SubscriptionCompanion.insert({
     this.id = const Value.absent(),
@@ -968,6 +1199,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     this.hwidEnabled = const Value.absent(),
     this.hwid = const Value.absent(),
     required DateTime timestamp,
+    this.uploadBytes = const Value.absent(),
+    this.downloadBytes = const Value.absent(),
+    this.totalBytes = const Value.absent(),
+    this.expireTimestamp = const Value.absent(),
+    this.userInfoUpdatedAt = const Value.absent(),
   }) : name = Value(name),
        url = Value(url),
        timestamp = Value(timestamp);
@@ -980,6 +1216,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Expression<bool>? hwidEnabled,
     Expression<String>? hwid,
     Expression<DateTime>? timestamp,
+    Expression<int>? uploadBytes,
+    Expression<int>? downloadBytes,
+    Expression<int>? totalBytes,
+    Expression<int>? expireTimestamp,
+    Expression<DateTime>? userInfoUpdatedAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -990,6 +1231,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       if (hwidEnabled != null) 'hwid_enabled': hwidEnabled,
       if (hwid != null) 'hwid': hwid,
       if (timestamp != null) 'timestamp': timestamp,
+      if (uploadBytes != null) 'upload_bytes': uploadBytes,
+      if (downloadBytes != null) 'download_bytes': downloadBytes,
+      if (totalBytes != null) 'total_bytes': totalBytes,
+      if (expireTimestamp != null) 'expire_timestamp': expireTimestamp,
+      if (userInfoUpdatedAt != null) 'user_info_updated_at': userInfoUpdatedAt,
     });
   }
 
@@ -1002,6 +1248,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     Value<bool>? hwidEnabled,
     Value<String?>? hwid,
     Value<DateTime>? timestamp,
+    Value<int?>? uploadBytes,
+    Value<int?>? downloadBytes,
+    Value<int?>? totalBytes,
+    Value<int?>? expireTimestamp,
+    Value<DateTime?>? userInfoUpdatedAt,
   }) {
     return SubscriptionCompanion(
       id: id ?? this.id,
@@ -1012,6 +1263,11 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
       hwidEnabled: hwidEnabled ?? this.hwidEnabled,
       hwid: hwid ?? this.hwid,
       timestamp: timestamp ?? this.timestamp,
+      uploadBytes: uploadBytes ?? this.uploadBytes,
+      downloadBytes: downloadBytes ?? this.downloadBytes,
+      totalBytes: totalBytes ?? this.totalBytes,
+      expireTimestamp: expireTimestamp ?? this.expireTimestamp,
+      userInfoUpdatedAt: userInfoUpdatedAt ?? this.userInfoUpdatedAt,
     );
   }
 
@@ -1042,6 +1298,21 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
+    if (uploadBytes.present) {
+      map['upload_bytes'] = Variable<int>(uploadBytes.value);
+    }
+    if (downloadBytes.present) {
+      map['download_bytes'] = Variable<int>(downloadBytes.value);
+    }
+    if (totalBytes.present) {
+      map['total_bytes'] = Variable<int>(totalBytes.value);
+    }
+    if (expireTimestamp.present) {
+      map['expire_timestamp'] = Variable<int>(expireTimestamp.value);
+    }
+    if (userInfoUpdatedAt.present) {
+      map['user_info_updated_at'] = Variable<DateTime>(userInfoUpdatedAt.value);
+    }
     return map;
   }
 
@@ -1055,7 +1326,12 @@ class SubscriptionCompanion extends UpdateCompanion<SubscriptionData> {
           ..write('agePublicKey: $agePublicKey, ')
           ..write('hwidEnabled: $hwidEnabled, ')
           ..write('hwid: $hwid, ')
-          ..write('timestamp: $timestamp')
+          ..write('timestamp: $timestamp, ')
+          ..write('uploadBytes: $uploadBytes, ')
+          ..write('downloadBytes: $downloadBytes, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('expireTimestamp: $expireTimestamp, ')
+          ..write('userInfoUpdatedAt: $userInfoUpdatedAt')
           ..write(')'))
         .toString();
   }
@@ -2392,6 +2668,11 @@ typedef $$SubscriptionTableCreateCompanionBuilder =
       Value<bool> hwidEnabled,
       Value<String?> hwid,
       required DateTime timestamp,
+      Value<int?> uploadBytes,
+      Value<int?> downloadBytes,
+      Value<int?> totalBytes,
+      Value<int?> expireTimestamp,
+      Value<DateTime?> userInfoUpdatedAt,
     });
 typedef $$SubscriptionTableUpdateCompanionBuilder =
     SubscriptionCompanion Function({
@@ -2403,6 +2684,11 @@ typedef $$SubscriptionTableUpdateCompanionBuilder =
       Value<bool> hwidEnabled,
       Value<String?> hwid,
       Value<DateTime> timestamp,
+      Value<int?> uploadBytes,
+      Value<int?> downloadBytes,
+      Value<int?> totalBytes,
+      Value<int?> expireTimestamp,
+      Value<DateTime?> userInfoUpdatedAt,
     });
 
 class $$SubscriptionTableFilterComposer
@@ -2451,6 +2737,31 @@ class $$SubscriptionTableFilterComposer
 
   ColumnFilters<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get uploadBytes => $composableBuilder(
+    column: $table.uploadBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downloadBytes => $composableBuilder(
+    column: $table.downloadBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expireTimestamp => $composableBuilder(
+    column: $table.expireTimestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get userInfoUpdatedAt => $composableBuilder(
+    column: $table.userInfoUpdatedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2503,6 +2814,31 @@ class $$SubscriptionTableOrderingComposer
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get uploadBytes => $composableBuilder(
+    column: $table.uploadBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downloadBytes => $composableBuilder(
+    column: $table.downloadBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expireTimestamp => $composableBuilder(
+    column: $table.expireTimestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get userInfoUpdatedAt => $composableBuilder(
+    column: $table.userInfoUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SubscriptionTableAnnotationComposer
@@ -2543,6 +2879,31 @@ class $$SubscriptionTableAnnotationComposer
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<int> get uploadBytes => $composableBuilder(
+    column: $table.uploadBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get downloadBytes => $composableBuilder(
+    column: $table.downloadBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expireTimestamp => $composableBuilder(
+    column: $table.expireTimestamp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get userInfoUpdatedAt => $composableBuilder(
+    column: $table.userInfoUpdatedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$SubscriptionTableTableManager
@@ -2584,6 +2945,11 @@ class $$SubscriptionTableTableManager
                 Value<bool> hwidEnabled = const Value.absent(),
                 Value<String?> hwid = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
+                Value<int?> uploadBytes = const Value.absent(),
+                Value<int?> downloadBytes = const Value.absent(),
+                Value<int?> totalBytes = const Value.absent(),
+                Value<int?> expireTimestamp = const Value.absent(),
+                Value<DateTime?> userInfoUpdatedAt = const Value.absent(),
               }) => SubscriptionCompanion(
                 id: id,
                 name: name,
@@ -2593,6 +2959,11 @@ class $$SubscriptionTableTableManager
                 hwidEnabled: hwidEnabled,
                 hwid: hwid,
                 timestamp: timestamp,
+                uploadBytes: uploadBytes,
+                downloadBytes: downloadBytes,
+                totalBytes: totalBytes,
+                expireTimestamp: expireTimestamp,
+                userInfoUpdatedAt: userInfoUpdatedAt,
               ),
           createCompanionCallback:
               ({
@@ -2604,6 +2975,11 @@ class $$SubscriptionTableTableManager
                 Value<bool> hwidEnabled = const Value.absent(),
                 Value<String?> hwid = const Value.absent(),
                 required DateTime timestamp,
+                Value<int?> uploadBytes = const Value.absent(),
+                Value<int?> downloadBytes = const Value.absent(),
+                Value<int?> totalBytes = const Value.absent(),
+                Value<int?> expireTimestamp = const Value.absent(),
+                Value<DateTime?> userInfoUpdatedAt = const Value.absent(),
               }) => SubscriptionCompanion.insert(
                 id: id,
                 name: name,
@@ -2613,6 +2989,11 @@ class $$SubscriptionTableTableManager
                 hwidEnabled: hwidEnabled,
                 hwid: hwid,
                 timestamp: timestamp,
+                uploadBytes: uploadBytes,
+                downloadBytes: downloadBytes,
+                totalBytes: totalBytes,
+                expireTimestamp: expireTimestamp,
+                userInfoUpdatedAt: userInfoUpdatedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

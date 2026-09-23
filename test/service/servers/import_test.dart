@@ -1,4 +1,5 @@
 import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -18,6 +19,50 @@ import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/connect/raw/db.dart';
 
 void main() {
+  test(
+    'manual JSON syntax retains leading whitespace and Unicode offsets',
+    () async {
+      const source = ' \r\n {"name":"😀", "outbounds":[#]}';
+      final service = ServerImportService(
+        validate: (_) async => fail('Malformed input must not reach libXray'),
+      );
+      await expectLater(
+        service.preview(source, manual: true),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => JsonDiagnostic.fromError(e)?.offset,
+            'original offset',
+            source.indexOf('#'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'manual outbounds boundary has a path but core text has no location',
+    () async {
+      const error = 'outbounds[0].settings: invalid (offset 27)';
+      final service = ServerImportService(validate: (_) async => error);
+      await expectLater(
+        service.preview('{"outbounds":[]}', manual: true),
+        throwsA(
+          isA<JsonDiagnostic>()
+              .having((e) => e.path, 'array path', ['outbounds'])
+              .having((e) => e.offset, 'offset', isNull),
+        ),
+      );
+      await expectLater(
+        service.preview('{"outbounds":[{}]}', manual: true),
+        throwsA(
+          isA<AppFailure>()
+              .having((e) => e.cause, 'core message', error)
+              .having((e) => JsonDiagnostic.fromError(e), 'diagnostic', isNull),
+        ),
+      );
+    },
+  );
+
   test('preparation has no writes; commit writes once and queues the saved IDs', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);

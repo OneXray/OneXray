@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
+import 'package:onexray/core/tools/json_document.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/core/tools/file.dart';
@@ -24,12 +25,14 @@ class ConfigurationTransferState {
   final bool busy;
   final ConfigurationTransferAction? action;
   final String? notice;
+  final bool failed;
   final List<GeoDataInput> assets;
 
   const ConfigurationTransferState({
     this.busy = false,
     this.action,
     this.notice,
+    this.failed = false,
     this.assets = const [],
   });
 
@@ -38,12 +41,14 @@ class ConfigurationTransferState {
     ConfigurationTransferAction? action,
     bool clearAction = false,
     String? notice,
+    bool? failed,
     bool clearNotice = false,
     List<GeoDataInput>? assets,
   }) => ConfigurationTransferState(
     busy: busy ?? this.busy,
     action: clearAction ? null : action ?? this.action,
     notice: clearNotice ? null : notice ?? this.notice,
+    failed: clearNotice ? false : failed ?? this.failed,
     assets: assets ?? this.assets,
   );
 }
@@ -87,13 +92,16 @@ class ConfigurationTransferController
       ),
     );
     ConfigurationImportDraft? next;
+    String? input;
+    var parsed = false;
     try {
-      final input = clipboard
+      input = clipboard
           ? await ServerImportService.readClipboard()
           : await ServerImportService.pickTextFile(jsonOnly: true);
       if (input == null || !context.mounted || !isPageActive) return;
       // Parse before asking to replace anything, and download only after consent.
       ConfigurationTransferService.read(input, kind);
+      parsed = true;
       if ((hasContent?.call() ?? readText().trim().isNotEmpty) &&
           !await ContextAlert.showConfirmDialog(
             context,
@@ -107,8 +115,16 @@ class ConfigurationTransferController
         return;
       }
       if (!context.mounted || !isPageActive) return;
+      final previousText = readText();
+      final previousName = readName();
       next = await service.import(input, kind);
       if (!context.mounted || !isPageActive) return;
+      if (previousText != readText() || previousName != readName()) {
+        throw const AppFailure(
+          FailureCategory.conflict,
+          'configurationChanged',
+        );
+      }
       onImport(next);
       final previous = _draft;
       _draft = next;
@@ -123,13 +139,26 @@ class ConfigurationTransferController
         ),
       );
     } catch (error) {
+      // A decoded App Link and a failed dependency download are not positions
+      // in the imported text. Only locate syntax in the original JSON source.
+      final syntax =
+          !parsed && input != null && input.trimLeft().startsWith('{')
+          ? JsonDocument(input).syntaxError
+          : null;
+      final position = syntax?.offset == null
+          ? null
+          : JsonDocument(input!).positionAt(syntax!.offset!);
+      final detail = appFailureMessage(
+        l10n,
+        error,
+        operation: l10n.buttonAddFailed,
+      );
       emit(
         state.copyWith(
-          notice: appFailureMessage(
-            l10n,
-            error,
-            operation: l10n.buttonAddFailed,
-          ),
+          failed: true,
+          notice: position == null
+              ? detail
+              : '${l10n.jsonEditorErrorLocation(position.line + 1, position.column + 1)}\n$detail',
         ),
       );
     } finally {
@@ -210,6 +239,7 @@ class ConfigurationTransferController
     } catch (error) {
       emit(
         state.copyWith(
+          failed: true,
           notice: appFailureMessage(
             l10n,
             error,
@@ -224,6 +254,13 @@ class ConfigurationTransferController
       if (!isPageActive) await _disposeDraft();
       emit(state.copyWith(busy: false, clearAction: true));
     }
+  }
+
+  /// A successful save installed the dependencies. Later edits must use those
+  /// files rather than reusing the completed import transaction.
+  Future<void> completeImport() async {
+    await _disposeDraft();
+    emit(state.copyWith(assets: const [], clearNotice: true));
   }
 
   Future<void> _disposeDraft() async {
@@ -339,9 +376,42 @@ class ConfigurationTransferTools extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Semantics(
                     liveRegion: true,
-                    child: Text(
-                      state.notice!,
-                      style: Theme.of(context).textTheme.bodySmall,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SelectableText(
+                          state.notice!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (state.failed)
+                          TextButton.icon(
+                            onPressed: () async {
+                              try {
+                                await Clipboard.setData(
+                                  ClipboardData(text: state.notice!),
+                                );
+                                if (context.mounted) {
+                                  ContextAlert.showToast(
+                                    context,
+                                    l10n.actionResult(
+                                      l10n.jsonEditorCopyError,
+                                      l10n.resultSuccess,
+                                    ),
+                                  );
+                                }
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ContextAlert.showToast(
+                                    context,
+                                    l10n.prototypeCopyFailed,
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(LucideIcons.copy, size: 16),
+                            label: Text(l10n.jsonEditorCopyError),
+                          ),
+                      ],
                     ),
                   ),
                 ),

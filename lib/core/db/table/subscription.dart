@@ -14,4 +14,10 @@ class Subscription extends Table {
   TextColumn get hwid => text().nullable()();
 
   DateTimeColumn get timestamp => dateTime()();
+
+  IntColumn get uploadBytes => integer().nullable()();
+  IntColumn get downloadBytes => integer().nullable()();
+  IntColumn get totalBytes => integer().nullable()();
+  IntColumn get expireTimestamp => integer().nullable()();
+  DateTimeColumn get userInfoUpdatedAt => dateTime().nullable()();
 }

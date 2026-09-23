@@ -156,12 +156,15 @@ class AppHostApi {
 
   String get tunFilesDir => _tunFilesDir;
 
-  Future<List<int>> getFreePorts(int num) async {
+  Future<List<int>> getFreePorts(int num, {List<int>? excludePorts}) async {
     try {
       final resp = await _invoke(
         LibXrayInvokeRequest(
           method: LibXrayMethod.getFreePorts,
-          payload: GetFreePortsRequest(num).toJson(),
+          payload: GetFreePortsRequest(
+            num,
+            excludePorts: excludePorts,
+          ).toJson(),
         ),
       );
       if (resp.data != null) {

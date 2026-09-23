@@ -240,8 +240,9 @@ class LibXrayInvokeRequest {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class GetFreePortsRequest {
   int? count;
+  List<int>? excludePorts;
 
-  GetFreePortsRequest(this.count);
+  GetFreePortsRequest(this.count, {this.excludePorts});
 
   factory GetFreePortsRequest.fromJson(Map<String, dynamic> json) =>
       _$GetFreePortsRequestFromJson(json);

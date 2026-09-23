@@ -9,6 +9,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
+import 'package:onexray/pages/servers/subscription/user_info.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
@@ -16,6 +17,7 @@ import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/servers/subscription/user_info.dart';
 
 class ServerBrowser extends StatelessWidget {
   final ServersController controller;
@@ -442,6 +444,9 @@ class ServerBrowser extends StatelessWidget {
   }) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final package = group.source == null
+        ? null
+        : SubscriptionUserInfo.fromSubscription(group.source!);
     return Material(
       color: active ? palette.muted : palette.card,
       child: DecoratedBox(
@@ -504,6 +509,10 @@ class ServerBrowser extends StatelessWidget {
                                 color: palette.mutedForeground,
                               ),
                             ),
+                            if (package != null) ...[
+                              const SizedBox(height: 4),
+                              SubscriptionPackageSummary(info: package),
+                            ],
                           ],
                         ),
                       ),
@@ -578,6 +587,10 @@ class ServerGroupView extends StatelessWidget {
   Widget _card(BuildContext context, bool mobile) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
+    final package = group.source == null
+        ? null
+        : SubscriptionUserInfo.fromSubscription(group.source!);
+    final headerCount = package == null ? 1 : 2;
     return Material(
       color: palette.card,
       shape: RoundedRectangleBorder(
@@ -592,7 +605,8 @@ class ServerGroupView extends StatelessWidget {
           primary: !embedded,
           padding: EdgeInsets.zero,
           itemCount:
-              1 + (group.visibleRows.isEmpty ? 1 : group.visibleRows.length),
+              headerCount +
+              (group.visibleRows.isEmpty ? 1 : group.visibleRows.length),
           itemBuilder: (context, index) {
             if (index == 0) {
               return Container(
@@ -632,6 +646,9 @@ class ServerGroupView extends StatelessWidget {
                       ),
               );
             }
+            if (index == 1 && package != null) {
+              return SubscriptionPackageDetails(info: package);
+            }
             if (group.visibleRows.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(
@@ -647,7 +664,8 @@ class ServerGroupView extends StatelessWidget {
                 ),
               );
             }
-            final row = group.visibleRows[index - 1];
+            final rowIndex = index - headerCount;
+            final row = group.visibleRows[rowIndex];
             return ServerNodeRow(
               key: ValueKey(row.id),
               controller: controller,
@@ -655,7 +673,7 @@ class ServerGroupView extends StatelessWidget {
               detail: group.country != null
                   ? controller.sourceName(l, row)
                   : controller.countryName(l, row.countryCode),
-              showDivider: index != group.visibleRows.length,
+              showDivider: rowIndex != group.visibleRows.length - 1,
             );
           },
         ),

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/service/connect/raw/editor.dart';
@@ -26,6 +28,39 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
+  });
+
+  test('renaming validates syntax against the source before formatting', () {
+    const text = '{\r\n "name": "😀", "outbounds": [#]\r\n}';
+    expect(
+      () => RawEditorService.namedText('Renamed', text),
+      throwsA(
+        isA<JsonDiagnostic>()
+            .having((e) => e.offset, 'source offset', text.indexOf('#'))
+            .having((e) => e.path, 'path', isNull),
+      ),
+    );
+  });
+
+  test('validation preserves the structured diagnostic as its cause', () async {
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      ),
+    );
+    final service = RawEditorService(database: db, coordinator: coordinator);
+    const text = '{"name":"original", "outbounds":[#]}';
+    await expectLater(
+      service.validate(text),
+      throwsA(
+        isA<AppFailure>().having(
+          (e) => JsonDiagnostic.fromError(e)?.offset,
+          'original offset',
+          text.indexOf('#'),
+        ),
+      ),
+    );
   });
 
   test('new Raw preserves exact source and existing normal selection without starting', () async {

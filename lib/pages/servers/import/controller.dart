@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/network/client.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -40,6 +41,7 @@ class ServerImportPageState {
     this.obscureSecret = true,
     this.loadFailed = false,
     this.error,
+    this.jsonDiagnostic,
     List<ServerSubscriptionImport> subscriptionImports = const [],
     this.committedResult,
     this.ageExpanded = false,
@@ -62,6 +64,7 @@ class ServerImportPageState {
   final bool obscureSecret;
   final bool loadFailed;
   final String? error;
+  final JsonDiagnostic? jsonDiagnostic;
   final List<ServerSubscriptionImport> subscriptionImports;
   final ServerImportResult? committedResult;
   final bool ageExpanded;
@@ -95,6 +98,7 @@ class ServerImportPageState {
     bool? obscureSecret,
     bool? loadFailed,
     Object? error = _unset,
+    Object? jsonDiagnostic = _unset,
     List<ServerSubscriptionImport>? subscriptionImports,
     Object? committedResult = _unset,
     bool? ageExpanded,
@@ -122,6 +126,9 @@ class ServerImportPageState {
     obscureSecret: obscureSecret ?? this.obscureSecret,
     loadFailed: loadFailed ?? this.loadFailed,
     error: identical(error, _unset) ? this.error : error as String?,
+    jsonDiagnostic: identical(jsonDiagnostic, _unset)
+        ? this.jsonDiagnostic
+        : jsonDiagnostic as JsonDiagnostic?,
     subscriptionImports: subscriptionImports ?? this.subscriptionImports,
     committedResult: identical(committedResult, _unset)
         ? this.committedResult
@@ -187,6 +194,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   AgeKeyType? _linkAgeType;
   String? _hwid;
   String? _hwidUrl;
+  int _jsonRevision = 0;
 
   bool get supportsScan => AppPlatform.isMobile;
   bool get editingSubscription => subscriptionId != null;
@@ -207,6 +215,8 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   }
 
   void _changed() {
+    final jsonChanged = state.jsonInput != jsonText.text;
+    if (jsonChanged) _jsonRevision++;
     var hwidEnabled = state.hwidEnabled;
     if (_hwidUrl != null && !SubscriptionUrl.sameOrigin(_hwidUrl!, url.text)) {
       // A new origin needs consent again, not a new subscription identity.
@@ -223,6 +233,8 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       state.copyWith(
         inputText: text.text,
         jsonInput: jsonText.text,
+        error: jsonChanged ? null : state.error,
+        jsonDiagnostic: jsonChanged ? null : state.jsonDiagnostic,
         name: name.text,
         url: url.text,
         secretKey: secretKey.text,
@@ -562,9 +574,11 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   Future<void> detect(BuildContext context, ServerImportAction action) async {
     if (state.busy) return;
+    final revision = _jsonRevision;
     final result = action == ServerImportAction.json
         ? await _preview(context, state.jsonInput, manual: true)
         : await _importText(context, state.inputText);
+    if (action == ServerImportAction.json && revision != _jsonRevision) return;
     if ((result != null || _closingFlow) && context.mounted) {
       Navigator.of(context)
           .pop(result ?? state.committedResult ?? _subscriptionResult);
@@ -576,7 +590,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     String input, {
     bool manual = false,
   }) async {
-    emit(state.copyWith(busy: true, error: null, committedResult: null));
+    final revision = manual ? _jsonRevision : null;
+    emit(
+      state.copyWith(
+        busy: true,
+        error: null,
+        jsonDiagnostic: null,
+        committedResult: null,
+      ),
+    );
     ServerImportPreview? preview;
     try {
       preview = await service.preview(input, manual: manual);
@@ -594,16 +616,17 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
           preview.customRoutes.isEmpty &&
           preview.geoData.isEmpty) {
         try {
-          return await _commit(context, preview);
+          return await _commit(context, preview, jsonRevision: revision);
         } finally {
           await preview.dispose();
         }
       }
     } catch (error) {
-      if (context.mounted) {
+      if (context.mounted && (revision == null || revision == _jsonRevision)) {
         final l10n = AppLocalizations.of(context)!;
         emit(
           state.copyWith(
+            jsonDiagnostic: manual ? JsonDiagnostic.fromError(error) : null,
             error: appFailureMessage(
               l10n,
               error,
@@ -660,8 +683,9 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   Future<ServerImportResult?> _commit(
     BuildContext context,
-    ServerImportPreview preview,
-  ) async {
+    ServerImportPreview preview, {
+    int? jsonRevision,
+  }) async {
     try {
       final result = await service.commit(preview);
       if (context.mounted) {
@@ -690,9 +714,13 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       }
       return result;
     } catch (error) {
-      if (context.mounted) {
+      if (context.mounted &&
+          (jsonRevision == null || jsonRevision == _jsonRevision)) {
         emit(
           state.copyWith(
+            jsonDiagnostic: jsonRevision == null
+                ? null
+                : JsonDiagnostic.fromError(error),
             error: appFailureMessage(
               AppLocalizations.of(context)!,
               error,

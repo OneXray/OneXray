@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/servers/controller.dart';
 import 'package:onexray/pages/servers/menus.dart';
 import 'package:onexray/pages/servers/sources.dart';
+import 'package:onexray/pages/servers/subscription/user_info.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 
@@ -122,6 +124,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ServerSourcesDialog), findsNothing);
     expect(controller.actions, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('source management shares package summary and updates it', (
+    tester,
+  ) async {
+    controller.sources = [_source];
+    controller.servers = [_server(1, source: 7)];
+    await pumpSources(tester);
+    expect(find.byType(SubscriptionPackageSummary), findsNothing);
+    controller.sources = [
+      _source.copyWith(
+        totalBytes: const Value(0),
+        expireTimestamp: const Value(0),
+        userInfoUpdatedAt: Value(DateTime(2026, 9, 2)),
+      ),
+    ];
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(
+      tester.element(find.byType(ServerSourcesDialog)),
+    )!;
+    expect(find.byType(SubscriptionPackageSummary), findsOneWidget);
+    expect(
+      find.text(
+        '${l.subscriptionPackageUnlimited} · ${l.subscriptionPackageNoExpiry}',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byTooltip('${l.prototypeMoreActions}: ${_source.name}'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

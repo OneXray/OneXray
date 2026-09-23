@@ -1,3 +1,4 @@
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/core/tools/json.dart';
@@ -36,16 +37,23 @@ final class RoutingRuleState {
        localOS = List.unmodifiable(localOS),
        network = _copyValue(network);
 
-  factory RoutingRuleState.fromXrayJson(XrayRoutingRule rule) {
+  factory RoutingRuleState.fromXrayJson(
+    XrayRoutingRule rule, {
+    List<Object>? path,
+  }) {
     if (rule.inboundTag != null) {
-      throw const FormatException('Unsupported Custom routing rule field');
+      throw JsonDiagnostic(
+        'Unsupported Custom routing rule field',
+        path: path == null ? null : [...path, 'inboundTag'],
+      );
     }
     final action = switch ((rule.balancerTag, rule.outboundTag)) {
       ('proxy', null) => RoutingRuleAction.proxy,
       (null, 'direct') => RoutingRuleAction.direct,
       (null, 'block') => RoutingRuleAction.block,
-      _ => throw const FormatException(
+      _ => throw JsonDiagnostic(
         'Routing rule must select exactly one supported action',
+        path: path,
       ),
     };
     return RoutingRuleState(
@@ -137,13 +145,17 @@ final class RoutingProfileState implements RoutingConfiguration {
     }
     final outbounds = xrayJson.outbounds;
     if (outbounds == null) {
-      throw const FormatException('outbounds must be an array');
+      throw const JsonDiagnostic(
+        'outbounds must be an array',
+        path: ['outbounds'],
+      );
     }
     if (outbounds.isEmpty ||
         outbounds.length > 3 ||
         outbounds.any((outbound) => outbound.isNotEmpty)) {
-      throw const FormatException(
+      throw const JsonDiagnostic(
         'outbounds must contain 1–3 empty object slots',
+        path: ['outbounds'],
       );
     }
     final dns = _dnsSettings(xrayJson.dns);
@@ -154,8 +166,12 @@ final class RoutingProfileState implements RoutingConfiguration {
       directDnsAddress: dns.directAddress,
       fakeDns: dns.fakeDns,
       rules: [
-        for (final rule in xrayJson.routing?.rules ?? const [])
-          RoutingRuleState.fromXrayJson(rule),
+        for (final (index, rule)
+            in (xrayJson.routing?.rules ?? const <XrayRoutingRule>[]).indexed)
+          RoutingRuleState.fromXrayJson(
+            rule,
+            path: ['routing', 'rules', index],
+          ),
       ],
     );
     state.validate();
@@ -235,8 +251,9 @@ final class RoutingProfileState implements RoutingConfiguration {
   }
   final servers = dns.servers;
   if (servers == null) {
-    throw const FormatException(
+    throw const JsonDiagnostic(
       'Custom routing requires one tagged direct DNS server',
+      path: ['dns', 'servers'],
     );
   }
   final direct = servers
@@ -254,8 +271,9 @@ final class RoutingProfileState implements RoutingConfiguration {
             server.queryStrategy != null,
       ) ||
       (fake.isNotEmpty && !FakeDns.isAddress(fake.single.address))) {
-    throw const FormatException(
+    throw const JsonDiagnostic(
       'Custom DNS supports app-dns-direct and an optional app-dns-fake server',
+      path: ['dns', 'servers'],
     );
   }
   return (directAddress: direct.single.address!, fakeDns: fake.isNotEmpty);

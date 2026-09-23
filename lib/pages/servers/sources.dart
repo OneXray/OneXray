@@ -4,12 +4,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/servers/controller.dart';
+import 'package:onexray/pages/servers/subscription/user_info.dart';
 import 'package:onexray/pages/theme/color.dart';
 import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/pages/shared/widgets/button_progress.dart';
 import 'package:onexray/pages/shared/widgets/app_activity.dart';
+import 'package:onexray/service/servers/subscription/user_info.dart';
 
 class ServerSourcesDialog extends StatelessWidget {
   const ServerSourcesDialog({super.key, required this.controller});
@@ -56,6 +58,7 @@ class ServerSourcesDialog extends StatelessWidget {
                 for (final source in controller.sources)
                   _SourceRow(
                     name: source.name,
+                    package: SubscriptionUserInfo.fromSubscription(source),
                     detail:
                         '${l.prototypeServerCount(controller.sourceCount(source.id))} · '
                         '${checkedAt(source)}',
@@ -231,6 +234,7 @@ class _SourceRow extends StatelessWidget {
     this.busy = false,
     this.onMore,
     this.onUpdate,
+    this.package,
   });
 
   final String name;
@@ -242,6 +246,7 @@ class _SourceRow extends StatelessWidget {
   final bool busy;
   final VoidCallback? onMore;
   final VoidCallback? onUpdate;
+  final SubscriptionUserInfo? package;
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +305,10 @@ class _SourceRow extends StatelessWidget {
                     color: palette.mutedForeground,
                   ),
                 ),
+                if (package != null) ...[
+                  const SizedBox(height: 4),
+                  SubscriptionPackageSummary(info: package!),
+                ],
                 if (mobile) ...[const SizedBox(height: 10), statusLabel],
               ],
             ),

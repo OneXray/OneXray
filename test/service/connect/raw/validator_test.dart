@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/raw/validator.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 
 const source = '''
   {
@@ -21,6 +22,43 @@ const source = '''
 ''';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  test('syntax diagnostics retain the original UTF-16 source offset', () {
+    const text = '{\r\n "name": "😀",\r\n "outbounds": [#]\r\n}';
+    final result = XrayRawValidator.normalize(text, nameOverride: 'Renamed');
+    expect(result.isValid, false);
+    expect(result.diagnostic?.offset, text.indexOf('#'));
+    expect(result.diagnostic?.path, isNull);
+    expect(result.normalizedText, isNull);
+  });
+
+  test('App root and name checks expose structured paths', () {
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+    final root = XrayRawValidator.normalize('[]');
+    expect(root.isValid, false);
+    expect(root.diagnostic?.path, isEmpty);
+    expect(root.diagnostic?.offset, isNull);
+    final name = XrayRawValidator.normalize('{"name":42,"outbounds":[]}');
+    expect(name.isValid, false);
+    expect(name.diagnostic?.path, ['name']);
+    expect(name.diagnostic?.offset, isNull);
+  });
+
+  test(
+    'core text with a path or offset does not become a source location',
+    () async {
+      const error = 'routing.rules[1]: invalid field (offset 34)';
+      final result = await XrayRawValidator.validate(
+        source,
+        testXray: (_) async => error,
+      );
+      expect(result.isValid, false);
+      expect(result.error, error);
+      expect(result.diagnostic, isNull);
+    },
+  );
+
   test('ordinary normalization preserves every byte and expert field', () {
     final result = XrayRawValidator.normalize(source);
     expect(result.isValid, isTrue);

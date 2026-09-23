@@ -12,6 +12,7 @@ import 'package:onexray/core/tools/logger.dart';
 import 'package:onexray/service/launch/app_startup.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
+import 'package:onexray/service/advanced/local_api/service.dart';
 import 'package:onexray/service/advanced/xray/data_update/service.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
@@ -113,6 +114,7 @@ final class AppDataCleanupService {
   }
 
   Future<void> _pauseProducers({required bool pauseBackup}) => Future.wait([
+    LocalApiService.instance.pauseForDataClear(),
     if (pauseBackup && _backup != null) _backup.pauseForDataClear(),
     DataUpdateService().pauseForDataClear(),
     ServerImportService.pauseForDataClear(),
@@ -123,6 +125,7 @@ final class AppDataCleanupService {
   ]);
 
   void _resumeProducers({required bool resumeBackup}) {
+    LocalApiService.instance.resumeAfterDataClear();
     _geodata.resumeAfterDataClear();
     _coordinator.resumeAfterDataClear();
     _ping.resumeAfterDataClear();
@@ -135,6 +138,7 @@ final class AppDataCleanupService {
   Future<void> _clear() async {
     await AppStartupService().unregisterForDataCleanup();
     await PreferencesKey().clearUserDataPreferences();
+    await LocalApiService.instance.clearAfterDataClear();
     await NetClient().updateUserAgentMode(DownloadUserAgentMode.defaultMode);
     await _clearDatabase();
     await _clearRuntimeFiles();

@@ -801,6 +801,16 @@ void main() {
       expect(await index.exists(), isFalse);
 
       await draft.save((writeMetadata) => db.transaction(writeMetadata));
+      await expectLater(
+        draft.save((writeMetadata) => db.transaction(writeMetadata)),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'completed import',
+            'Routing data draft is unavailable',
+          ),
+        ),
+      );
       await draft.dispose();
       expect((await db.geoDataDao.allRows).single.name, 'custom');
       expect(await data.readAsString(), 'one');

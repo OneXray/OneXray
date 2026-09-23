@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,6 +12,133 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
+  test(
+    'schema 5 adds nullable package cache and preserves all saved data',
+    () async {
+      final file = await _legacyDatabase(5);
+      final old = sqlite.sqlite3.open(file.path);
+      final before = _snapshotV5(old);
+      old.close();
+
+      final database = AppDatabase.forTesting(NativeDatabase(file));
+      final subscription = (await database.subscriptionDao.allRows).single;
+      _expectNoUserInfo(subscription);
+      expect(subscription.id, 7);
+      expect(subscription.ageSecretKey, 'AGE-SECRET-KEY-TEST');
+      expect(subscription.agePublicKey, 'age1test');
+      expect(subscription.hwidEnabled, isTrue);
+      expect(subscription.hwid, 'keep-hwid');
+      expect(
+        (await database.routingProfileDao.allRows).single.advanced,
+        isTrue,
+      );
+      expect((await database.geoDataDao.allRows).single.installed, isFalse);
+      await database.close();
+
+      final upgraded = sqlite.sqlite3.open(file.path);
+      expect(upgraded.userVersion, 6);
+      expect(_snapshotV5(upgraded), before);
+      upgraded.close();
+
+      final reopened = AppDatabase.forTesting(NativeDatabase(file));
+      addTearDown(reopened.close);
+      expect((await reopened.subscriptionDao.allRows).single, subscription);
+      final id = await reopened.subscriptionDao.insertRow(
+        SubscriptionCompanion.insert(
+          name: 'After upgrade',
+          url: 'https://example.com/new-sub',
+          timestamp: DateTime(2026),
+        ),
+      );
+      expect(id, greaterThan(7));
+      _expectNoUserInfo((await reopened.subscriptionDao.searchRow(id))!);
+    },
+  );
+
+  test('schema 5 package migration failure rolls back and can retry', () async {
+    final file = await _legacyDatabase(5);
+    final old = sqlite.sqlite3.open(file.path);
+    final before = _snapshotV5(old);
+    old.execute('ALTER TABLE subscription ADD COLUMN download_bytes INTEGER');
+    old.close();
+
+    final failed = AppDatabase.forTesting(NativeDatabase(file));
+    await expectLater(failed.subscriptionDao.allRows, throwsA(anything));
+    await failed.close();
+
+    final check = sqlite.sqlite3.open(file.path);
+    expect(check.userVersion, 5);
+    expect(_snapshotV5(check), before);
+    expect(
+      _columnNames(check, 'subscription'),
+      isNot(contains('upload_bytes')),
+    );
+    check.execute('ALTER TABLE subscription DROP COLUMN download_bytes');
+    check.close();
+
+    final retried = AppDatabase.forTesting(NativeDatabase(file));
+    addTearDown(retried.close);
+    _expectNoUserInfo((await retried.subscriptionDao.allRows).single);
+    expect(
+      (await retried.customSelect('PRAGMA user_version').getSingle()).read<int>(
+        'user_version',
+      ),
+      6,
+    );
+  });
+
+  test(
+    'package changes and cache clearing reach the existing subscription stream',
+    () async {
+      final database = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(database.close);
+      final dao = database.subscriptionDao;
+      final id = await dao.insertRow(
+        SubscriptionCompanion.insert(
+          name: 'Provider',
+          url: 'https://example.com/sub',
+          timestamp: DateTime(2026),
+        ),
+      );
+      final events = StreamIterator(dao.allRowsStream);
+      addTearDown(events.cancel);
+      expect(await events.moveNext(), isTrue);
+      _expectNoUserInfo(events.current.single);
+
+      final checkedAt = DateTime(2026, 9, 22, 12);
+      final updated = events.current.single.copyWith(
+        uploadBytes: const Value(1024),
+        downloadBytes: const Value(2048),
+        totalBytes: const Value(0),
+        expireTimestamp: const Value(0),
+        userInfoUpdatedAt: Value(checkedAt),
+      );
+      expect(await dao.updateRow(updated), isTrue);
+      expect(await events.moveNext(), isTrue);
+      expect(events.current.single.id, id);
+      expect(events.current.single.uploadBytes, 1024);
+      expect(events.current.single.downloadBytes, 2048);
+      expect(events.current.single.totalBytes, 0);
+      expect(events.current.single.expireTimestamp, 0);
+      expect(events.current.single.userInfoUpdatedAt, checkedAt);
+
+      expect(
+        await dao.updateRow(
+          updated.copyWith(
+            uploadBytes: const Value(null),
+            downloadBytes: const Value(null),
+            totalBytes: const Value(null),
+            expireTimestamp: const Value(null),
+            userInfoUpdatedAt: const Value(null),
+          ),
+        ),
+        isTrue,
+      );
+      expect(await events.moveNext(), isTrue);
+      _expectNoUserInfo(events.current.single);
+    },
+  );
+
   test(
     'schema 4 adds routing mode without rewriting any configuration',
     () async {
@@ -26,13 +154,14 @@ void main() {
       final sub = (await database.subscriptionDao.allRows).single;
       expect(sub.hwidEnabled, true);
       expect(sub.hwid, 'keep-hwid');
+      _expectNoUserInfo(sub);
       expect(
         (await database.geoDataDao.allRows).every((row) => row.installed),
         true,
       );
       await database.close();
       final upgraded = sqlite.sqlite3.open(file.path);
-      expect(upgraded.userVersion, 5);
+      expect(upgraded.userVersion, 6);
       expect(_snapshotV3(upgraded), before);
       upgraded.close();
       final reopened = AppDatabase.forTesting(NativeDatabase(file));
@@ -53,7 +182,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      5,
+      6,
     );
   });
 
@@ -113,7 +242,7 @@ void main() {
             .read<String>('name'),
         'WAL-only name',
       );
-      expect(writer.userVersion, 5);
+      expect(writer.userVersion, 6);
       expect(_snapshot(writer, hasAgeKeys: true), _afterUpgrade(before));
       expect(
         file.parent.listSync().where(
@@ -124,7 +253,7 @@ void main() {
     },
   );
 
-  test('new installation creates schema 5 with empty assets and default connection configuration', () async {
+  test('new installation creates schema 6 with empty assets and default connection configuration', () async {
     final database = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -161,7 +290,7 @@ void main() {
     expect(
       (await database.customSelect('PRAGMA user_version').getSingle())
           .read<int>('user_version'),
-      5,
+      6,
     );
   });
 
@@ -178,6 +307,7 @@ void main() {
           expect(subscriptions.single.id, 7);
           expect(subscriptions.single.hwidEnabled, isFalse);
           expect(subscriptions.single.hwid, isNull);
+          _expectNoUserInfo(subscriptions.single);
           final subscriptionColumns = await database
               .customSelect('PRAGMA table_info(subscription)')
               .get();
@@ -227,7 +357,7 @@ void main() {
           expect(
             (await reopened.customSelect('PRAGMA user_version').getSingle())
                 .read<int>('user_version'),
-            5,
+            6,
           );
           final subId = await reopened.subscriptionDao.insertRow(
             SubscriptionCompanion.insert(
@@ -356,7 +486,7 @@ void main() {
     await interrupted.close();
 
     final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 5);
+    expect(check.userVersion, 6);
     expect(_columnNames(check, 'core_config'), contains('favorite'));
     expect(_columnNames(check, 'connection_config'), [
       'id',
@@ -405,10 +535,11 @@ void main() {
     expect(source.id, 7);
     expect(source.hwidEnabled, isFalse);
     expect(source.hwid, isNull);
+    _expectNoUserInfo(source);
     await database.close();
 
     final upgraded = sqlite.sqlite3.open(file.path);
-    expect(upgraded.userVersion, 5);
+    expect(upgraded.userVersion, 6);
     expect(_snapshotV3(upgraded), before);
     upgraded.close();
 
@@ -585,12 +716,48 @@ Future<File> _legacyDatabase(int version) async {
         "UPDATE subscription SET hwid_enabled = 1, hwid = 'keep-hwid'",
       );
     }
+    if (version >= 5) {
+      database.execute(
+        'ALTER TABLE routing_profile ADD COLUMN advanced INTEGER NOT NULL DEFAULT 0',
+      );
+      database.execute('UPDATE routing_profile SET advanced = 1');
+      database.execute(
+        'ALTER TABLE geo_data ADD COLUMN installed INTEGER NOT NULL DEFAULT 1',
+      );
+      database.execute('UPDATE geo_data SET installed = 0');
+    }
     database.execute('PRAGMA user_version = $version');
   } finally {
     database.close();
   }
   return file;
 }
+
+void _expectNoUserInfo(SubscriptionData subscription) {
+  expect(subscription.uploadBytes, isNull);
+  expect(subscription.downloadBytes, isNull);
+  expect(subscription.totalBytes, isNull);
+  expect(subscription.expireTimestamp, isNull);
+  expect(subscription.userInfoUpdatedAt, isNull);
+}
+
+Map<String, List<List<Object?>>> _snapshotV5(sqlite.Database database) => {
+  for (final table in [
+    'subscription',
+    'core_config',
+    'geo_data',
+    'routing_profile',
+    'connection_config',
+  ])
+    table: database
+        .select(
+          table == 'subscription'
+              ? 'SELECT id, name, url, timestamp, age_secret_key, age_public_key, hwid_enabled, hwid FROM subscription ORDER BY id'
+              : 'SELECT * FROM $table ORDER BY id',
+        )
+        .map((row) => row.values.toList())
+        .toList(),
+};
 
 Map<String, List<List<Object?>>> _snapshotV3(sqlite.Database database) => {
   for (final table in [

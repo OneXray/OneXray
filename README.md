@@ -195,6 +195,18 @@ Shared configurations, subscription URLs, and exported logs may contain credenti
 
 Code, translations, and [documentation improvements](https://github.com/OneXray/onexray.com) are welcome.
 
+## Donate
+
+Support OneXray development with an optional **USDC or USDT** donation on the **Solana network**.
+Use the copy button on this address block, or visit the [donation page](https://onexray.com/docs/donate/).
+
+```text
+A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
+```
+
+Send only USDC or USDT on Solana. Check the network and full address before sending; transfers on other networks may be lost.
+The App also provides **Settings → Donate → Copy address**. Donations do not unlock features or provide servers or subscriptions.
+
 ## License
 
 [GNU General Public License v3.0](./LICENSE).

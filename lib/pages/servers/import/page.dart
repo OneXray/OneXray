@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
@@ -250,7 +251,7 @@ class ServerImportFormPage extends StatelessWidget {
                   _manual(context, mobile: mobile)
                 else
                   _paste(context),
-                _ImportFeedback(state: state),
+                _ImportFeedback(state: state, showError: !manual),
                 ConnectCallout(
                   icon: LucideIcons.lockKeyhole,
                   text: l10n.prototypeLocalInputPrivacy,
@@ -356,7 +357,14 @@ class ServerImportFormPage extends StatelessWidget {
               color: palette.mutedStrong,
             ),
           ),
-          OutboundJsonEditor(controller: controller.jsonText),
+          OutboundJsonEditor(
+            controller: controller.jsonText,
+            diagnostic:
+                controller.state.jsonDiagnostic ??
+                (controller.state.error == null
+                    ? null
+                    : JsonDiagnostic(controller.state.error!)),
+          ),
           Text(
             l10n.prototypeNodeJsonHint,
             style: AppTypography.importJsonHint.copyWith(
@@ -698,7 +706,8 @@ class ServerImportScannerPage extends StatelessWidget {
 
 class _ImportFeedback extends StatelessWidget {
   final ServerImportPageState state;
-  const _ImportFeedback({required this.state});
+  final bool showError;
+  const _ImportFeedback({required this.state, this.showError = true});
 
   @override
   Widget build(BuildContext context) {
@@ -733,7 +742,7 @@ class _ImportFeedback extends StatelessWidget {
                     : palette.destructive,
               ),
             ),
-          if (state.error case final error?)
+          if (state.error case final error? when showError)
             Semantics(
               liveRegion: true,
               child: Text(

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/connect/dialogs.dart';
 import 'package:onexray/pages/servers/editor/controller.dart';
@@ -46,7 +47,14 @@ class ServerEditorPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 7),
-                  OutboundJsonEditor(controller: controller.text),
+                  OutboundJsonEditor(
+                    controller: controller.text,
+                    diagnostic:
+                        state.diagnostic ??
+                        (state.error == null
+                            ? null
+                            : JsonDiagnostic(state.error!)),
+                  ),
                   const SizedBox(height: 7),
                   Text(
                     state.fromSubscription
@@ -56,7 +64,7 @@ class ServerEditorPage extends StatelessWidget {
                       color: p.mutedForeground,
                     ),
                   ),
-                  if (state.error != null)
+                  if (!state.loaded && state.error != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Semantics(
@@ -90,7 +98,8 @@ class ServerEditorPage extends StatelessWidget {
               ConnectDialogButton(
                 label: l.prototypeSave,
                 busy: state.busy,
-                onPressed: state.busy || !state.loaded || !state.validJson
+                onPressed:
+                    state.busy || !state.loaded || state.jsonText.trim().isEmpty
                     ? null
                     : () => controller.save(context),
               ),

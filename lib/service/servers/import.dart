@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:onexray/core/errors/failure.dart';
+import 'package:onexray/core/errors/json_diagnostic.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
@@ -130,7 +131,7 @@ class ServerImportService {
            throw AppFailure(
              FailureCategory.configuration,
              'xrayValidation',
-             cause: result.error,
+             cause: result.diagnostic ?? result.error,
            );
          }
          return true;
@@ -409,7 +410,10 @@ class ServerImportService {
     if (json is! Map<String, dynamic> ||
         json['outbounds'] is! List ||
         (json['outbounds'] as List).isEmpty) {
-      throw const FormatException('A non-empty outbounds array is required');
+      throw const JsonDiagnostic(
+        'A non-empty outbounds array is required',
+        path: ['outbounds'],
+      );
     }
     final error = await _validate(
       XrayValidation.nodes(json['outbounds'] as List),
