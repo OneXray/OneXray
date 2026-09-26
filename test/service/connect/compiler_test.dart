@@ -1223,6 +1223,77 @@ void main() {
     },
   );
 
+  test(
+    'UDP hopping follows the App interface policy in normal and Raw modes',
+    () {
+      final source = <String, dynamic>{
+        'tag': 'Hysteria2',
+        'protocol': 'hysteria',
+        'settings': {'version': 2, 'address': 'server.example', 'port': 443},
+        'streamSettings': {
+          'network': 'hysteria',
+          'security': 'tls',
+          'hysteriaSettings': {'version': 2, 'auth': 'test'},
+          'finalmask': {
+            'udp': [
+              {
+                'type': 'salamander',
+                'settings': {'password': 'test'},
+              },
+              {
+                'type': 'udphop',
+                'settings': {
+                  'mode': 'intervalLocal,intervalRemote',
+                  'remotePorts': '443,8443',
+                  'interval': 30,
+                  'sockopt': {'interface': 'old-interface', 'mark': 7},
+                },
+              },
+            ],
+          },
+        },
+      };
+      final before = jsonEncode(source);
+      for (final platform in ConnectionPlatform.values) {
+        for (final raw in [false, true]) {
+          final plan = ConnectionCompiler.compile(
+            settings: ConnectionSettings(
+              expert: raw,
+              trafficMode: TrafficMode.allVpn,
+            ),
+            entries: raw
+                ? []
+                : [ResolvedServer(id: 1, sourceId: 0, outbound: source)],
+            raw: raw
+                ? {
+                    'outbounds': [source],
+                  }
+                : null,
+            regions: catalog,
+            options: options(
+              platform: platform,
+              interfaceName: 'selected-interface',
+            ),
+          );
+          final stream = plan.config['outbounds'][0]['streamSettings'];
+          final hop = stream['finalmask']['udp'][1]['settings'];
+          final interface =
+              platform == ConnectionPlatform.windows ||
+                  platform == ConnectionPlatform.linux
+              ? 'selected-interface'
+              : null;
+          expect(hop['sockopt']['interface'], interface);
+          expect(hop['sockopt']['mark'], 7);
+          expect(
+            stream['finalmask']['udp'][0],
+            source['streamSettings']['finalmask']['udp'][0],
+          );
+          expect(jsonEncode(source), before);
+        }
+      }
+    },
+  );
+
   test('Windows/Linux require an interface and stay within XrayJson', () {
     expect(
       () => options(platform: ConnectionPlatform.windows),

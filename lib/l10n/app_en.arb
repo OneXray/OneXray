@@ -857,7 +857,7 @@
   "@prototypeSubscriptionLink": {
     "description": "Approved prototype copy: Subscription link"
   },
-  "prototypeSubscriptionDescription": "A subscription is a server list supplied by your provider. OneXray can check it for updates later. Only VMessAEAD / VLESS share links are supported.",
+  "prototypeSubscriptionDescription": "A subscription is a server list supplied by your provider. OneXray can check it for updates later. Supports VMessAEAD / VLESS, Hysteria2, SS, SOCKS and Trojan share links.",
   "@prototypeSubscriptionDescription": {
     "description": "Subscription explanation and supported share formats, shown in both the add and edit forms."
   },
