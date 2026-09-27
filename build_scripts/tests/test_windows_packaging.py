@@ -461,6 +461,25 @@ class WindowsPackagingTest(unittest.TestCase):
         for name in _VCORE_ARTIFACTS:
             self.assertTrue(os.path.isfile(os.path.join(destination, name)))
 
+    def test_vcore_artifacts_require_exact_schema_27_identity(self):
+        for revision in (13, 26, 27, 28):
+            with self.subTest(config_revision=revision):
+                source = os.path.join(self.temp_dir.name, f"vcore-schema-{revision}")
+                destination = os.path.join(self.project_dir, f"app-schema-{revision}")
+                manifest = _write_vcore_set(source)
+                manifest["buildIdentity"] = (
+                    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;"
+                    f"configVersion={revision}"
+                )
+                _write_manifest(source, manifest)
+                if revision == 27:
+                    _copy_vcore_artifacts(source, destination, "x64")
+                    self.assertEqual(set(os.listdir(destination)), set(_VCORE_ARTIFACTS))
+                else:
+                    with self.assertRaisesRegex(ValueError, "incompatible VCore"):
+                        _copy_vcore_artifacts(source, destination, "x64")
+                    self.assertFalse(os.path.exists(destination))
+
     def test_vcore_artifact_manifest_rejects_incompatible_sets(self):
         mutations = {
             "revision": lambda manifest: manifest.update(

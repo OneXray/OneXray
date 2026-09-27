@@ -23,7 +23,7 @@ _VCORE_ARTIFACTS = (
     "vcore-windows-session-host.exe",
 )
 _VCORE_IDENTITY = (
-    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=13"
+    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=27"
 )
 _WINTUN_VERSION = "0.14.1"
 _WINTUN_SHA256 = "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51"
