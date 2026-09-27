@@ -102,6 +102,19 @@ void main() {
   });
 
   test('tray stays icon-only and ignores traffic-only updates', () async {
+    expect(calls.where((call) => call.method == 'setIcon'), hasLength(1));
+    int visualCalls() => calls
+        .where(
+          (call) =>
+              call.method == 'setIcon' ||
+              call.method == 'setTitle' ||
+              call.method == 'setToolTip',
+        )
+        .length;
+    final initialVisualCalls = visualCalls();
+    await tray.refreshTrayManager();
+    expect(visualCalls(), initialVisualCalls);
+
     coordinator.state.value = const ConnectionView(
       phase: ConnectionPhase.connected,
       metricsAvailable: true,
@@ -119,6 +132,8 @@ void main() {
       everyElement('OneXray'),
     );
     expect(_items(menus.last).any((item) => item['key'] == 'stopVpn'), isTrue);
+    expect(calls.where((call) => call.method == 'setIcon'), hasLength(2));
+    expect(titles, AppPlatform.isMacOS ? hasLength(1) : isEmpty);
 
     final published = calls.length;
     coordinator.state.value = const ConnectionView(
@@ -246,6 +261,9 @@ void main() {
     'opening waits for an in-flight publish and queues later refreshes',
     () async {
       iconReady = Completer<void>();
+      coordinator.state.value = const ConnectionView(
+        phase: ConnectionPhase.connected,
+      );
       final refresh = tray.refreshTrayManager();
       tray.onTrayIconMouseDown();
       await pumpEventQueue();

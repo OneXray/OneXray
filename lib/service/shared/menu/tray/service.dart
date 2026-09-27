@@ -75,6 +75,8 @@ final class TrayService with TrayListener {
   var _initialized = false;
   ConnectionPhase? _lastPhase;
   bool? _lastCanDisconnect;
+  String? _trayIcon;
+  bool _macLabelConfigured = false;
 
   bool get _canQuitWithoutStoppingVpn =>
       AppPlatform.isMacOS ||
@@ -120,6 +122,8 @@ final class TrayService with TrayListener {
     onConfigurationChange = null;
     _lastPhase = null;
     _lastCanDisconnect = null;
+    _trayIcon = null;
+    _macLabelConfigured = false;
     _initialized = false;
   }
 
@@ -241,10 +245,14 @@ final class TrayService with TrayListener {
         icon = Assets.icon.trayNotRunningPng.path;
       }
     }
-    await trayManager.setIcon(icon);
-    if (AppPlatform.isMacOS) {
+    if (_trayIcon != icon) {
+      await trayManager.setIcon(icon);
+      _trayIcon = icon;
+    }
+    if (AppPlatform.isMacOS && !_macLabelConfigured) {
       await trayManager.setTitle('');
       await trayManager.setToolTip('OneXray');
+      _macLabelConfigured = true;
     }
   }
 
