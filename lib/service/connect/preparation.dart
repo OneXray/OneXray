@@ -6,6 +6,7 @@ import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/advanced/local_api/service.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
@@ -21,14 +22,21 @@ import 'package:path/path.dart' as p;
 
 Future<List<int>> allocateRuntimePorts(
   List<dynamic> rawInbounds, {
-  Future<List<int>> Function(int count)? getFreePorts,
+  List<int> excludePorts = const [],
+  Future<List<int>> Function(int count, {List<int>? excludePorts})?
+  getFreePorts,
 }) async {
   final allocate = getFreePorts ?? AppHostApi().getFreePorts;
   for (var attempt = 0; attempt < 5; attempt++) {
-    final candidates = await allocate(2);
+    final candidates = await allocate(
+      2,
+      excludePorts: excludePorts.isEmpty ? null : excludePorts,
+    );
     if (candidates.length == 2 &&
         candidates.toSet().length == 2 &&
-        candidates.every((port) => port > 0 && port <= 65535) &&
+        candidates.every(
+          (port) => port > 0 && port <= 65535 && !excludePorts.contains(port),
+        ) &&
         !rawInbounds.any(
           (entry) =>
               entry is Map &&
@@ -162,8 +170,10 @@ class ConnectionPreparation {
         userInbounds.any((entry) => entry is! Map<String, dynamic>)) {
       throw const FormatException('inbounds must be an object array');
     }
+    final apiPort = await LocalApiService.instance.reservedPort();
     final ports = await allocateRuntimePorts(
       userInbounds.cast<Map<String, dynamic>>(),
+      excludePorts: [?apiPort],
     );
     final compiled = ConnectionCompiler.compile(
       settings: settings,

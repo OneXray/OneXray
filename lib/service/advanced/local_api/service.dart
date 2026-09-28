@@ -79,6 +79,17 @@ final class LocalApiService {
 
   Future<LocalApiSettings> load() => _commands.run(_load);
 
+  /// Reserve the configured port even before startup or while disabled.
+  Future<int?> reservedPort() async {
+    if (!_desktop) return null;
+    try {
+      return (await load()).port;
+    } catch (_) {
+      // Unavailable optional API preferences must not block VPN startup.
+      return _settings?.port ?? LocalApiSettings.defaultPort;
+    }
+  }
+
   Future<LocalApiSettings> _load() async {
     if (_settings case final settings?) return settings;
     final json = await _readSettings();

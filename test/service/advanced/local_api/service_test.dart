@@ -58,6 +58,29 @@ void main() {
     return response.statusCode;
   }
 
+  test('reserves the default API port without starting a listener', () async {
+    expect(await service.reservedPort(), LocalApiSettings.defaultPort);
+    expect(service.listening, isFalse);
+    expect(stored, isNull);
+  });
+
+  test('reserves a saved custom port before startup while disabled', () async {
+    stored = const LocalApiSettings(port: 19587).toJson();
+
+    expect(await service.reservedPort(), 19587);
+    expect(service.listening, isFalse);
+
+    await service.configure(enabled: false, port: 20587);
+    expect(await service.reservedPort(), 20587);
+
+    failWrite = true;
+    await expectLater(
+      service.configure(enabled: false, port: 21587),
+      throwsStateError,
+    );
+    expect(await service.reservedPort(), 20587);
+  });
+
   test(
     'off by default; enabling generates one persistent 256-bit token',
     () async {
@@ -70,10 +93,12 @@ void main() {
       );
       expect(base64Url.decode(base64Url.normalize(settings.token)).length, 32);
       expect(await status(settings), 200);
+      expect(await service.reservedPort(), settings.port);
       await service.stop();
       service = create();
       await service.start();
       expect((await service.load()).token, settings.token);
+      expect(await service.reservedPort(), settings.port);
       expect(await status(settings), 200);
       await service.configure(enabled: false, port: settings.port);
       expect(service.listening, isFalse);
@@ -110,6 +135,7 @@ void main() {
         throwsA(isA<SocketException>()),
       );
       expect((await service.load()).port, before.port);
+      expect(await service.reservedPort(), before.port);
       expect(stored, before.toJson());
       expect(await status(before), 200);
     },
@@ -163,6 +189,7 @@ void main() {
       expect(service.lastError, contains('Unexpected end of input'));
       expect(service.lastError, isNot(contains('private-credential')));
       expect(service.lastError, isNot(contains(source)));
+      expect(await service.reservedPort(), LocalApiSettings.defaultPort);
     },
   );
 
@@ -178,6 +205,7 @@ void main() {
     expect(service.listening, isFalse);
     expect(service.lastError, contains('Cannot read preferences'));
     expect(service.lastError, contains('Permission denied'));
+    expect(await service.reservedPort(), LocalApiSettings.defaultPort);
   });
 
   test(
@@ -213,6 +241,7 @@ void main() {
       );
       await service.pauseForDataClear();
       expect(await status(settings), 503);
+      expect(await service.reservedPort(), settings.port);
       await expectLater(
         service.configure(enabled: true, port: settings.port),
         throwsStateError,
@@ -225,11 +254,13 @@ void main() {
       service.resumeAfterDataClear();
       expect(service.listening, isFalse);
       expect((await service.load()).token, isEmpty);
+      expect(await service.reservedPort(), LocalApiSettings.defaultPort);
     },
   );
 
   test('mobile cannot enable a listener or create credentials', () async {
     service = create(desktop: false);
+    expect(await service.reservedPort(), isNull);
     await service.start();
     expect(service.listening, isFalse);
     await expectLater(
@@ -285,6 +316,7 @@ void main() {
       expect(service.listening, isFalse);
       expect(service.lastError, isNotNull);
       expect(service.lastError, isNot(contains('secret')));
+      expect(await service.reservedPort(), LocalApiSettings.defaultPort);
     },
   );
 }
