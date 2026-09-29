@@ -9,7 +9,6 @@ import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/ping/page.dart';
 import 'package:onexray/pages/advanced/local_api/page.dart';
 import 'package:onexray/pages/settings/about/page.dart';
-import 'package:onexray/pages/settings/donation/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/wifi.dart';
@@ -381,7 +380,6 @@ final _pageRoutes = <_PageRoute>[
   _route(AppPageDestination.theme, (_, _) => const ThemePage()),
   _route(AppPageDestination.language, (_, _) => const LanguagePage()),
   _route(AppPageDestination.aboutOneXray, (_, _) => const AboutOneXrayPage()),
-  _route(AppPageDestination.donation, (_, _) => const DonationPage()),
   _route(
     AppPageDestination.appUpdate,
     (_, state) => _withDialogExtra<AppUpdateDialogParams>(

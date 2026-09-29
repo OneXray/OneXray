@@ -66,7 +66,6 @@ enum AppPageDestination {
   theme("theme"),
   language("language"),
   aboutOneXray("about-onexray"),
-  donation("donation"),
   appUpdate("app-update");
 
   final String segment;

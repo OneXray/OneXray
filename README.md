@@ -223,7 +223,7 @@ A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
 ```
 
 Send only USDC or USDT on Solana. Check the network and full address before sending; transfers on other networks may be lost.
-The App also provides **Settings → Donate → Copy address**. Donations do not unlock features or provide servers or subscriptions.
+Donations do not unlock features or provide servers or subscriptions.
 
 ## License
 
