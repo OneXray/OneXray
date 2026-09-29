@@ -20,7 +20,8 @@
 - Windows receipts additionally include `windowsMode` and use
   `provenance-windows-<architecture>-<mode>.json`, keeping EXE and MSIX builds separate.
 - Windows additionally requires VCore integration
-  revision **3**, the existing identity, architecture, file set, and hashes.
+  revision **3**, the expected architecture, file set, and hashes.
+  OneXray does not validate the manifest's `buildIdentity` field.
 - `publish.yml` and `publish-microsoft-store.yml` require release metadata and per-platform receipts, a
   successful matching `Build` run, clean recorded source checkouts before the
   build, and matching package hashes. A release tag must
@@ -88,7 +89,7 @@ workspace/
 
 The scripts use the currently checked-out libXray and VCore revisions. VCore
 artifacts are copied only after their integration revision, architecture,
-identity, file set, and SHA-256 manifest pass. The Xray-core version is pinned
+file set, and SHA-256 manifest pass. The Xray-core version is pinned
 by libXray's Go module; a sibling Xray-core checkout is not used.
 
 ### Prerequisites
@@ -193,7 +194,7 @@ workspace/
 ```
 
 构建使用 libXray 和 VCore 当前检出的版本。VCore 产物只有在 integration revision、
-架构、identity、文件集合和 SHA-256 manifest 全部通过后才复制。Xray-core 版本由
+架构、文件集合和 SHA-256 manifest 全部通过后才复制。Xray-core 版本由
 libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
 
 ### 前置条件
@@ -290,7 +291,7 @@ workspace/
 ```
 
 Сборка использует текущие версии libXray и VCore. Артефакты VCore копируются
-только после проверки integration revision, архитектуры, identity, набора файлов
+только после проверки integration revision, архитектуры, набора файлов
 и SHA-256 manifest. Версия Xray-core закреплена Go-модулем libXray; соседний
 checkout Xray-core не используется.
 

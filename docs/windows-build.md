@@ -79,7 +79,7 @@ GitHub 发布从 EXE 模式产物读取两种架构的 EXE 和 ZIP；`windows` �
 - `startVpn` 每次完整发送用户保存的 Windows 策略，不由 VCore 补默认值；CIDR 与 IPv6 / DNS 冲突由 VCore 校验。Session Snapshot token 用于宿主归属校验，其格式与 bridge revision 独立。打包的 `vcore.dll` 必须匹配 [原生桥合同](../lib/core/ffi/windows/native_api.dart)；源码契约测试不代表打包 DLL 或 Windows 实机验证通过。
 - MSIX 声明 `networkingVpnProvider`、网络和 `runFullTrust` 能力，注册 `VCore.VpnBackgroundTask` 及默认关闭的 `VCoreStartup`。Provider extension 显式保持 `windowsApp` / `appContainer`，Session Host extension 保持 `packagedClassicApp` / `mediumIL`。Core 不使用 `allowElevation`。
 - `msix:create` 生成基础包后，`build_scripts/app/windows_msix.py` 把两个 VCore extension 放入现有主 Application，并补充 package-level in-process server，再由 `makeappx` 原路径重打包。已有 VCore extension 或 Application 数量不为一时直接失败。
-- VCore 构建输出必须附带 artifact manifest；复制前校验格式与 package integration revision、架构、build identity、文件集合、全部 SHA-256 及 PE 架构。接受的版本和文件集合以 [构建脚本](../build_scripts/app/windows.py) 为准，任一不匹配都在打包前失败。
+- VCore 构建输出必须附带 artifact manifest；复制前校验格式与 package integration revision、架构、文件集合、全部 SHA-256 及 PE 架构。接受的版本和文件集合以 [构建脚本](../build_scripts/app/windows.py) 为准，任一不匹配都在打包前失败。App 不读取或校验 `buildIdentity`，字段缺失或变化不阻止打包；这不替代原生桥合同和 Windows 实机兼容性验证。
 - 完成构建和打包后、上传产物前执行 `OneXrayCore.exe -h`，用于发现无法加载或架构错误。
 - workflow 中的注释、runner 标签和实际构建步骤必须同步；外部调研结论不替代 GitHub Actions 实机结果。
 
