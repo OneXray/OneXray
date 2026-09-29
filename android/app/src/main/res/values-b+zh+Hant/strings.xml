@@ -1,4 +1,9 @@
 <resources>
+    <string name="notification_vpn_stop_failed">無法停止 VPN</string>
+    <string name="automation_data_busy">正在清理或還原 App 資料，請完成後重試。</string>
+    <string name="automation_configuration_required">請先開啟 OneXray 並連線一次，產生完整設定。%1$s</string>
+    <string name="automation_vpn_permission">請開啟 OneXray 授予 VPN 權限。</string>
+    <string name="automation_lan_permission">請開啟 OneXray 授予區域網路權限。</string>
     <string name="notification_vpn_start_failed">連線失敗</string>
     <string name="traffic_download">下載</string>
     <string name="traffic_upload">上傳</string>

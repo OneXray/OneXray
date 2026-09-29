@@ -47,6 +47,7 @@ enum AppPageDestination {
   appleVpn("apple-vpn"),
   appleWifi("apple-wifi"),
   androidVpn("android-vpn"),
+  androidAutomation("android-automation"),
   androidApps("android-apps"),
   windowsVpn("windows-vpn"),
   outboundInterface("outbound-interface"),
@@ -65,7 +66,6 @@ enum AppPageDestination {
   theme("theme"),
   language("language"),
   aboutOneXray("about-onexray"),
-  donation("donation"),
   appUpdate("app-update");
 
   final String segment;

@@ -35,6 +35,7 @@ import libXray.DialerController
 import libXray.LibXray
 import net.yuandev.onexray.MainActivity
 import net.yuandev.onexray.R
+import net.yuandev.onexray.automation.AutomationStore
 import net.yuandev.onexray.widget.TrafficWidgetProvider
 import net.yuandev.onexray.pigeon.JsonTool
 import net.yuandev.onexray.pigeon.LibXrayInvokeRequest
@@ -53,6 +54,7 @@ class OneVpnService : VpnService() {
     companion object {
         const val ACTION_START: String = "vpn_start"
         const val EXTRA_REUSE_CONFIGURATION: String = "reuse_configuration"
+        const val EXTRA_AUTOMATION_START: String = "automation_start"
         const val ACTION_STOP: String = "vpn_stop"
         const val ACTION_STOP_REQUEST: String = "net.yuandev.onexray.VPN_STOP_REQUEST"
 
@@ -176,6 +178,11 @@ class OneVpnService : VpnService() {
         }
         if (intent != null && intent.action == ACTION_START) {
             XLog.d("OneVpnService: onStartCommand $ACTION_START running=$running")
+            if (intent.getBooleanExtra(EXTRA_AUTOMATION_START, false) && AutomationStore(this).startBlocked) {
+                // A clear/restore may have started after the receiver dispatched this command.
+                if (resourceStatus == VpnStatus.DISCONNECTED) stopSelf(startId)
+                return START_NOT_STICKY
+            }
             if (VpnController.consumeStopRequest(this)) {
                 XLog.d("OneVpnService: start cancelled by pending stop request")
                 stopTun()

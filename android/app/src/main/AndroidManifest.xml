@@ -60,6 +60,15 @@
             </intent-filter>
         </activity>
         <receiver
+            android:name=".automation.VpnAutomationReceiver"
+            android:exported="true"
+            android:process=":native">
+            <intent-filter>
+                <action android:name="net.yuandev.onexray.action.START_VPN" />
+                <action android:name="net.yuandev.onexray.action.STOP_VPN" />
+            </intent-filter>
+        </receiver>
+        <receiver
             android:name=".widget.TrafficWidgetProvider"
             android:exported="false"
             android:label="@string/traffic_widget_name"

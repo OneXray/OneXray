@@ -10,15 +10,18 @@ import 'package:onexray/pages/theme/font.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/service/advanced/tunnel/android/app_icon.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
+import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class AndroidVpnPage extends StatefulWidget {
   final PolicyEditorDraft draft;
   final OpenAndroidApps openApps;
+  final void Function(BuildContext)? openAutomation;
   const AndroidVpnPage({
     super.key,
     required this.draft,
     required this.openApps,
+    this.openAutomation,
   });
   @override
   State<AndroidVpnPage> createState() => _AndroidVpnPageState();
@@ -182,6 +185,15 @@ class _AndroidVpnPageState extends State<AndroidVpnPage> {
                       ),
                     ),
                   ),
+                ),
+              ],
+              if (widget.openAutomation != null) ...[
+                const SizedBox(height: 24),
+                SettingRow(
+                  title: l.automationTitle,
+                  leading: const Icon(LucideIcons.zap),
+                  showChevron: true,
+                  onTap: () => widget.openAutomation!(context),
                 ),
               ],
             ],

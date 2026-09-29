@@ -17,6 +17,8 @@ import net.yuandev.onexray.pigeon.BridgeHostApi
 import net.yuandev.onexray.pigeon.BackupHostApi
 import net.yuandev.onexray.pigeon.BackupApi
 import net.yuandev.onexray.vpn.OneVpnService
+import net.yuandev.onexray.automation.AutomationApi
+import net.yuandev.onexray.pigeon.AndroidAutomationHostApi
 
 class MainActivity : FlutterFragmentActivity() {
 
@@ -36,6 +38,7 @@ class MainActivity : FlutterFragmentActivity() {
         val flutterApi = AppFlutterApi(flutterEngine.dartExecutor)
         BridgeHostApi.setUp(flutterEngine.dartExecutor, hostApi)
         BackupHostApi.setUp(flutterEngine.dartExecutor, backupApi)
+        AndroidAutomationHostApi.setUp(flutterEngine.dartExecutor, AutomationApi(this))
 
         hostApi.onInit(flutterApi)
     }

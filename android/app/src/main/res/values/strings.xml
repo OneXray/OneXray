@@ -1,4 +1,9 @@
 <resources>
+    <string name="notification_vpn_stop_failed">Unable to stop VPN</string>
+    <string name="automation_data_busy">App data is being cleared or restored. Try again when it finishes.</string>
+    <string name="automation_configuration_required">Open OneXray and connect first to prepare a complete configuration. %1$s</string>
+    <string name="automation_vpn_permission">Open OneXray to allow VPN connections.</string>
+    <string name="automation_lan_permission">Open OneXray to allow local network access.</string>
     <string name="notification_vpn_start_failed">Connection failed</string>
     <string name="traffic_download">Download</string>
     <string name="traffic_upload">Upload</string>

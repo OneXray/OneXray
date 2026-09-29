@@ -19,6 +19,7 @@ import 'package:onexray/service/shared/menu/window/service.dart';
 import 'package:onexray/service/shared/notification/service.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/service.dart';
+import 'package:onexray/service/advanced/tunnel/android/automation/service.dart';
 
 abstract final class ServiceManager {
   static Future<void>? _initFuture;
@@ -69,6 +70,8 @@ abstract final class ServiceManager {
     await ConnectionCoordinator.instance.initialize(
       requestPermission: AppHostApi().requestPlatformPermission,
     );
+    // Recover only the admission marker after storage and runtime are ready.
+    await AndroidAutomationService().setStartBlocked(false);
     await _runInit(
       "NotificationService",
       () => NotificationService().asyncInit(),

@@ -9,6 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="https://apps.apple.com/us/app/onexray/id6745748773">App Store</a> ·
+  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray">Google Play</a> ·
+  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D">Microsoft Store</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="最新版本"></a>
   <a href="../LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="许可证"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="支持平台">
@@ -64,8 +70,8 @@ VPN Tunnel 操作、预期行为与验证步骤。不为系统设置虚构 JSON 
 | macOS | macOS 13+，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS — OneXraySE | macOS 13+，Apple silicon 或 Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android 手机 / 平板 | Android 10+，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [通用 APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
-| Windows ARM64 | Windows 11 | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
+| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
 | Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -149,11 +155,23 @@ brew install --cask onexrayse
 </details>
 
 <details>
-<summary>Windows：EXE / ZIP 与 Microsoft Store</summary>
+<summary>Windows：Microsoft Store 与 EXE / ZIP</summary>
+
+[Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) 使用包含系统 VPN Provider 的 MSIX 包，负责架构选择和更新。可以直接从商店安装，也可以使用 winget：
+
+```powershell
+winget install --id 9NJ0MVHW215D --source msstore
+```
+
+需要独立 EXE 版本时，改用 winget 社区源：
+
+```powershell
+winget install --id YuanDevLLC.OneXray -e --source winget
+```
 
 EXE 和 ZIP 使用独立 Core 与原生 TUN，启动 VPN 时通过 UAC 请求管理员授权。ZIP 必须完整解压后运行，不自动注册协议链接或创建快捷方式。
 
-[Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) 使用包含系统 VPN Provider 的 MSIX 包，负责架构选择和更新。EXE / ZIP 与 MSIX 的数据目录独立，不能跨渠道覆盖升级。开发构建和模式选择见 [Windows 构建说明](../docs/windows-build.md)。
+EXE / ZIP 与 MSIX 的数据目录独立，不能跨渠道覆盖升级。开发构建和模式选择见 [Windows 构建说明](../docs/windows-build.md)。
 
 </details>
 
@@ -202,7 +220,7 @@ A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
 ```
 
 请仅通过 Solana 网络发送 USDC 或 USDT。转账前核对网络和完整地址，使用其他网络可能导致资产丢失。
-App 内也可通过“设置 → 捐赠 → 复制地址”获取。捐赠不会解锁功能，也不提供服务器或订阅。
+捐赠不会解锁功能，也不提供服务器或订阅。
 
 ## 许可证
 

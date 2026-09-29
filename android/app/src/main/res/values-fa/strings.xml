@@ -1,4 +1,9 @@
 <resources>
+    <string name="notification_vpn_stop_failed">توقف VPN ممکن نشد</string>
+    <string name="automation_data_busy">داده‌های برنامه در حال پاک‌سازی یا بازیابی هستند. پس از پایان دوباره تلاش کنید.</string>
+    <string name="automation_configuration_required">ابتدا OneXray را باز کنید و متصل شوید تا پیکربندی کامل ساخته شود. %1$s</string>
+    <string name="automation_vpn_permission">برای دادن مجوز VPN، OneXray را باز کنید.</string>
+    <string name="automation_lan_permission">برای دادن مجوز شبکهٔ محلی، OneXray را باز کنید.</string>
     <string name="notification_vpn_start_failed">اتصال ناموفق بود</string>
     <string name="traffic_download">دانلود</string>
     <string name="traffic_upload">آپلود</string>

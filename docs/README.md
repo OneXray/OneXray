@@ -12,6 +12,7 @@
 - [数据管理](data-management.md)：GeoData、自动更新和数据清理。
 - [连接配置备份](backup.md)：单文件协议、平台存储、自动备份、离线恢复与安全边界。
 - [本地配置 HTTP API](local-api.md)：桌面本机认证、配置校验、编译预览和结构化诊断。
+- [Android 外部自动化](android-automation.md)：设备 Token、后台广播启停及清理/恢复准入。
 - [Windows 构建](windows-build.md)：EXE / MSIX 运行模式、EXE / ZIP / MSIX 打包、本地签名和 CI。
 - [验证边界](refactor-validation.md)：按改动选择检查项、平台验证限制和验证数据隔离。
 
@@ -29,6 +30,8 @@
 
 ## 进行中的开发计划
 
+- [Android 广播自动化开发计划](../plans/android-intent-automation.md)：Issue #205 的 START/STOP、设备 Token、
+  原生复用、设置入口、数据清理/恢复约束及 P0–P4 验收；实现与 API 37、Automate 联调结果见计划记录。
 - [客户端体验增强分阶段计划](../plans/client-improvements.md)：订阅套餐信息、JSON 纠错、本地配置 HTTP API、
   目标网站诊断的实施顺序、范围、技术验证前提和逐阶段验收；P1–P3 已实现并通过本机自动验证，设备与渠道验收待执行。
 - [单文件云备份开发计划](../plans/cloud-backup.md)：已确认范围、插件使用边界、P0–P8 开发步骤及逐步验收要求；

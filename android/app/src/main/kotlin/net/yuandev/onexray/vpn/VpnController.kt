@@ -96,27 +96,34 @@ object VpnController {
 
     fun startFile(context: Context): File = File(context.filesDir, "run/start.json")
 
-    fun startSavedVpn(context: Context): SavedStartResult {
+    fun startSavedVpn(context: Context, automation: Boolean = false): SavedStartResult {
+        lastError = null
         try {
-            if (queryPermission(context).state != PlatformPermissionState.GRANTED) {
+            SavedVpnConfig.read(startFile(context))
+            val permission = queryPermission(context)
+            if (permission.state != PlatformPermissionState.GRANTED) {
+                lastError = context.getString(if (permission.kind == PlatformPermissionKind.ANDROID_LOCAL_NETWORK)
+                    R.string.automation_lan_permission else R.string.automation_vpn_permission)
                 return SavedStartResult.OPEN_APP
             }
-            SavedVpnConfig.read(startFile(context))
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            lastError = context.getString(R.string.automation_configuration_required, error.message ?: "")
             return SavedStartResult.OPEN_APP
         }
-        return if (startVpn(context, reuseConfiguration = true)) SavedStartResult.STARTED
+        return if (startVpn(context, reuseConfiguration = true, automation = automation)) SavedStartResult.STARTED
             else SavedStartResult.FAILED
     }
 
-    fun startVpn(context: Context, reuseConfiguration: Boolean = false): Boolean {
+    fun startVpn(context: Context, reuseConfiguration: Boolean = false, automation: Boolean = false): Boolean {
         lastError = null
         if (!clearStopRequest(context)) {
             lastError = "Unable to clear the VPN stop marker."
             return false
         }
         return try {
-            val intent = buildStartIntent(context).putExtra(OneVpnService.EXTRA_REUSE_CONFIGURATION, reuseConfiguration)
+            val intent = buildStartIntent(context)
+                .putExtra(OneVpnService.EXTRA_REUSE_CONFIGURATION, reuseConfiguration)
+                .putExtra(OneVpnService.EXTRA_AUTOMATION_START, automation)
             ContextCompat.startForegroundService(context, intent)
             true
         } catch (error: RuntimeException) {
@@ -126,10 +133,10 @@ object VpnController {
         }
     }
 
-    fun reportStartFailure(context: Context, reason: String?) {
-        val title = context.getString(R.string.notification_vpn_start_failed)
+    fun reportStartFailure(context: Context, reason: String?, showToast: Boolean = true, stopping: Boolean = false) {
+        val title = context.getString(if (stopping) R.string.notification_vpn_stop_failed else R.string.notification_vpn_start_failed)
         val text = reason?.takeIf { it.isNotBlank() } ?: title
-        Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        if (showToast) Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         try {
             val manager = context.getSystemService(NotificationManager::class.java)
             val channel = "net.yuandev.onexray"
@@ -141,7 +148,7 @@ object VpnController {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-            manager.notify(OneVpnService.NOTIFICATION_ID, Notification.Builder(context, channel)
+            manager.notify(if (showToast && !stopping) OneVpnService.NOTIFICATION_ID else 4, Notification.Builder(context, channel)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(text)

@@ -276,6 +276,47 @@ enum class NativeLaunchAtLoginState(val raw: Int) {
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
+data class AndroidAutomationSettings (
+  val enabled: Boolean,
+  val token: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AndroidAutomationSettings {
+      val enabled = pigeonVar_list[0] as Boolean
+      val token = pigeonVar_list[1] as String?
+      return AndroidAutomationSettings(enabled, token)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      enabled,
+      token,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AndroidAutomationSettings
+    return MessagesPigeonUtils.deepEquals(this.enabled, other.enabled) && MessagesPigeonUtils.deepEquals(this.token, other.token)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.enabled)
+    result = 31 * result + MessagesPigeonUtils.deepHash(this.token)
+    return result
+  }
+  override fun toString(): String {
+    return "AndroidAutomationSettings(enabled=$enabled, token=$token)"
+  }
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
 data class BackupLocation (
   val identifier: String,
   val label: String
@@ -567,30 +608,35 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
       }
       135.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          BackupLocation.fromList(it)
+          AndroidAutomationSettings.fromList(it)
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          AppleVpnCapabilities.fromList(it)
+          BackupLocation.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          NativeLaunchAtLoginResult.fromList(it)
+          AppleVpnCapabilities.fromList(it)
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PlatformPermissionResult.fromList(it)
+          NativeLaunchAtLoginResult.fromList(it)
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          NativeVpnCommandResult.fromList(it)
+          PlatformPermissionResult.fromList(it)
         }
       }
       140.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          NativeVpnCommandResult.fromList(it)
+        }
+      }
+      141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           AndroidAppInfo.fromList(it)
         }
@@ -624,28 +670,32 @@ private open class MessagesPigeonCodec : StandardMessageCodec() {
         stream.write(134)
         writeValue(stream, value.raw.toLong())
       }
-      is BackupLocation -> {
+      is AndroidAutomationSettings -> {
         stream.write(135)
         writeValue(stream, value.toList())
       }
-      is AppleVpnCapabilities -> {
+      is BackupLocation -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is NativeLaunchAtLoginResult -> {
+      is AppleVpnCapabilities -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is PlatformPermissionResult -> {
+      is NativeLaunchAtLoginResult -> {
         stream.write(138)
         writeValue(stream, value.toList())
       }
-      is NativeVpnCommandResult -> {
+      is PlatformPermissionResult -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is AndroidAppInfo -> {
+      is NativeVpnCommandResult -> {
         stream.write(140)
+        writeValue(stream, value.toList())
+      }
+      is AndroidAppInfo -> {
+        stream.write(141)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -971,6 +1021,118 @@ interface BridgeHostApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/** Generated interface from Pigeon that represents a handler of messages from Flutter. */
+interface AndroidAutomationHostApi {
+  fun read(callback: (Result<AndroidAutomationSettings>) -> Unit)
+  fun setEnabled(enabled: Boolean, callback: (Result<AndroidAutomationSettings>) -> Unit)
+  fun resetToken(callback: (Result<AndroidAutomationSettings>) -> Unit)
+  fun setStartBlocked(blocked: Boolean, callback: (Result<Unit>) -> Unit)
+  fun clear(callback: (Result<Unit>) -> Unit)
+
+  companion object {
+    /** The codec used by AndroidAutomationHostApi. */
+    val codec: MessageCodec<Any?> by lazy {
+      MessagesPigeonCodec()
+    }
+    /** Sets up an instance of `AndroidAutomationHostApi` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: AndroidAutomationHostApi?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.read$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.read{ result: Result<AndroidAutomationSettings> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.setEnabled$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enabledArg = args[0] as Boolean
+            api.setEnabled(enabledArg) { result: Result<AndroidAutomationSettings> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.resetToken$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.resetToken{ result: Result<AndroidAutomationSettings> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MessagesPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.setStartBlocked$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val blockedArg = args[0] as Boolean
+            api.setStartBlocked(blockedArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.clear$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.clear{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MessagesPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MessagesPigeonUtils.wrapResult(null))
               }
             }
           }

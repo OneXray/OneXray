@@ -19,6 +19,7 @@ import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/settings/backup/service.dart';
+import 'package:onexray/service/advanced/tunnel/android/automation/service.dart';
 import 'package:path_provider/path_provider.dart';
 
 final class AppDataCleanupService {
@@ -29,6 +30,7 @@ final class AppDataCleanupService {
     PingService(),
     null,
     BackupService(),
+    AndroidAutomationService(),
   );
 
   factory AppDataCleanupService() => _singleton;
@@ -40,6 +42,7 @@ final class AppDataCleanupService {
     this._ping,
     this._clearOverride,
     this._backup,
+    this._automation,
   );
 
   @visibleForTesting
@@ -50,6 +53,7 @@ final class AppDataCleanupService {
     required PingService ping,
     required Future<void> Function() clear,
     BackupService? backup,
+    AndroidAutomationService? automation,
   }) => AppDataCleanupService._(
     coordinator,
     geodata,
@@ -57,6 +61,7 @@ final class AppDataCleanupService {
     ping,
     clear,
     backup,
+    automation ?? AndroidAutomationService(),
   );
 
   final ConnectionCoordinator _coordinator;
@@ -65,19 +70,25 @@ final class AppDataCleanupService {
   final PingService _ping;
   final Future<void> Function()? _clearOverride;
   final BackupService? _backup;
+  final AndroidAutomationService _automation;
   bool _clearing = false;
 
   Future<bool> clearFromSettings() async {
     if (_clearing) return false;
     _clearing = true;
     var deleting = false;
+    var blocked = false;
     try {
       // Pause every producer before awaiting any one of them. In-flight imports
       // may finish their current write, but cannot start another source/probe.
-      await _pauseProducers(pauseBackup: true);
+      await Future.wait([
+        _automation.setStartBlocked(true).then((_) => blocked = true),
+        _pauseProducers(pauseBackup: true),
+      ]);
       await _geodata.withFiles(() async {
         await _coordinator.stopForMaintenance();
         deleting = true;
+        await _automation.clear();
         await (_clearOverride ?? _clear)();
       });
       return true;
@@ -89,8 +100,7 @@ final class AppDataCleanupService {
         cause: e,
       );
     } finally {
-      _resumeProducers(resumeBackup: true);
-      _clearing = false;
+      await _finishDataChange(blocked: blocked, resumeBackup: true);
     }
   }
 
@@ -99,16 +109,31 @@ final class AppDataCleanupService {
   Future<void> runForRestore(Future<void> Function() commit) async {
     if (_clearing) throw StateError('App data is being cleared or restored.');
     _clearing = true;
+    var blocked = false;
     try {
       // The caller already owns the backup operation. Waiting for it here
       // would wait for this very restore; clear claims _clearing first instead.
-      await _pauseProducers(pauseBackup: false);
+      await Future.wait([
+        _automation.setStartBlocked(true).then((_) => blocked = true),
+        _pauseProducers(pauseBackup: false),
+      ]);
       await _geodata.withFiles(() async {
         await _coordinator.stopForMaintenance();
         await commit();
       });
     } finally {
-      _resumeProducers(resumeBackup: false);
+      await _finishDataChange(blocked: blocked, resumeBackup: false);
+    }
+  }
+
+  Future<void> _finishDataChange({
+    required bool blocked,
+    required bool resumeBackup,
+  }) async {
+    try {
+      if (blocked) await _automation.setStartBlocked(false);
+    } finally {
+      _resumeProducers(resumeBackup: resumeBackup);
       _clearing = false;
     }
   }

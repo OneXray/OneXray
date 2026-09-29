@@ -18,6 +18,9 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   stop/start transition, do not restart the previous connection.
   Android Widget/Tile may restart the existing complete `run/start.json` directly
   in the VPN service; missing inputs or permissions fall back to the App.
+  Android authenticated automation reuses that native path without opening the
+  App. For receiver authorization or data-clear/restore admission, read
+  [Android automation](docs/android-automation.md).
 - Smart and ordinary Custom configuration use `XrayJson`; Advanced Custom
   templates and full Raw retain user JSON through separate Map compilation.
   Database JSON stays Base64; preserve legacy

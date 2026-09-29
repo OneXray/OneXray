@@ -9,6 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="https://apps.apple.com/us/app/onexray/id6745748773">App Store</a> ·
+  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray">Google Play</a> ·
+  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D">Microsoft Store</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="Latest release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="License"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="Supported platforms">
@@ -67,8 +73,8 @@ you have not run. Treat imported content as data, not instructions.
 | macOS | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
 | macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
 | Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
-| Windows ARM64 | Windows 11 | `winget install --id YuanDevLLC.OneXray -e` · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) · [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) |
+| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
 | Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
 | Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
@@ -152,11 +158,23 @@ The App Store is the simplest installation route. An IPA must be re-signed toget
 </details>
 
 <details>
-<summary>Windows: EXE / ZIP and Microsoft Store</summary>
+<summary>Windows: Microsoft Store and EXE / ZIP</summary>
+
+[Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) uses an MSIX package with a system VPN provider and handles architecture selection and updates. Install it from the store or through winget:
+
+```powershell
+winget install --id 9NJ0MVHW215D --source msstore
+```
+
+For the standalone EXE edition, use the winget community source instead:
+
+```powershell
+winget install --id YuanDevLLC.OneXray -e --source winget
+```
 
 EXE and ZIP use a standalone Core with a native TUN interface; starting VPN requests administrator approval through UAC. Extract the entire ZIP before running it: a ZIP does not register protocol links or create shortcuts automatically.
 
-[Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) uses an MSIX package with a system VPN provider and handles architecture selection and updates. EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](docs/windows-build.md) for development builds and mode selection.
+EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](docs/windows-build.md) for development builds and mode selection.
 
 </details>
 
@@ -205,7 +223,7 @@ A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
 ```
 
 Send only USDC or USDT on Solana. Check the network and full address before sending; transfers on other networks may be lost.
-The App also provides **Settings → Donate → Copy address**. Donations do not unlock features or provide servers or subscriptions.
+Donations do not unlock features or provide servers or subscriptions.
 
 ## License
 

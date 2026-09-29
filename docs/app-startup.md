@@ -34,6 +34,10 @@
 同一种正在执行的快捷操作不重复提交，“停止 VPN”不被正在执行的“启动 VPN”阻塞。
 完整菜单与业务边界见 [系统快捷入口](app-navigation.md#系统快捷入口)。
 
+Android 的[外部自动化广播](android-automation.md)直接复用原生 saved-start，不等待 Flutter
+或主 Shell 就绪，也不执行上述偏好自动连接。缺失配置/权限只通知，不主动拉起窗口。
+正常 `ServiceManager` 就绪时解除清理/恢复异常退出遗留的自动化 START 阻断。
+
 Geodata 的首次安装、文件队列及缺失恢复见 [数据管理](data-management.md#geodata-发布)。
 已准备数据只做完整性检查，不等待或中断后台测速；普通启动不暂停后台模块，清空/备份恢复才暂停。
 待下载 Geodata 来源不阻断初始化；服务就绪后的自动备份与数据更新独立检查，

@@ -10,6 +10,7 @@ import 'package:onexray/pages/main/adaptive_shell.dart';
 import 'package:onexray/pages/main/dialog_page.dart';
 import 'package:onexray/pages/main/navigation.dart';
 import 'package:onexray/pages/main/url.dart';
+import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
@@ -54,7 +55,15 @@ void main() {
       expect(
         children.map((route) => route.path),
         unorderedEquals(
-          AppPageDestination.values.map((route) => route.segment),
+          AppPageDestination.values
+              .where(
+                (route) =>
+                    (AppPlatform.isAndroid ||
+                        route != AppPageDestination.androidAutomation) &&
+                    (AppPlatform.isDesktop ||
+                        route != AppPageDestination.localApi),
+              )
+              .map((route) => route.segment),
         ),
       );
       for (final route in children) {
@@ -69,6 +78,13 @@ void main() {
       AppPrimaryDestination.values.map((tab) => tab.page),
       everyElement(isIn(AppPageDestination.values)),
     );
+  });
+
+  test('donation is not registered on mobile or desktop', () {
+    for (final desktop in [false, true]) {
+      final routes = buildScopedPageRoutes(desktop: desktop, android: !desktop);
+      expect(routes.map((route) => route.path), isNot(contains('donation')));
+    }
   });
 
   testWidgets('shared navigation breakpoints preserve the update flow', (
