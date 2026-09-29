@@ -31,6 +31,10 @@ RemoteViews，覆盖 Android 10 与 Android 14 的明暗主题、语言变更广
 测试不启动 Flutter、VPN 或访问用户数据库。
 在 `android/` 下运行 `./gradlew :app:testDebugUnitTest`；JVM 资源测试不替代真实桌面验收。
 
+Android 外部自动化另需普通第三方 UID 的后台 START/STOP、实际代理请求、冷原生进程、
+Token 撤销与清理/恢复阻断验收；至少联调一款真实自动化工具。当前证据与未测平台见
+[自动化计划](../plans/android-intent-automation.md#5-执行停止与验收记录)，不把 shell 发送当作工具联调。
+
 修改 Android Manifest 或网络安全等 XML 资源配置时，补跑 `./gradlew :app:lintVitalRelease`。
 Debug 构建和 JVM 测试不覆盖 Release Lint；Android 发布修复还需验证 Release AAB 构建，
 只执行本地构建命令，不调用会上传商店的发布脚本。

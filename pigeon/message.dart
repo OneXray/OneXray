@@ -70,6 +70,30 @@ abstract class BridgeHostApi {
 
 enum VpnStatus { disconnecting, disconnected, connecting, connected }
 
+class AndroidAutomationSettings {
+  AndroidAutomationSettings({required this.enabled, this.token});
+  final bool enabled;
+  final String? token;
+}
+
+@HostApi()
+abstract class AndroidAutomationHostApi {
+  @asyncCallback
+  AndroidAutomationSettings read();
+
+  @asyncCallback
+  AndroidAutomationSettings setEnabled(bool enabled);
+
+  @asyncCallback
+  AndroidAutomationSettings resetToken();
+
+  @asyncCallback
+  void setStartBlocked(bool blocked);
+
+  @asyncCallback
+  void clear();
+}
+
 class BackupLocation {
   BackupLocation({required this.identifier, required this.label});
   final String identifier;

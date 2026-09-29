@@ -233,6 +233,46 @@ enum NativeLaunchAtLoginState: Int, CaseIterable {
 }
 
 /// Generated class from Pigeon that represents data sent in messages.
+struct AndroidAutomationSettings: Hashable, CustomStringConvertible {
+  var enabled: Bool
+  var token: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> AndroidAutomationSettings? {
+    let enabled = pigeonVar_list[0] as! Bool
+    let token: String? = nilOrValue(pigeonVar_list[1])
+
+    return AndroidAutomationSettings(
+      enabled: enabled,
+      token: token
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      enabled,
+      token,
+    ]
+  }
+  static func == (lhs: AndroidAutomationSettings, rhs: AndroidAutomationSettings) -> Bool {
+    if Swift.type(of: lhs) != Swift.type(of: rhs) {
+      return false
+    }
+    return MessagesPigeonInternal.deepEquals(lhs.enabled, rhs.enabled) && MessagesPigeonInternal.deepEquals(lhs.token, rhs.token)
+  }
+
+  func hash(into hasher: inout Hasher) {
+    hasher.combine("AndroidAutomationSettings")
+    MessagesPigeonInternal.deepHash(value: enabled, hasher: &hasher)
+    MessagesPigeonInternal.deepHash(value: token, hasher: &hasher)
+  }
+
+  public var description: String {
+    return "AndroidAutomationSettings(enabled: \(String(describing: enabled)), token: \(String(describing: token)))"
+  }
+}
+
+/// Generated class from Pigeon that represents data sent in messages.
 struct BackupLocation: Hashable, CustomStringConvertible {
   var identifier: String
   var label: String
@@ -527,16 +567,18 @@ private class MessagesPigeonCodecReader: FlutterStandardReader {
       }
       return nil
     case 135:
-      return BackupLocation.fromList(self.readValue() as! [Any?])
+      return AndroidAutomationSettings.fromList(self.readValue() as! [Any?])
     case 136:
-      return AppleVpnCapabilities.fromList(self.readValue() as! [Any?])
+      return BackupLocation.fromList(self.readValue() as! [Any?])
     case 137:
-      return NativeLaunchAtLoginResult.fromList(self.readValue() as! [Any?])
+      return AppleVpnCapabilities.fromList(self.readValue() as! [Any?])
     case 138:
-      return PlatformPermissionResult.fromList(self.readValue() as! [Any?])
+      return NativeLaunchAtLoginResult.fromList(self.readValue() as! [Any?])
     case 139:
-      return NativeVpnCommandResult.fromList(self.readValue() as! [Any?])
+      return PlatformPermissionResult.fromList(self.readValue() as! [Any?])
     case 140:
+      return NativeVpnCommandResult.fromList(self.readValue() as! [Any?])
+    case 141:
       return AndroidAppInfo.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -564,23 +606,26 @@ private class MessagesPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? NativeLaunchAtLoginState {
       super.writeByte(134)
       super.writeValue(value.rawValue)
-    } else if let value = value as? BackupLocation {
+    } else if let value = value as? AndroidAutomationSettings {
       super.writeByte(135)
       super.writeValue(value.toList())
-    } else if let value = value as? AppleVpnCapabilities {
+    } else if let value = value as? BackupLocation {
       super.writeByte(136)
       super.writeValue(value.toList())
-    } else if let value = value as? NativeLaunchAtLoginResult {
+    } else if let value = value as? AppleVpnCapabilities {
       super.writeByte(137)
       super.writeValue(value.toList())
-    } else if let value = value as? PlatformPermissionResult {
+    } else if let value = value as? NativeLaunchAtLoginResult {
       super.writeByte(138)
       super.writeValue(value.toList())
-    } else if let value = value as? NativeVpnCommandResult {
+    } else if let value = value as? PlatformPermissionResult {
       super.writeByte(139)
       super.writeValue(value.toList())
-    } else if let value = value as? AndroidAppInfo {
+    } else if let value = value as? NativeVpnCommandResult {
       super.writeByte(140)
+      super.writeValue(value.toList())
+    } else if let value = value as? AndroidAppInfo {
+      super.writeByte(141)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -876,6 +921,102 @@ class BridgeHostApiSetup {
       }
     } else {
       getCurrentAppIconChannel.setMessageHandler(nil)
+    }
+  }
+}
+/// Generated protocol from Pigeon that represents a handler of messages from Flutter.
+protocol AndroidAutomationHostApi {
+  func read(completion: @escaping (Result<AndroidAutomationSettings, Error>) -> Void)
+  func setEnabled(enabled: Bool, completion: @escaping (Result<AndroidAutomationSettings, Error>) -> Void)
+  func resetToken(completion: @escaping (Result<AndroidAutomationSettings, Error>) -> Void)
+  func setStartBlocked(blocked: Bool, completion: @escaping (Result<Void, Error>) -> Void)
+  func clear(completion: @escaping (Result<Void, Error>) -> Void)
+}
+
+/// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
+class AndroidAutomationHostApiSetup {
+  static var codec: FlutterStandardMessageCodec { MessagesPigeonCodec.shared }
+  /// Sets up an instance of `AndroidAutomationHostApi` to handle messages through the `binaryMessenger`.
+  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: AndroidAutomationHostApi?, messageChannelSuffix: String = "") {
+    let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+    let readChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.read\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      readChannel.setMessageHandler { _, reply in
+        api.read { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      readChannel.setMessageHandler(nil)
+    }
+    let setEnabledChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.setEnabled\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      setEnabledChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let enabledArg = args[0] as! Bool
+        api.setEnabled(enabled: enabledArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      setEnabledChannel.setMessageHandler(nil)
+    }
+    let resetTokenChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.resetToken\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      resetTokenChannel.setMessageHandler { _, reply in
+        api.resetToken { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      resetTokenChannel.setMessageHandler(nil)
+    }
+    let setStartBlockedChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.setStartBlocked\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      setStartBlockedChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let blockedArg = args[0] as! Bool
+        api.setStartBlocked(blocked: blockedArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      setStartBlockedChannel.setMessageHandler(nil)
+    }
+    let clearChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.AndroidAutomationHostApi.clear\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      clearChannel.setMessageHandler { _, reply in
+        api.clear { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      clearChannel.setMessageHandler(nil)
     }
   }
 }

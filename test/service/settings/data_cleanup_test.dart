@@ -16,6 +16,7 @@ import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/settings/data_cleanup.dart';
+import 'package:onexray/service/advanced/tunnel/android/automation/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/ping/batch.dart';
 import 'package:onexray/service/shared/ping/service.dart';
@@ -255,6 +256,62 @@ void main() {
     expect(await cleanup.clearFromSettings(), isTrue);
     expect(clears, 1);
   });
+
+  test('native admission is blocked before data writes; restore preserves authorization', () async {
+    final native = _AutomationHost();
+    final cleanup = AppDataCleanupService.forTesting(
+      coordinator: coordinator,
+      geodata: geodata,
+      subscriptions: SubscriptionService.forTesting(
+        database: db,
+        loadRows: (_) async => throw UnimplementedError(),
+        schedulePing: (_) {},
+      ),
+      ping: PingService.forTesting(database: db, runBatch: (_, _) async => []),
+      automation: AndroidAutomationService(api: native, supported: true),
+      clear: () async {
+        expect(native.blocked, isTrue);
+        expect(native.clears, 1);
+      },
+    );
+    await cleanup.runForRestore(() async {
+      expect(native.blocked, isTrue);
+    });
+    expect(native.clears, 0);
+    expect(native.blocked, isFalse);
+    await expectLater(
+      cleanup.runForRestore(() async => throw StateError('restore failed')),
+      throwsStateError,
+    );
+    expect(native.blocked, isFalse);
+    expect(native.clears, 0);
+    native.failBlock = true;
+    final stopsBefore = stops;
+    await expectLater(cleanup.clearFromSettings(), throwsA(isA<AppFailure>()));
+    expect(stops, stopsBefore);
+    expect(native.clears, 0);
+    native.failBlock = false;
+    expect(await cleanup.clearFromSettings(), isTrue);
+    expect(native.clears, 1);
+    expect(native.blocked, isFalse);
+  });
+}
+
+class _AutomationHost extends AndroidAutomationHostApi {
+  bool blocked = false;
+  bool failBlock = false;
+  int clears = 0;
+  @override
+  Future<void> setStartBlocked(bool value) async {
+    if (value && failBlock) throw StateError('Cannot block native starts');
+    blocked = value;
+  }
+
+  @override
+  Future<void> clear() async {
+    expect(blocked, isTrue);
+    clears++;
+  }
 }
 
 CoreConfigCompanion _node(String name) => outboundCompanion({

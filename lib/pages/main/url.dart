@@ -14,6 +14,7 @@ import 'package:onexray/pages/settings/backup/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/page.dart';
 import 'package:onexray/pages/advanced/tunnel/apple/wifi.dart';
 import 'package:onexray/pages/advanced/tunnel/android/page.dart';
+import 'package:onexray/pages/advanced/tunnel/android/automation/page.dart';
 import 'package:onexray/pages/advanced/tunnel/android/apps.dart';
 import 'package:onexray/pages/advanced/tunnel/windows/page.dart';
 import 'package:onexray/pages/advanced/tunnel/interface/page.dart';
@@ -129,12 +130,15 @@ StatefulShellBranch _buildPrimaryBranch(AppPrimaryDestination primary) {
   );
 }
 
-List<GoRoute> buildScopedPageRoutes({bool? desktop}) {
+List<GoRoute> buildScopedPageRoutes({bool? desktop, bool? android}) {
   final onDesktop = desktop ?? AppPlatform.isDesktop;
+  final onAndroid = android ?? AppPlatform.isAndroid;
   return _pageRoutes
       .where(
         (route) =>
-            onDesktop || route.destination != AppPageDestination.localApi,
+            (onDesktop || route.destination != AppPageDestination.localApi) &&
+            (onAndroid ||
+                route.destination != AppPageDestination.androidAutomation),
       )
       .map((route) {
         if (route.destination == AppPageDestination.appUpdate) {
@@ -192,6 +196,10 @@ final _pageRoutes = <_PageRoute>[
   _route(AppPageDestination.settings, (_, _) => const SettingsPage()),
   _route(AppPageDestination.localApi, (_, _) => const LocalApiPage()),
   _route(
+    AppPageDestination.androidAutomation,
+    (_, _) => const AndroidAutomationPage(),
+  ),
+  _route(
     AppPageDestination.appleVpn,
     (_, state) => _withExtra<PolicyEditorDraft>(
       state,
@@ -217,6 +225,10 @@ final _pageRoutes = <_PageRoute>[
       state,
       (draft) => AndroidVpnPage(
         draft: draft,
+        openAutomation: AppPlatform.isAndroid
+            ? (context) =>
+                  context.pushScoped(AppPageDestination.androidAutomation)
+            : null,
         openApps: (context, mode, selected) => context.pushScoped<List<String>>(
           AppPageDestination.androidApps,
           extra: (mode, selected),
