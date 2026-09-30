@@ -39,7 +39,9 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-      final rows = await XrayShareReader().readXrayJsonOutbounds(json);
+      final rows = await XrayShareReader().readOutbounds(
+        (json['outbounds'] as List).cast<Map<String, dynamic>>(),
+      );
 
       expect(rows, hasLength(3));
       expect(
@@ -89,7 +91,9 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-    final rows = await XrayShareReader().readXrayJsonOutbounds(json);
+    final rows = await XrayShareReader().readOutbounds(
+      (json['outbounds'] as List).cast<Map<String, dynamic>>(),
+    );
 
     expect(rows.map((row) => row.name.value), ['Canonical', 'Alias']);
   });
@@ -132,7 +136,9 @@ void main() {
   ]
 }
 ''') as Map<String, dynamic>;
-      final rows = await XrayShareReader().readXrayJsonOutbounds(json);
+      final rows = await XrayShareReader().readOutbounds(
+        (json['outbounds'] as List).cast<Map<String, dynamic>>(),
+      );
 
       expect(rows.map((row) => row.name.value), [
         'Canonical',
@@ -163,7 +169,9 @@ void main() {
       ],
     };
 
-    final rows = await XrayShareReader().readXrayJsonOutbounds(xrayJson);
+    final rows = await XrayShareReader().readOutbounds(
+      (xrayJson['outbounds'] as List).cast<Map<String, dynamic>>(),
+    );
 
     expect(rows.single.name.value, 'Imported Node');
     final wrapper = jsonDecode(
@@ -177,19 +185,17 @@ void main() {
   });
 
   test('uses protocol as the tag when a share has no node name', () async {
-    final rows = await XrayShareReader().readXrayJsonOutbounds({
-      'outbounds': [
-        {
-          'protocol': 'vless',
-          'settings': {
-            'address': 'example.com',
-            'port': 443,
-            'id': '00000000-0000-0000-0000-000000000000',
-            'encryption': 'none',
-          },
+    final rows = await XrayShareReader().readOutbounds([
+      {
+        'protocol': 'vless',
+        'settings': {
+          'address': 'example.com',
+          'port': 443,
+          'id': '00000000-0000-0000-0000-000000000000',
+          'encryption': 'none',
         },
-      ],
-    });
+      },
+    ]);
 
     expect(rows.single.name.value, 'vless');
     final wrapper = jsonDecode(

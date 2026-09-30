@@ -32,18 +32,13 @@ Future<List<int>> allocateRuntimePorts(
       2,
       excludePorts: excludePorts.isEmpty ? null : excludePorts,
     );
-    if (candidates.length == 2 &&
-        candidates.toSet().length == 2 &&
-        candidates.every(
-          (port) => port > 0 && port <= 65535 && !excludePorts.contains(port),
-        ) &&
-        !rawInbounds.any(
-          (entry) =>
-              entry is Map &&
-              candidates.any(
-                (port) => ConnectionCompiler.portIncludes(entry['port'], port),
-              ),
-        )) {
+    if (!rawInbounds.any(
+      (entry) =>
+          entry is Map &&
+          candidates.any(
+            (port) => ConnectionCompiler.portIncludes(entry['port'], port),
+          ),
+    )) {
       return candidates;
     }
   }

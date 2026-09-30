@@ -205,9 +205,6 @@ class SubscriptionService {
           rows,
           nextSubId,
         );
-        if (count != rows.length) {
-          throw StateError('insert subscription configs failed');
-        }
         return SubscriptionInsertResult(
           status: SubscriptionUpdateResult.success,
           subId: nextSubId,
@@ -464,9 +461,6 @@ class SubscriptionService {
         loaded.rows,
         current.id,
       );
-      if (count != loaded.rows.length) {
-        throw StateError('replace subscription configs failed');
-      }
       final updated = current.copyWith(
         timestamp: DateTime.now(),
         uploadBytes: Value(loaded.userInfo?.uploadBytes),

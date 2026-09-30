@@ -62,15 +62,20 @@ void main() {
           throwsA(isA<LibXrayInvokeException>()),
         );
       }
-      response = {
-        'success': true,
-        'data': {'outbounds': 'not a list'},
-        'error': '',
-      };
-      await expectLater(
-        AppHostApi().convertShareLinksToXrayJson('fixture'),
-        throwsFormatException,
-      );
+      for (final invalid in [
+        'not a list',
+        [valid, 'not an outbound'],
+      ]) {
+        response = {
+          'success': true,
+          'data': {'outbounds': invalid},
+          'error': '',
+        };
+        await expectLater(
+          AppHostApi().convertShareLinksToXrayJson('fixture'),
+          throwsFormatException,
+        );
+      }
     },
     skip: !(Platform.isMacOS || Platform.isIOS || Platform.isAndroid),
   );

@@ -167,16 +167,22 @@ class AppHostApi {
           ).toJson(),
         ),
       );
-      if (resp.data != null) {
-        if (resp.success) {
-          final ports = GetFreePortsResponse.fromJson(resp.data!);
-          if (ports.ports != null) {
-            return ports.ports!;
-          }
+      if (resp.success && resp.data != null) {
+        final ports = GetFreePortsResponse.fromJson(resp.data!).ports;
+        if (ports != null &&
+            ports.length == num &&
+            ports.toSet().length == num &&
+            ports.every(
+              (port) =>
+                  port > 0 &&
+                  port <= 65535 &&
+                  !(excludePorts?.contains(port) ?? false),
+            )) {
+          return ports;
         }
       }
       throw LibXrayInvokeException(
-        resp.error.isEmpty ? 'No free ports returned' : resp.error,
+        resp.error.isEmpty ? 'Invalid free ports response' : resp.error,
       );
     } catch (error, stackTrace) {
       _reportUnexpected('getFreePorts', error, stackTrace);
@@ -203,7 +209,8 @@ class AppHostApi {
       throw LibXrayInvokeException(response.error);
     }
     final outbounds = data['outbounds'];
-    if (outbounds is! List) {
+    if (outbounds is! List ||
+        outbounds.any((value) => value is! Map<String, dynamic>)) {
       throw const FormatException('Invalid import outbounds');
     }
     return outbounds.cast<Map<String, dynamic>>();
