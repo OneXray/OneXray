@@ -40,6 +40,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          check-latest: true
+
       - name: Download build artifacts
         env:
           GH_TOKEN: ${{ github.token }}

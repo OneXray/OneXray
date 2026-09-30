@@ -41,6 +41,8 @@ Cross-platform Flutter Xray-core client. Current contracts are indexed in
   dated releases, substantive commits and maintainer responses to
   issues/PRs, alongside current SDK/platform compatibility. Record the evidence
   and maintenance risks; popularity or a working demo alone is insufficient.
+- Keep `LIBXRAY_REF` in `.github/workflows/build.yml` set to `main` unless the
+  user explicitly instructs otherwise.
 - Edit source models, ARB files, `pigeon/message.dart` or FFI definitions, then
   regenerate the corresponding outputs. Never hand-edit generated Dart,
   Kotlin, Swift, Drift, FFI or localization code. ARB files are source files.

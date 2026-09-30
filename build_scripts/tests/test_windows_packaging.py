@@ -252,6 +252,11 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertIn("working-directory: OneXray/build_scripts", windows)
         self.assertIn("python -m unittest discover -s tests", windows)
         self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
+        self.assertIn('INNO_SETUP_MAJOR: "7"', windows)
+        self.assertIn("repos/jrsoftware/issrc/releases?per_page=100", windows)
+        self.assertIn("-not $_.draft -and -not $_.prerelease", windows)
+        self.assertIn("$asset.digest.Substring(7)", windows)
+        self.assertNotIn("innosetup-6.7.3.exe", windows)
         self.assertNotIn('"ISCC=$compiler"', windows)
 
     def test_winget_workflow_publishes_stable_exe_installers_only(self):
@@ -263,7 +268,11 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertNotIn("winget-releaser@", workflow)
         self.assertIn("contents: read", workflow)
         self.assertIn("defaults:\n      run:\n        shell: bash", workflow)
-        self.assertIn("--version '=2.16.0'", workflow)
+        self.assertIn("repos/russellbanks/Komac/releases?per_page=100", workflow)
+        self.assertIn('test("^v2\\\\.")', workflow)
+        self.assertIn(".draft == false and .prerelease == false", workflow)
+        self.assertIn("sha256sum --check", workflow)
+        self.assertNotIn("cargo-bins/cargo-binstall@", workflow)
         self.assertIn("secrets.PACKAGE_MANAGER_GITHUB_TOKEN", workflow)
         phases = ["Generate winget manifests", "Fix installer fields",
                   "Validate winget manifests", "Submit validated manifests"]
