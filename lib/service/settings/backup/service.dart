@@ -102,7 +102,7 @@ class BackupPreferences {
 class BackupPreview {
   final BackupDocument _document;
   final GeoDataRestorePlan _resources;
-  const BackupPreview(this._document, this._resources);
+  const BackupPreview._(this._document, this._resources);
   DateTime get createdAt =>
       DateTime.fromMillisecondsSinceEpoch(_document.createdAt);
   int get nodes =>
@@ -346,7 +346,10 @@ class BackupService extends Cubit<BackupState> {
     await _reload();
     final bytes = await _storage.read(_target());
     final document = await compute(_decode, bytes);
-    return BackupPreview(document, await _assets.preview(document));
+    return BackupPreview._(
+      document,
+      await _assets.geodata.previewRestore(backupSources(document)),
+    );
   });
 
   Future<int> restore(

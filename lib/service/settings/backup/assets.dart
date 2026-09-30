@@ -77,11 +77,6 @@ class BackupAssets {
     );
   });
 
-  Future<GeoDataRestorePlan> preview(BackupDocument document) async {
-    validateBackupAssets(document);
-    return geodata.previewRestore(backupSources(document));
-  }
-
   /// Caller has drained mutating modules and confirmed VPN stopped. This method
   /// owns one DB commit plus the Geodata rollback boundary, never a download.
   Future<void> restore(BackupDocument document, GeoDataRestorePlan preview) =>
@@ -194,9 +189,8 @@ void validateBackupAssets(BackupDocument document) {
         'Custom routing names must be unique and contain 1–32 characters',
       );
     }
-    decodeBackupConfiguration(row.data);
-    ConfigurationTransferService.routingDocument(
-      utf8.decode(base64Decode(row.data)),
+    ConfigurationTransferService.routingDocumentFromJson(
+      decodeBackupConfiguration(row.data),
       row.advanced
           ? ConfigurationKind.customAdvanced
           : ConfigurationKind.custom,

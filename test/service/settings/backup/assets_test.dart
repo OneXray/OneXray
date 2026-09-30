@@ -146,7 +146,7 @@ void main() {
     });
     expect(document.geoData.single.name, 'blocked');
     final decoded = decodeBackup(encodeBackup(document));
-    final preview = await assets.preview(decoded);
+    final preview = await geodata.previewRestore(backupSources(decoded));
     await assets.restore(decoded, preview);
     final restored = await db.coreConfigDao.allRawRowsWithData;
     expect(restored.length, 4);
