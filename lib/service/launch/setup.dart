@@ -71,7 +71,6 @@ class SetupService {
     await GeoDataService().ensureInstalled(
       resetOrphanedFiles: databaseWasMissing,
     );
-    await regionCodes();
   }
 
   Future<ConnectionConfiguration> configuration() async =>
@@ -128,7 +127,6 @@ class SetupService {
     final read = _readRegionCodes;
     if (read != null) return read();
     final catalog = await (await RoutingGeodataIndex.load()).regionCatalog();
-    if (catalog.regionCodes.isEmpty) throw const SetupFailure('Geodata');
     return catalog.regionCodes;
   }
 

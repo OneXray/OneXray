@@ -29,6 +29,7 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Directory workspace;
   late Directory datRoot;
   late AppDatabase db;
@@ -624,29 +625,32 @@ void main() {
     await expectFlatRoot();
   });
 
-  test('nested entries are rejected instead of being merged', () async {
-    await Directory(p.join(datRoot.path, 'nested')).create(recursive: true);
+  test('startup ignores unrelated nested entries', () async {
+    final nested = await Directory(p.join(datRoot.path, 'nested'))
+        .create(recursive: true);
+    final unrelated = File(p.join(nested.path, 'legacy.dat'));
+    await unrelated.writeAsString('legacy');
 
-    await expectLater(service.ensureInstalled(), throwsStateError);
+    await service.ensureInstalled();
+
     expect(downloads, 0);
-    expect(await db.geoDataDao.publishedRows, isEmpty);
+    expect(await service.publishedFiles(), hasLength(2));
+    expect(await unrelated.readAsString(), 'legacy');
   });
 
-  test(
-    'unregistered flat files are rejected instead of being merged',
-    () async {
-      await datRoot.create();
-      await File(p.join(datRoot.path, 'legacy.dat')).writeAsString('legacy');
+  test('startup installs defaults despite unregistered routing data', () async {
+    await datRoot.create();
+    await File(p.join(datRoot.path, 'legacy.dat')).writeAsString('legacy');
 
-      await expectLater(service.ensureInstalled(), throwsStateError);
+    await service.ensureInstalled();
 
-      expect(await db.geoDataDao.publishedRows, isEmpty);
-      expect(
-        await File(p.join(datRoot.path, 'legacy.dat')).readAsString(),
-        'legacy',
-      );
-    },
-  );
+    expect(await service.publishedFiles(), hasLength(2));
+    expect(downloads, 0);
+    expect(
+      await File(p.join(datRoot.path, 'legacy.dat')).readAsString(),
+      'legacy',
+    );
+  });
 
   for (final damage in [
     'orphan',
@@ -654,33 +658,137 @@ void main() {
     'missing index',
     'invalid index',
   ]) {
-    test('cold startup rejects $damage with an existing manifest', () async {
+    test(
+      'startup ignores unrelated $damage with an existing manifest',
+      () async {
+        await service.ensureInstalled();
+        await service.add(input());
+        await service.ensureInstalled();
+        final rows = await db.geoDataDao.publishedRows;
+        switch (damage) {
+          case 'orphan':
+            await File(p.join(datRoot.path, 'orphan.dat'))
+                .writeAsString('orphan');
+          case 'missing DAT':
+            await File(p.join(datRoot.path, 'custom.dat')).delete();
+          case 'missing index':
+            await File(p.join(datRoot.path, 'custom.json')).delete();
+          case 'invalid index':
+            await File(p.join(datRoot.path, 'custom.json')).writeAsString('{}');
+        }
+        final bytes = await rootBytes();
+        final previousDownloads = downloads;
+
+        await service.ensureInstalled();
+        await createService(db).ensureInstalled();
+
+        final index = await RoutingGeodataIndex.load(
+          database: db,
+          directory: datRoot.path,
+        );
+        expect((await index.regionCatalog()).regionCodes, contains('CN'));
+        if (damage != 'orphan') {
+          expect(index.domainFiles, isNot(contains('custom.dat')));
+        }
+
+        expect(await db.geoDataDao.publishedRows, rows);
+        expect(await rootBytes(), bytes);
+        expect(downloads, previousDownloads);
+      },
+    );
+  }
+
+  for (final damage in [
+    'missing DAT',
+    'empty DAT',
+    'missing index',
+    'empty index',
+  ]) {
+    test('startup locally overwrites both defaults after $damage', () async {
       await service.ensureInstalled();
+      await service.updateDefaults();
       await service.add(input());
-      await service.ensureInstalled();
-      final rows = await db.geoDataDao.publishedRows;
-      switch (damage) {
-        case 'orphan':
-          await File(p.join(datRoot.path, 'orphan.dat'))
-              .writeAsString('orphan');
-        case 'missing DAT':
-          await File(p.join(datRoot.path, 'custom.dat')).delete();
-        case 'missing index':
-          await File(p.join(datRoot.path, 'custom.json')).delete();
-        case 'invalid index':
-          await File(p.join(datRoot.path, 'custom.json')).writeAsString('{}');
+      final custom = (await db.geoDataDao.allRows).single;
+      final customData = await File(p.join(datRoot.path, 'custom.dat'))
+          .readAsBytes();
+      final customIndex = await File(p.join(datRoot.path, 'custom.json'))
+          .readAsBytes();
+      final beforeDownloads = downloads;
+      final file = File(
+        p.join(
+          datRoot.path,
+          damage.endsWith('DAT') ? 'geoip.dat' : 'geoip.json',
+        ),
+      );
+      if (damage.startsWith('missing')) {
+        await file.delete();
+      } else {
+        await file.writeAsString('');
       }
-      final bytes = await rootBytes();
-      final previousDownloads = downloads;
 
-      await expectLater(service.ensureInstalled(), throwsA(anything));
-      await expectLater(createService(db).ensureInstalled(), throwsA(anything));
+      await createService(db).ensureInstalled();
 
-      expect(await db.geoDataDao.publishedRows, rows);
-      expect(await rootBytes(), bytes);
-      expect(downloads, previousDownloads);
+      expect(downloads, beforeDownloads);
+      expect(
+        await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+        'bundled',
+      );
+      expect(
+        await File(p.join(datRoot.path, 'geosite.dat')).readAsString(),
+        'bundled',
+      );
+      expect((await service.publishedFiles()).length, 3);
+      expect((await db.geoDataDao.allRows).single, custom);
+      expect(
+        await File(p.join(datRoot.path, 'custom.dat')).readAsBytes(),
+        customData,
+      );
+      expect(
+        await File(p.join(datRoot.path, 'custom.json')).readAsBytes(),
+        customIndex,
+      );
     });
   }
+
+  test(
+    'manual default update can replace damaged files without a startup gate',
+    () async {
+      await service.ensureInstalled();
+      await service.add(input());
+      await File(p.join(datRoot.path, 'geoip.dat')).writeAsString('');
+      await File(p.join(datRoot.path, 'geosite.json')).writeAsString('{}');
+      await File(p.join(datRoot.path, 'custom.json')).delete();
+      await File(p.join(datRoot.path, 'orphan.dat')).writeAsString('orphan');
+      final previous = await rootBytes();
+      final previousRows = await db.geoDataDao.publishedRows;
+      failDownload = 'geosite';
+
+      await expectLater(
+        service.updateDefaults(),
+        throwsA(isA<SocketException>()),
+      );
+      expect(await rootBytes(), previous);
+      expect(await db.geoDataDao.publishedRows, previousRows);
+
+      failDownload = null;
+      revision = 'repaired';
+      await service.updateDefaults();
+      expect(
+        await File(p.join(datRoot.path, 'geoip.dat')).readAsString(),
+        'repaired',
+      );
+      expect(
+        await File(p.join(datRoot.path, 'geosite.dat')).readAsString(),
+        'repaired',
+      );
+      expect(
+        await File(p.join(datRoot.path, 'orphan.dat')).readAsString(),
+        'orphan',
+      );
+      await service.updateCustom((await db.geoDataDao.allRows).single);
+      expect(await service.publishedFiles(), hasLength(3));
+    },
+  );
 
   test(
     'failed default updates preserve every published byte in place',

@@ -13,16 +13,16 @@ import 'package:onexray/service/servers/catalog.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/menu/tray/menu.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:onexray/service/shared/menu/tray/entry.dart';
 
-Iterable<MenuItem> _descendants(List<MenuItem> items) sync* {
+Iterable<TrayMenuEntry> _descendants(List<TrayMenuEntry> items) sync* {
   for (final item in items) {
     yield item;
-    if (item.submenu != null) yield* _descendants(item.submenu!.items ?? []);
+    if (item.children != null) yield* _descendants(item.children!);
   }
 }
 
-MenuItem _item(List<MenuItem> items, String key) =>
+TrayMenuEntry _item(List<TrayMenuEntry> items, String key) =>
     _descendants(items).singleWhere((item) => item.key == key);
 
 CoreConfigCompanion _node(String name, {int source = 0, int delay = 10}) =>
@@ -152,8 +152,8 @@ void main() {
           _item(updates, 'updateDefaultGeodata').label,
           l.prototypeDefaultRoutingData,
         );
-        expect(updates.first.submenu!.items, hasLength(expectedIds.length + 2));
-        expect(updates.last.submenu!.items, hasLength(expectedIds.length + 3));
+        expect(updates.first.children, hasLength(expectedIds.length + 2));
+        expect(updates.last.children, hasLength(expectedIds.length + 3));
         expect(data.catalog.servers, hasLength(count));
         expect(data.catalog.sources, hasLength(count));
         expect(data.raws, hasLength(count));
@@ -428,7 +428,7 @@ void main() {
             validate = check;
             await check();
           };
-    await tray.onTrayMenuItemClick(MenuItem(key: 'server:$id'));
+    await tray.onMenuAction(TrayMenuEntry(key: 'server:$id'));
     expect(choices.single, {
       'expert': false,
       'selection': {'kind': 'server', 'id': id},
@@ -438,12 +438,12 @@ void main() {
       validate!(),
       throwsA(isA<AppFailure>().having((e) => e.code, 'code', 'notFound')),
     );
-    await tray.onTrayMenuItemClick(MenuItem(key: 'server:$id'));
+    await tray.onMenuAction(TrayMenuEntry(key: 'server:$id'));
     expect(choices, hasLength(1));
     expect(notifications, hasLength(1));
-    await tray.onTrayMenuItemClick(MenuItem(key: 'traffic:allVpn'));
+    await tray.onMenuAction(TrayMenuEntry(key: 'traffic:allVpn'));
     expect(choices.last, {'expert': false, 'trafficMode': 'allVpn'});
-    await tray.onTrayMenuItemClick(MenuItem(key: 'region:JP', disabled: true));
+    await tray.onMenuAction(TrayMenuEntry(key: 'region:JP', disabled: true));
     expect(choices, hasLength(2));
   });
 }

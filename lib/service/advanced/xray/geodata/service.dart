@@ -91,7 +91,6 @@ class GeoDataService {
           url: SystemGeoDatURL.geoSite.name,
         ),
       ];
-  static final _bundledNames = Assets.dat.values.map(p.basename).toSet();
 
   /// Only readers/publications of the canonical directory share this queue.
   /// Downloads and indexing of independent staging files stay outside it.
@@ -114,41 +113,11 @@ class GeoDataService {
   Future<void> _download(String url, File destination) =>
       AppEventBus.instance.trackDownload(() => _downloadFile(url, destination));
 
-  Future<void> ensureInstalled({
-    bool resetOrphanedFiles = false,
-  }) => withFiles(() async {
-    // Cold startup must recover import journals. Later checks only read valid
-    // files, so opening Home or Geodata cannot drain/reject background probes.
-    if (_installationPrepared && await _checkInstalled()) {
-      return;
-    }
-    await _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles);
-    _installationPrepared = true;
-  });
-
-  Future<bool> _checkInstalled() async {
-    _checkDefaultRows(await _db.geoDataDao.allSources);
-    final rows = await _db.geoDataDao.publishedRows;
-    final existing = await _flatNames(Directory(_root));
-    if (!rows.any((row) => row.id < 0) || existing.isEmpty) return false;
-    await _checkPublication(rows, existing);
-    return true;
-  }
-
-  Future<void> _checkPublication(
-    List<GeoDataData> rows,
-    Set<String> existing,
-  ) async {
-    final expected = {
-      ..._bundledNames,
-      for (final row in rows) '${row.name}.dat',
-      for (final row in rows) '${row.name}.json',
-    };
-    if (existing.length != expected.length || !existing.containsAll(expected)) {
-      throw StateError('Routing data files do not match the manifest');
-    }
-    await _readAll(rows);
-  }
+  Future<void> ensureInstalled({bool resetOrphanedFiles = false}) =>
+      withFiles(() async {
+        await _ensureInstalled(resetOrphanedFiles: resetOrphanedFiles);
+        _installationPrepared = true;
+      });
 
   /// App data cleanup already paused updates and owns the file queue.
   Future<void> resetAfterDataClear() =>
@@ -159,40 +128,37 @@ class GeoDataService {
     final rootWasMissing = !await root.exists();
     await _ensureRoot();
     _checkDefaultRows(await _db.geoDataDao.allSources);
-    await _recoverRestoredFiles(discard: rootWasMissing);
+    if (!_installationPrepared || rootWasMissing || resetOrphanedFiles) {
+      await _recoverRestoredFiles(discard: rootWasMissing);
+      await _recoverImportDrafts(
+        await _db.geoDataDao.publishedRows,
+        discard: rootWasMissing,
+      );
+    }
     final rows = await _db.geoDataDao.publishedRows;
-    await _recoverImportDrafts(rows, discard: rootWasMissing);
     final existing = await _flatNames(root);
-    _checkDefaultRows(rows);
     final resetPublication =
         rootWasMissing ||
         (existing.isEmpty && rows.isNotEmpty) ||
         (resetOrphanedFiles && rows.isEmpty);
-    if (!resetPublication) {
-      if (rows.isNotEmpty) {
-        await _checkPublication(rows, existing);
-        if (rows.any((row) => row.id < 0)) return;
-
-        // v1/v2 stored only custom rows. Adopt that exact flat publication by
-        // adding the new built-in manifest rows without rewriting its files.
-        await _validateDefaultFiles(_root);
+    if (!resetPublication && await _defaultFilesPresent()) {
+      if (_defaults.every((source) => rows.any((row) => row.id == source.id))) {
+        return;
+      }
+      // Older releases did not register the default pair. Reuse existing files
+      // when their indexes can supply metadata; unrelated files are not a gate.
+      try {
         await _db.transaction(() async {
-          final current = await _db.geoDataDao.publishedRows;
-          _checkDefaultRows(current);
-          if (current.length != rows.length || !current.every(rows.contains)) {
-            throw StateError('Routing data changed during installation');
-          }
           await _publishDefaults(_root, await _assetTimestamp(_root));
         });
         return;
-      }
-      if (existing.any((name) => !_bundledNames.contains(name))) {
-        throw StateError('Unregistered routing data is present');
+      } on FormatException {
+        // Unreadable default indexes are replaced with the bundled pair below.
       }
     }
 
-    // A missing root or database has no recoverable custom publication. Reset
-    // the pair to bundled defaults instead of merging untrusted orphan files.
+    // Only missing/empty default resources require a local replacement. Existing
+    // custom data and stray entries never participate in startup validation.
     final stage = await _newStage('install-');
     _FlatFileChange? change;
     try {
@@ -208,14 +174,6 @@ class GeoDataService {
         await _db.transaction(() async {
           if (resetPublication) {
             await _db.geoDataDao.clearPublished();
-          } else {
-            final current = await _db.geoDataDao.publishedRows;
-            _checkDefaultRows(current);
-            if (current.any((row) => row.id < 0)) {
-              throw StateError(
-                'Default routing data changed during installation',
-              );
-            }
           }
           await _publishDefaults(_root, timestamp);
         });
@@ -227,6 +185,16 @@ class GeoDataService {
     } finally {
       if (change == null) await _deleteStage(stage);
     }
+  }
+
+  Future<bool> _defaultFilesPresent() async {
+    for (final source in _defaults) {
+      for (final suffix in ['dat', 'json']) {
+        final file = File(p.join(_root, '${source.name}.$suffix'));
+        if (!await file.exists() || await file.length() == 0) return false;
+      }
+    }
+    return true;
   }
 
   Future<List<PublishedGeoData>> publishedFiles() =>
@@ -450,7 +418,6 @@ class GeoDataService {
       .whenComplete(() => _updateAll = null);
 
   Future<void> updateDefaults() => _updates.track(() async {
-    await withFiles(() => _ensureInstalled());
     final stage = await _newStage('download-');
     _FlatFileChange? change;
     try {
@@ -702,7 +669,7 @@ class GeoDataService {
 
   Future<void> _publishDefaults(String directory, DateTime timestamp) async {
     await _validateDefaultFiles(directory);
-    final existing = await _db.geoDataDao.publishedRows;
+    final existing = await _db.geoDataDao.allSources;
     _checkDefaultRows(existing);
     for (final source in _defaults) {
       final index = await _readIndex(
@@ -725,6 +692,7 @@ class GeoDataService {
           timestamp: timestamp,
           categoryCount: index.categoryCount!,
           ruleCount: index.ruleCount!,
+          installed: true,
         ),
       )) {
         throw StateError('Default routing data is unavailable');
@@ -758,6 +726,7 @@ class GeoDataService {
         continue;
       }
       for (final name in await _flatNames(entry)) {
+        _checkFileName(name);
         final extension = p.extension(name).toLowerCase();
         if (extension != '.dat' && extension != '.json') {
           throw StateError('Invalid routing data import journal');
@@ -789,11 +758,6 @@ class GeoDataService {
               {'geoip', 'geosite'}.contains(row.name.toLowerCase()))) {
         throw StateError('Reserved routing data identity is occupied');
       }
-    }
-    final defaults = rows.where((row) => row.id < 0).toList();
-    if (defaults.isNotEmpty &&
-        (defaults.length != 2 || defaults.any((row) => !row.installed))) {
-      throw StateError('Default routing data is incomplete');
     }
   }
 
@@ -853,7 +817,6 @@ class GeoDataService {
     }
     final root = Directory(_root);
     await root.create(recursive: true);
-    await _flatNames(root);
   }
 
   Future<Directory> _newStage(String prefix) async {
@@ -968,10 +931,9 @@ class GeoDataService {
     await for (final entry in directory.list(followLinks: false)) {
       if (await FileSystemEntity.type(entry.path, followLinks: false) !=
           FileSystemEntityType.file) {
-        throw StateError('Routing data directory must be flat');
+        continue;
       }
       final name = p.basename(entry.path);
-      _checkFileName(name);
       names.add(name);
     }
     return names;

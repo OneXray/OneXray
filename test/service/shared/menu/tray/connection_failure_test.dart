@@ -10,7 +10,7 @@ import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:onexray/service/shared/menu/tray/entry.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -51,7 +51,7 @@ void main() {
         showMainWindow: () async => shown++,
       );
 
-      await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+      await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
 
       final l = appLocalizationsNoContext();
       expect(
@@ -92,7 +92,7 @@ void main() {
           notify: (message) async => notifications.add(message),
           showMainWindow: () async => shown++,
         );
-        await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+        await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
         expect(notifications, [
           '${appLocalizationsNoContext().prototypeNotEnoughServers} (1/3)',
         ]);
@@ -121,7 +121,7 @@ void main() {
           notify: (message) async => notifications.add(message),
           showMainWindow: () async => shown++,
         );
-        await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+        await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
         final l = appLocalizationsNoContext();
         final message = error is ConnectionPlatformRequirementException
             ? l.prototypeChooseInterfaceNotice
@@ -152,7 +152,7 @@ void main() {
           notify: (_) async => notifications++,
           showMainWindow: () async => shown++,
         );
-        await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+        await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
         expect(notifications, 0);
         expect(shown, 0);
       },
@@ -172,7 +172,7 @@ void main() {
       },
       showMainWindow: () async => shown++,
     );
-    await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+    await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
     expect(notifications, 1);
     expect(shown, 0);
   });
@@ -187,7 +187,7 @@ void main() {
         notify: (_) async => throw StateError('Notifications unavailable'),
         showMainWindow: () async => shown++,
       );
-      await tray.onTrayMenuItemClick(MenuItem(key: 'startVpn'));
+      await tray.onMenuAction(TrayMenuEntry(key: 'startVpn'));
       expect(shown, 1);
     },
   );
