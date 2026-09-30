@@ -1,105 +1,75 @@
 # 订阅、导入与分享
 
-标准分享格式用于与其它客户端互通；OneXray App Link 与完整 JSON承担不同的
-保真边界，不能互相替代。所有导入在显式用户操作后提交，系统链接先进入新导入流程。
+标准分享用于客户端互通，App Link 与完整 JSON 各有保真边界；备份走 [独立协议](backup.md)，普通导入不猜测备份格式。
+导入由显式用户操作提交，系统链接先进入新导入流程。
 
 ## 订阅
 
-添加和刷新复用相同流程：下载正文、可选 Age 内存解密、libXray 解析及校验、App 映射入库，
-可用节点大于零才创建/更新。没有导入预览或二次确认；零可用、网络/解析/事务失败保留
-旧数据与表单。libXray 只返回有效节点列表，App 只报告本轮实际导入的节点数，
-不统计识别失败数，不比较单节点 hash，不虚报新增/更新数。
+添加和刷新共用 HTTPS 下载、可选 Age 内存解密、libXray 解析及事务入库。
+只有可用节点大于零才创建/替换；网络、HWID、解密、解析、零可用或写库失败均保留旧节点、套餐与更新时间及输入草稿。
+报告本轮实际导入数，不比较单节点 hash，不虚报新增/更新或识别失败数量。
+普通节点/订阅添加和刷新直接提交，无导入预览或二次确认；含 Raw/Custom/Geodata 的混合导入保留预览确认。
 
-编辑只保存名称、URL、Age 和 HWID 设置，并使旧下载请求失效；不下载、不替换现有节点，也不要求
-当前已有可用节点。新的 URL、密钥和 HWID 设置用于后续刷新。
-
-新增和编辑共用名称、HTTPS URL 与 Age 密钥成对输入规则，页面反馈不替代服务检查。
-重复 URL 在写入事务中拒绝；新增下载前的重复检查只用于快速反馈，下载后仍需复核，
-并发导入同一来源不能生成重复订阅或部分节点。
-
-替换时保留当前运行中的全部节点、当前固定节点、配置的最终出口及收藏原行；
-这些保留行不计入本轮导入数。退出整个保护集合后才允许后续更新替换。
-成功结果进入现有自动测速队列，测量延迟与出口地区；后台结果不热切换当前连接。
-
-Age 公钥和私钥仅保存在订阅中，不随普通分享发出。分享只含算法，接收端生成
-新的密钥对。详见 [Age 合同](age-encrypted-subscriptions.md)。
+名称、HTTPS URL、Age 成对输入由服务检查；重复 URL 在写入事务中拒绝，下载前快速检查不替代提交复核。
+编辑只保存来源设置并使旧请求失效，不下载、不替换现有节点，也不要求已有可用节点。
+更新保护当前运行的全部节点、固定节点、最终出口和收藏原行，保护行不计入本轮导入数；
+退出保护集合后后续更新才可替换。成功导入进入自动测速队列，不等待测速，不热切换运行节点。
 
 ### 套餐信息
 
-添加或刷新订阅时读取同一 HTTPS 响应的 `Subscription-Userinfo`，不增加请求、轮询或更新配置。
-仅处理 `upload`、`download`、`total`（非负整数字节）及 `expire`（Unix 秒）；名称不区分大小写，
-未知字段忽略。无效或重复的字段视为未提供，不影响其他有效字段，也不阻断有效节点导入。
-整数溢出、负数、小数及不可展示的日期不作为有效信息。没有任何有效字段时没有套餐缓存。
+从同一次响应的 `Subscription-Userinfo` 读取 `upload/download/total` 非负整数字节和 `expire` Unix 秒。
+字段名不区分大小写，未知、重复、无效、溢出及不可展示日期分别按未提供处理，不阻断节点导入。
+`total=0` 表示无限，`expire=0` 表示无到期，缺失不等于无限；上下行齐全才计算已用，已用及正额度齐全才计算剩余。
+超额剩余显示零，已用保留原值；IEC 单位，日期/获取时间使用本地时间。过期或用尽只提示，不限制连接和选节点。
 
-明确的 `total=0` 表示无限额度，`expire=0` 表示无到期时间；字段缺失不是无限。
-该约定参考 [3x-ui 的额度说明](https://github.com/MHSanaei/3x-ui/blob/main/docs/content/docs/en/config/subscription.mdx)
-及 [Remnawave 的到期字段实现](https://github.com/remnawave/backend/blob/main/src/modules/subscription/utils/get-user-info.headers.ts)。
-只有上下行均已提供才能求已用量，只有已用量与正总额度均已知才能求剩余量；超额时剩余显示零，
-已用仍显示提供方的原数值。界面使用 IEC 字节单位，到期日期和获取时间转换为本地时间。
-套餐过期或用尽只作提示，不禁用连接、不删除节点、不影响选节点或路由。
-
-套餐与可用节点在同一事务提交，信息获取时间来自本次响应读取时间。
-网络、HWID、解密、零可用节点或写库失败时，节点、套餐及套餐获取时间一并保留。
-成功更新但没有有效套餐信息时清除旧缓存；部分信息只保存本次提供的字段，不拼接旧响应。
-仅重命名保留套餐，URL、Age 或 HWID 请求设置改变后清空套餐，等下次正常更新；
-旧来源迟到的响应沿用现有请求失效检查，不能覆盖编辑或删除结果。
-
-列表显示简短摘要，已有订阅分组详情显示各项数据与原获取时间，明确它来自提供方且非实时。
-部分字段缺失时在详情显示“未提供”，无任何信息时不创建空套餐区域。
-套餐缓存不是 App 流量统计，不累加到当前连接，不分享或加入连接配置备份；
-恢复订阅只恢复来源，后续正常更新重新读取套餐。
+套餐和节点在同一事务提交，获取时间来自响应；成功但无有效信息清除旧缓存，部分信息不拼接旧响应。
+仅重命名保留缓存；URL/Age/HWID 请求设置变化后清空，迟到响应不得覆盖编辑或删除结果。
+列表摘要和分组详情明确“提供方信息、非实时”，无数据隐藏区域，缺字段显示未提供。
+套餐不是 App 流量，不增加请求、定时器或周期，不进入分享和备份；恢复后由正常更新重新获取。
 
 ### 可选设备标识（HWID）
 
-添加和编辑共用“发送设备标识（HWID）”开关，默认关闭，只有用户明确开启后才发送。
-初次下载使用表单选择，后续手动、自动和快捷操作的更新使用已保存设置；服务器响应和导入链接
-不能自动开启。Age 与 HWID 可以组合使用，互不替代。
+发送开关默认关闭，由用户明确开启，响应和导入链接不能代为开启；Age 与 HWID 可组合。
+标识是每订阅独立的随机 UUID，不读取硬件/广告/系统标识。生成后永久保留于该来源：
+关闭再开、改名、改 URL/提供商、失败重试、重启和升级均不重建；删除重建或清理数据才产生新标识。
+跨源编辑 URL 时关闭发送开关，用户重新开启仍发送原标识。删除本地来源不删除提供商设备记录。
 
-标识为每个订阅独立生成的随机 UUID，不读取硬件、广告或系统设备标识。一旦生成即保持不变：
-关闭再开启、改名、修改订阅地址（包括更换提供商）以及 App 重启/升级都保留原标识。
-表单中的失败重试、清空后重新填写地址同样沿用草稿标识，保存时不重新生成。
-跨源修改地址时表单仍关闭发送开关；用户重新开启后发送原标识，而不是生成新标识。
-同源指协议、主机和端口相同。只有删除后重建订阅或清除数据才会获得新标识，可能占用
-提供商的另一个设备名额；关闭开关或删除本地订阅不会删除提供商保存的设备记录。
+只在本次请求附加 `x-hwid`，不写共享客户端默认头，不附加型号/系统版本。
+HTTPS 同源重定向保留，跨源移除且后续跳回也不恢复；同源按协议/主机/端口判断。
+Age 公钥沿用同一下载上下文；HTTPS 降级拒绝。跨源服务须由用户直接配置并授权该 URL。
+先检查 HWID 拒绝头再解析正文，HTTP 200 空正文/占位节点不能绕过拒绝；非成功状态也保留具体拒绝原因。
+HWID、发送开关不随普通分享发出，也不参与 Xray 配置或 VPN 校验。
 
-仅在这次订阅请求中附加 `x-hwid`，保留现有 User-Agent，不发送额外的设备型号或系统版本字段。
-不得把标识写入共享 HTTP 客户端默认头。HTTPS 同源重定向保留标识，跨源跳转时移除，
-即使后续跳回原站也不恢复；Age 公钥维持原有重定向行为。需要在另一个源接收 HWID 的提供商，
-应由用户确认并直接配置该源的订阅地址，不自动扩大授权范围。
+## Age 加密订阅
 
-下载完成后先检查 HWID 拒绝响应头，再交给 libXray 解密和解析。HTTP 200 中的空正文或占位节点
-不能绕过拒绝结果。区分“需要受支持的标识”“设备上限或注册失败”和旧协议的笼统拒绝；
-非成功 HTTP 状态也优先保留这些具体原因。拒绝时不新建/覆盖节点、不修改时间戳、不触发测速、
-重连或 VPN 状态变更。只有正常解析得到可用节点后才按原有事务边界提交。
+`ageSecretKey` 用于本地解密，`agePublicKey` 经 `X-Age-Public-Key` 发给服务端；
+两者同时存在或同时为空，App 不从私钥补公钥、不验证是否匹配。
+libXray 生成 X25519 或 ML-KEM-768 + X25519 混合密钥；生成覆盖已有输入需确认，手动编辑保存不触发该确认。
 
-订阅分享不包含 HWID、发送开关或 Age 密钥。HWID 只是提供商在订阅下载时使用的客户端标识，
-不等同于硬件认证，不参与 Xray 配置或 VPN 启动校验。
+libXray 在内存中识别、解密官方 age armor 后解析 outbounds；明文即使带私钥仍按普通订阅处理。
+解密明文上限 16 MiB，区分私钥无效/缺少、解密失败、内容过大；损坏 armor 映射为解密失败。
+失败不能以空结果覆盖旧订阅。Age 只保护响应负载，不隐藏订阅 URL、不替代 HTTPS 或证明来源可信。
+
+Age App Link 只携带算法，不带公私钥；接收端生成新密钥对，服务端须能响应新公钥。
+[备份](backup.md) 保留完整密钥对且文件未加密，写入前明确提示风险；恢复不重新生成。
+日志不得记录私钥、完整密钥对、解密正文或含密钥上下文；明文不落临时文件。
 
 ## 节点与标准格式
 
-- VMess / VLESS 使用 VMessAEAD / VLESS 分享链接标准，不支持旧版 VMessQrCode
-  （`vmess://Base64(JSON)`）。支持 Hysteria2（`hysteria2://` / `hy2://`）、SS、SOCKS、
-  Trojan 以及 Base64 / Age 订阅封装，不支持 Clash/Mihomo。
-- Hysteria2 支持认证、IPv6、SNI、Salamander、多端口和节点名称；导出统一使用
-  `hysteria2://`。TLS 不允许跳过校验，无法等价转换的 `pinSHA256` 拒绝导入；显式 Xray
-  `pcs` / `vcn` 等扩展仍按 Xray 语义处理。端口跳跃使用直接 UDP socket，不保证链式代理可用。
-  Windows/Linux 将所选网卡同步到跳跃 socket，其他平台移除导入的网卡绑定；只改运行副本。
-  URI 字段与导出边界见 [libXray 分享合同](../../libXray/README.md#parse_share)。
-- 分享链接与普通 Xray JSON 节点导入只提取 outbounds，不导入其根级路由/DNS。
-- 完整 outbound 映射直接保存，不经过字段表单重建；标准分享是协议白名单投影，可能有损。
-- 节点名称使用 `tag`；仅在键不存在时兼容旧 `name`，已有 tag 优先，无名节点以协议名补齐。
-- `sendThrough` 保留本地绑定语义，不参与命名。协议与字段的接受/拒绝以 libXray 为准，
-  App 不再额外检查 VMess security、Shadowsocks method 等规范值，也不自行补写这些字段。
-- KCP seed/header 和已废弃 `allowInsecure` 不在标准分享合同内。
-- 文件直接调用系统选择器；扫码仅 iOS/Android，不能用桌面入口冒充相机支持。
-- 普通节点在用户提交文本/JSON、选中文件或完成扫码后直接解析并写入，不展示导入预览或
-  二次确认。解析和写入期间保留 loading；无有效节点不写入，失败保留输入供重试。
-  成功后显示 toast 并进入自动测速队列，但不等待测速结束。
-- 混合输入中含 Raw、Custom 或 Geodata 时，保留完整配置与数据文件的预览确认流程。
+- 支持 VMessAEAD/VLESS 标准链接、Hysteria2（`hysteria2://` / `hy2://`）、SS、SOCKS、Trojan 和 Base64/Age 订阅。
+  旧 VMessQrCode（`vmess://Base64(JSON)`）及 Clash/Mihomo 不在范围。
+- Hysteria2 支持认证、IPv6、SNI、Salamander、多端口和名称，导出统一 `hysteria2://`；
+  禁止跳过 TLS 校验，无法等价转换的 `pinSHA256` 拒绝。字段及导出限制见 [libXray](../../libXray/README.md#parse_share)，
+  运行网卡策略见 [配置合同](xray-configuration.md)。
+- 链接与普通 Xray JSON 只提取 outbounds，不导入根级 routing/DNS；完整 outbound 映射直接保存，
+  不经表单重建。标准分享是协议白名单投影，可能有损；字段接受/拒绝由 libXray 决定。
+- 名称使用 `tag`；仅键缺失时兼容旧 `name`，无名以协议补齐。`sendThrough` 保留绑定语义，不参与命名。
+  KCP seed/header、废弃 `allowInsecure` 不在标准分享内，App 不另校验协议算法或补写规范字段。
+- 文件直接使用系统选择器，扫码仅 iOS/Android。失败保留输入，成功 toast 后提交测速，不等待测速完成。
 
 ## App Link
 
-固定 scheme/host 为 `onexray://onexray.com`，当前接受：
+规范 scheme/host 为 `onexray://onexray.com`：
 
 ```text
 /config/add?type=outbound|raw|custom|custom-advanced&data=<base64>#<name>
@@ -107,54 +77,24 @@ Age 公钥和私钥仅保存在订阅中，不随普通分享发出。分享只�
 /dat/add?type=domain|ip&url=<https-url>#<name>
 ```
 
-旧 Profile/full 类型拒绝导入；旧库中保留的退休行不重新进入业务。
-解析器严格检查 scheme、host、path、类型、重复/未知参数与 Base64。订阅和 Geodata URL
-只接受 HTTPS。分享生成上述规范格式，不为退休类型生成链接。
+解析严格检查 scheme、host、path、类型、重复/未知参数、Base64；订阅和 Geodata URL 只接受 HTTPS。
+旧 Profile/full 拒绝，不为退休类型生成链接；类型显式指定，不根据字段猜常规/高级。
+Raw 保留原文语义，高级不经过普通模型；两类 Custom 共用名称唯一和三份上限，详见 [配置合同](xray-configuration.md)。
 
-Raw/Custom 使用共享完整配置交换服务，根部允许 `name`。Custom 导出附带所需的
-`geodata.assets` 文件名和 HTTPS 下载地址，省略默认数据；文件名冲突拒绝，存储时移除
-导入专用 `geodata`。下载、确认、发布、回滚及冷启动恢复统一遵循
-[Geodata 发布合同](data-management.md#geodata-发布)。Raw 保留用户原文的运行语义，
-普通节点导入不能代替完整 Raw 导入。
-
-常规自定义路由仍使用 `custom`，高级 JSON 模板使用 `custom-advanced`；不根据字段猜类型。
-裸高级 JSON 由高级编辑器导入，带类型的分享链接可使用现有 App Link 混合导入。
-两种路由共用名称唯一和三份上限，高级不经过普通 State/模型转换。
-Geodata 扫描覆盖路由、DNS server/hosts、入站嗅探排除项及 DNS outbound 规则，
-只识别这些字段中的标准 ext 引用，不扫描用户名、密码或任意 JSON 字符串。
-
-分享或导出前提示敏感数据风险；不要把 Age 私钥、完整配置或解密正文写入日志。
-超额旧 Raw 与升级边界见 [数据管理](data-management.md)。
-单文件 [连接配置备份](backup.md) 走独立入口与协议，保留订阅 Age 密钥/HWID，但不保存订阅节点缓存；
-不是普通分享的一种编码，也不由普通节点/Raw/Custom 导入器自动识别。
+Raw/Custom 完整交换可携带 `geodata.assets` 文件名与 HTTPS URL，省略默认数据，存储前移除交换元数据。
+依赖只扫描 routing、DNS、入站嗅探和 DNS outbound 等语义位置的标准 ext 引用，不扫描凭据或任意字符串。
+冲突、下载、确认、发布、回滚统一遵循 [Geodata](data-management.md#geodata-发布)。
+分享/导出完整配置前提示敏感信息风险；旧超额 Raw 完整保留。
 
 ## 系统分享
 
-`OutgoingShare` 在 iOS、Android、macOS 和 Windows 通过 `share_plus` 发送已准备的文本；
-Linux 使用明确的复制操作，不使用插件的邮件回退。Windows EXE 与 MSIX 共用分发策略。
-文本、链接顺序和配置编码仍由现有生成器负责；分发不下载 Geodata、不持久化数据或启动 VPN。
-原生标题与主题使用显示名称，空名称回退为 `OneXray`。链接仍作为文本发送，不改为
-URI 元数据或临时文件分享。
+`OutgoingShare` 在 iOS/Android/macOS/Windows 使用 `share_plus` 发送已有文本；
+Linux 显式复制，不使用邮件回退。标题/主题用显示名称，空名回退 OneXray；链接仍是文本，不改 URI 元数据或临时文件。
+分发不下载、不保存资产、不启动 VPN；二维码、JSON、日志和运行配置导出仍为明确文件保存。
 
-共享页面操作负责按钮内 loading、防重复提交、Raw/Custom 敏感数据确认和调用失败提示。
-分发前测量实际按钮位置；位置缺失或不可用时省略，让原生插件定位。准备期间页面已关闭
-或隐藏时，不再弹出分享窗口；原生分享开始后离开页面，不等待或取消系统操作。
-迟到的结果不导航，也不在无关页面显示提示。
+页面操作负责局部 loading、防重复提交、Raw/Custom 风险确认和异常反馈；分发前测量按钮位置，无有效位置则省略。
+准备期间页面已关闭/隐藏不再弹系统窗口；原生分享开始后不取消，迟到结果不导航、不提示无关页面。
+原生 success/dismissed/unavailable 静默完成，不证明送达、不触发 toast、复制回退或重试；
+抛异常保留具体原因。Linux 复制成功显示两秒 toast 并留在页面，不增加全局分享队列或轮询。
 
-原生 `success`、`dismissed` 和 `unavailable` 均静默完成，不代表送达，不触发成功/失败
-toast、复制回退、重试或自动关闭页面。抛出的异常保留具体原因。Linux 仅在复制成功后
-显示两秒 toast，并保留页面。不增加全局分享队列、生命周期轮询或额外的原生超时。
-
-二维码图片保存与 JSON、日志、运行配置导出仍是明确的文件保存操作。
-入站 App Link 与配置导入事务独立于对外系统分享。
-
-## 实现入口
-
-- 新导入：`lib/service/servers/import.dart`、`lib/pages/servers/import/`
-- 订阅：`lib/service/servers/subscription/`
-- 标准解析：`lib/service/shared/share/xray_share_reader.dart`
-- 链接：`lib/service/shared/share/app_link_parser.dart`、`app_link_generator.dart`
-- Raw/Custom 交换：`lib/service/shared/share/configuration_transfer.dart`
-- 节点/订阅分享页：`lib/pages/shared/share/`
-- 对外分发：`lib/service/shared/share/outgoing_share.dart`
-- 共享界面操作：`lib/pages/shared/share/action.dart`
+真实提供方、安装包升级、系统分享与输入法等平台检查遵循 [验证边界](validation.md)；自动测试不代替这些验收。

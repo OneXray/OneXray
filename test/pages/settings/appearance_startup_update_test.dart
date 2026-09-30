@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
@@ -14,7 +16,12 @@ import 'package:onexray/pages/settings/theme/page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/settings/app_update/service.dart';
 import 'package:onexray/service/shared/event_bus/enum.dart';
+import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+// ignore: depend_on_referenced_packages
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   Widget app(Widget child) {
@@ -33,13 +40,13 @@ void main() {
     );
   }
 
-  testWidgets('desktop settings merge startup and macOS options', (
+  testWidgets('desktop startup switches forward the selected values', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    void noop() {}
+    final changes = <String, bool>{};
     await tester.pumpWidget(
       app(
         DesktopSettingsView(
@@ -50,10 +57,10 @@ void main() {
             loading: false,
           ),
           showMacOSOptions: true,
-          onLaunchAtLoginChanged: (_) {},
-          onStartHiddenChanged: (_) {},
-          onHideDockIconChanged: (_) {},
-          onOpenSystemSettings: noop,
+          onLaunchAtLoginChanged: (value) => changes['login'] = value,
+          onStartHiddenChanged: (value) => changes['hidden'] = value,
+          onHideDockIconChanged: (value) => changes['dock'] = value,
+          onOpenSystemSettings: () {},
         ),
       ),
     );
@@ -64,6 +71,12 @@ void main() {
     expect(find.text('Connect on App Launch'), findsNothing);
     expect(find.text('Hide Dock icon'), findsOneWidget);
     expect(find.byType(ShadSwitch), findsNWidgets(3));
+    final switches = find.byType(ShadSwitch);
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(switches.at(index));
+      await tester.pump();
+    }
+    expect(changes, {'login': false, 'hidden': false, 'dock': false});
     expect(tester.takeException(), isNull);
   });
 
@@ -73,6 +86,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
+    bool? startHidden;
+    var loginChanges = 0;
     await tester.pumpWidget(
       app(
         DesktopSettingsView(
@@ -81,8 +96,8 @@ void main() {
             loading: false,
           ),
           showMacOSOptions: false,
-          onLaunchAtLoginChanged: (_) {},
-          onStartHiddenChanged: (_) {},
+          onLaunchAtLoginChanged: (_) => loginChanges++,
+          onStartHiddenChanged: (value) => startHidden = value,
           onHideDockIconChanged: (_) {},
           onOpenSystemSettings: () {},
         ),
@@ -92,6 +107,11 @@ void main() {
 
     final switches = tester.widgetList<ShadSwitch>(find.byType(ShadSwitch));
     expect(switches.map((item) => item.enabled), [false, true]);
+    await tester.tap(find.byType(ShadSwitch).first);
+    await tester.tap(find.byType(ShadSwitch).last);
+    await tester.pump();
+    expect(loginChanges, 0);
+    expect(startHidden, isTrue);
     expect(tester.takeException(), isNull);
   });
 
@@ -109,6 +129,68 @@ void main() {
     expect(find.text('Follow the device appearance'), findsOneWidget);
     expect(find.text('Always use the dark appearance'), findsOneWidget);
     expect(find.byIcon(LucideIcons.check), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('theme selection stays a draft until Save persists and returns', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final previousPreferences = SharedPreferencesAsyncPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(
+      () => SharedPreferencesAsyncPlatform.instance = previousPreferences,
+    );
+    final bus = AppEventBus();
+    addTearDown(bus.close);
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: TextButton(
+              onPressed: () => context.push('/theme'),
+              child: const Text('Open theme'),
+            ),
+          ),
+        ),
+        GoRoute(path: '/theme', builder: (_, _) => const ThemePage()),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: AppTheme.light,
+        routerConfig: router,
+        localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => ShadTheme(
+          data: ShadThemeData(colorScheme: const ShadBlueColorScheme.light()),
+          child: ShadToaster(child: child!),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open theme'));
+    await tester.pumpAndSettle();
+    final l = AppLocalizations.of(tester.element(find.byType(ThemePage)))!;
+    await tester.tap(find.text(l.themePageDark));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<ThemeChoiceView>(find.byType(ThemeChoiceView)).selected,
+      ThemeCode.dark,
+    );
+    expect(bus.state.themeCode, ThemeCode.system);
+    expect(await PreferencesKey().readThemeCode(), isNull);
+
+    await tester.tap(find.text(l.buttonSave));
+    await tester.pumpAndSettle();
+    expect(await PreferencesKey().readThemeCode(), ThemeCode.dark.name);
+    expect(bus.state.themeCode, ThemeCode.dark);
+    expect(find.byType(ThemePage), findsNothing);
+    expect(find.text('Open theme'), findsOneWidget);
+    expect(find.text(l.prototypeSettingsSaved), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -130,13 +212,14 @@ void main() {
       updateUri: Uri.parse('https://example.com/update'),
       destination: AppUpdateDestination.githubRelease,
     );
+    final actions = <String>[];
     await tester.pumpWidget(
       app(
         AppUpdateDialogView(
           updateInfo: info,
-          onLater: () {},
-          onSkip: () {},
-          onUpdate: () {},
+          onLater: () => actions.add('later'),
+          onSkip: () => actions.add('skip'),
+          onUpdate: () => actions.add('update'),
           onOpenLink: (_) {},
         ),
       ),
@@ -147,6 +230,17 @@ void main() {
     expect(find.text('Skip this version'), findsOneWidget);
     expect(find.text('Go to update'), findsOneWidget);
     expect(find.byType(Scrollable), findsWidgets);
+    await tester.drag(
+      find.byType(SingleChildScrollView).first,
+      const Offset(0, -1800),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Release note item 30'), findsWidgets);
+    for (final label in ['Later', 'Skip this version', 'Go to update']) {
+      await tester.tap(find.text(label));
+      await tester.pump();
+    }
+    expect(actions, ['later', 'skip', 'update']);
     expect(tester.takeException(), isNull);
   });
 

@@ -1,11 +1,13 @@
 package net.yuandev.onexray.vpn
 
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
 import net.yuandev.onexray.pigeon.JsonTool
+import net.yuandev.onexray.pigeon.PerAppVPNMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -28,10 +30,31 @@ class SavedVpnConfigTest {
         metadata?.let { put("metadataJson", it) }
     }.toString()
 
-    @Test fun readsCompleteNativeStartRequest() {
-        val decoded = SavedVpnConfig.decode(request())
-        assertEquals("8.8.8.8", decoded.tun?.tunDnsIPv4)
-        assertEquals("19400", decoded.metricsPort)
+    @Test fun savedRequestRoundTripsThroughNativeJson() {
+        val xray = """{"outbounds":[{"tag":"Example 节点","protocol":"freedom"}],"futureOption":{"enabled":true}}"""
+        val original = SavedVpnConfig.decode(request(xray = xray))
+        for (mode in listOf(PerAppVPNMode.ALLOW, PerAppVPNMode.DISALLOW)) {
+            val saved = original.copy(tun = original.tun!!.copy(
+                enableIPv6 = true,
+                tunDnsIPv6 = "2001:4860:4860::8888",
+                perAppVPNMode = mode,
+                allowAppList = listOf("com.android.chrome"),
+                disallowAppList = listOf("org.mozilla.firefox"),
+            ))
+            val encoded = JsonTool.json.encodeToString(saved)
+            val decoded = SavedVpnConfig.decode(encoded)
+            assertEquals(saved, decoded)
+            assertEquals("8.8.8.8", decoded.tun?.tunDnsIPv4)
+            assertEquals("19400", decoded.metricsPort)
+
+            val wire = JsonTool.json.parseToJsonElement(encoded).jsonObject
+            assertEquals(if (mode == PerAppVPNMode.ALLOW) "allow" else "disallow",
+                wire.getValue("tun").jsonObject.getValue("perAppVPNMode").jsonPrimitive.content)
+            val invoke = JsonTool.json.parseToJsonElement(decoded.coreInvokeText!!).jsonObject
+            assertEquals("runXray", invoke.getValue("method").jsonPrimitive.content)
+            assertEquals(3L, invoke.getValue("apiVersion").jsonPrimitive.long)
+            assertEquals(xray, invoke.getValue("payload").jsonObject.getValue("xrayJson").jsonPrimitive.content)
+        }
     }
 
     @Test fun rejectsMissingStartupInputs() {

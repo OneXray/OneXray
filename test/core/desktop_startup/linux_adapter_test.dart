@@ -5,14 +5,14 @@ import 'package:onexray/core/desktop_startup/linux_adapter.dart';
 import 'package:onexray/core/desktop_startup/model.dart';
 import 'package:path/path.dart' as path;
 
+import '../../support/test_directory.dart';
+
 void main() {
   late Directory temporaryDirectory;
   late File executable;
 
   setUp(() async {
-    temporaryDirectory = await Directory.systemTemp.createTemp(
-      'onexray-linux-autostart-',
-    );
+    temporaryDirectory = await createTestDirectory('onexray-linux-autostart-');
     executable = File(
       path.join(temporaryDirectory.path, r'OneXray $100% Test'),
     );

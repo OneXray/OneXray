@@ -89,7 +89,7 @@ This README describes the current codebase. Store and release builds may differ.
 - **Use complete configurations.** Expert mode replaces the normal server selector with a Raw JSON configuration selector and editor. OneXray still manages the tunnel, logging, metrics, and related runtime settings; see the [configuration contract](./docs/xray-configuration.md) (Chinese).
 - **Maintain your setup.** Refresh subscriptions and GeoData manually or on a schedule, configure latency-test URLs and timeouts, and inspect the generated Xray configuration. Local access/error logs are available except in the macOS System Extension build.
 
-Subscriptions can use **age encryption** with an existing key pair or locally generated X25519 / Hybrid (`ML-KEM-768 + X25519`) keys. Only the public key is sent to the subscription source; the private key stays on your device. HTTPS is required. [Age subscription details](./docs/age-encrypted-subscriptions.md) (Chinese).
+Subscriptions can use **age encryption** with an existing key pair or locally generated X25519 / Hybrid (`ML-KEM-768 + X25519`) keys. Only the public key is sent to the subscription source; the private key stays on your device. HTTPS is required. [Age subscription details](./docs/subscriptions-and-sharing.md#age-加密订阅) (Chinese).
 
 ## Screenshots
 
@@ -174,7 +174,7 @@ winget install --id YuanDevLLC.OneXray -e --source winget
 
 EXE and ZIP use a standalone Core with a native TUN interface; starting VPN requests administrator approval through UAC. Extract the entire ZIP before running it: a ZIP does not register protocol links or create shortcuts automatically.
 
-EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](docs/windows-build.md) for development builds and mode selection.
+EXE / ZIP and MSIX use separate data locations and are not interchangeable upgrade channels. See the [Windows build guide](build_scripts/README.md#windows) for development builds and mode selection.
 
 </details>
 

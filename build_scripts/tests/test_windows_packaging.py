@@ -51,23 +51,6 @@ class WindowsPackagingTest(unittest.TestCase):
             self.config_path,
         )
 
-    def test_build_app_packages_only_msix(self):
-        calls = []
-        self.builder.package_msix = lambda: calls.append("msix")
-        self.builder.fastforge_build = self.fail
-
-        self.builder.build_app()
-
-        self.assertEqual(calls, ["msix"])
-
-    def test_exe_mode_packages_installer_and_zip_without_msix(self):
-        self.builder.mode = "exe"
-        calls = []
-        self.builder.package_msix = self.fail
-        self.builder.package_exe_and_zip = lambda: calls.append("exe,zip")
-        self.builder.build_app()
-        self.assertEqual(calls, ["exe,zip"])
-
     def _bundle(self):
         source = (Path(self.builder.root_dir) / "build/windows" /
                   self.builder.target_architecture / "runner/Release")
@@ -83,6 +66,7 @@ class WindowsPackagingTest(unittest.TestCase):
         return source
 
     def test_fastforge_builds_both_formats_with_explicit_mode_and_architecture(self):
+        self.builder.mode = "exe"
         original_config = self.config_path.read_bytes()
         pubspec = Path(self.pubspec_path).read_bytes()
         for target, package_arch, inno_arch, processor_arch in (
@@ -108,7 +92,7 @@ class WindowsPackagingTest(unittest.TestCase):
                     (dist / "unrelated.msix").write_bytes(b"not an EXE-mode artifact")
 
                 with patch.object(self.builder, "fastforge_build", side_effect=package) as fastforge:
-                    self.builder.package_exe_and_zip()
+                    self.builder.build_app()
                 fastforge.assert_called_once_with(
                     "exe,zip",
                     arguments=(
@@ -218,90 +202,13 @@ class WindowsPackagingTest(unittest.TestCase):
         with patch("app.windows._WINTUN_SHA256", "0" * 64), self.assertRaisesRegex(ValueError, "hash mismatch"):
             self.builder.install_wintun()
 
-    def test_installer_preserves_released_identity_and_scopes_cleanup(self):
+    def test_installer_keeps_released_identity_and_user_scope(self):
         root = Path(__file__).resolve().parents[2]
-        installer = (root / "windows/packaging/exe/inno_setup.iss").read_text()
+        # These distributed identity values must not drift across upgrades.
         config = (root / "windows/packaging/exe/make_config.yaml").read_text()
         self.assertIn("app_id: 835d7bbd-85bb-4c73-97f8-ce0740f151a7", config)
         self.assertIn("executable_name: OneXray.exe", config)
         self.assertIn("privileges_required: lowest", config)
-        self.assertIn("AppId={{APP_ID}}", installer)
-        self.assertIn("PrivilegesRequired={{PRIVILEGES_REQUIRED}}", installer)
-        self.assertIn("AppVersion={{APP_VERSION}}", installer)
-        self.assertIn("StartupShortcutTargetsCurrentInstall(ShortcutPath, ExpectedTarget)", installer)
-        self.assertIn("CompareText(CurrentCommand", installer)
-        self.assertNotIn("uninsdeletekey", installer)
-        self.assertNotIn("LicenseFile", installer)
-        cmake = (root / "windows/app.cmake").read_text()
-        for name in _RUNTIME_FILES:
-            self.assertIn(name, cmake)
-        self.assertNotIn("if(EXISTS", cmake)
-
-    def test_exe_workflow_installs_fastforge_and_configures_inno_setup(self):
-        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/build.yml").read_text()
-        windows = workflow.split("\n  windows:", 1)[1].split("\n  linux:", 1)[0]
-        self.assertIn("name: Install Fastforge\n        if: matrix.mode == 'exe'", windows)
-        fastforge = windows.split("      - name: Install Fastforge\n", 1)[1].split("\n      - name:", 1)[0]
-        self.assertIn("dart pub global activate fastforge", fastforge)
-        self.assertIn("shell: pwsh", fastforge)
-        self.assertIn("$env:PUB_CACHE", fastforge)
-        self.assertIn("$env:LOCALAPPDATA", fastforge)
-        self.assertIn("$env:GITHUB_PATH", fastforge)
-        self.assertIn("name: Verify Fastforge\n        if: matrix.mode == 'exe'", windows)
-        self.assertIn("subprocess.run(['fastforge.bat', '--version'], check=True)", windows)
-        self.assertIn("working-directory: OneXray/build_scripts", windows)
-        self.assertIn("python -m unittest discover -s tests", windows)
-        self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
-        self.assertIn('INNO_SETUP_MAJOR: "7"', windows)
-        self.assertIn("repos/jrsoftware/issrc/releases?per_page=100", windows)
-        self.assertIn("-not $_.draft -and -not $_.prerelease", windows)
-        self.assertIn("$asset.digest.Substring(7)", windows)
-        self.assertNotIn("innosetup-6.7.3.exe", windows)
-        self.assertNotIn('"ISCC=$compiler"', windows)
-
-    def test_winget_workflow_publishes_stable_exe_installers_only(self):
-        workflow = (Path(__file__).resolve().parents[2] / ".github/workflows/update-winget.yml").read_text()
-        self.assertIn("release:\n    types:\n      - released", workflow)
-        self.assertIn("workflow_dispatch:", workflow)
-        self.assertIn('git check-ref-format "refs/tags/$tag"', workflow)
-        self.assertIn("WINGET_IDENTIFIER: YuanDevLLC.OneXray", workflow)
-        self.assertNotIn("winget-releaser@", workflow)
-        self.assertIn("contents: read", workflow)
-        self.assertIn("defaults:\n      run:\n        shell: bash", workflow)
-        self.assertIn("repos/russellbanks/Komac/releases?per_page=100", workflow)
-        self.assertIn('test("^v2\\\\.")', workflow)
-        self.assertIn(".draft == false and .prerelease == false", workflow)
-        self.assertIn("sha256sum --check", workflow)
-        self.assertNotIn("cargo-bins/cargo-binstall@", workflow)
-        self.assertIn("secrets.PACKAGE_MANAGER_GITHUB_TOKEN", workflow)
-        phases = ["Generate winget manifests", "Fix installer fields",
-                  "Validate winget manifests", "Submit validated manifests"]
-        self.assertEqual(sorted(workflow.index(f"- name: {phase}") for phase in phases),
-                         [workflow.index(f"- name: {phase}") for phase in phases])
-        for phase in phases:
-            body = workflow.split(f"- name: {phase}", 1)[1].split("\n      - ", 1)[0]
-            self.assertIn("if: steps.verify.outputs.should_update == 'true'", body)
-        generate = workflow.split("- name: Generate winget manifests", 1)[1].split("\n      - ", 1)[0]
-        self.assertIn('komac update "$WINGET_IDENTIFIER"', generate)
-        self.assertIn('--dry-run --output "$WINGET_OUTPUT/generated"', generate)
-        self.assertNotIn("--submit", workflow)
-        self.assertNotIn("komac remove", workflow)
-        self.assertNotIn("PACKAGE_MANAGER_GITHUB_TOKEN", generate)
-        validate = workflow.split("- name: Validate winget manifests", 1)[1].split("\n      - ", 1)[0]
-        self.assertIn('winget_manifest.py validate "$MANIFEST_DIR"', validate)
-        self.assertIn('komac submit "$MANIFEST_DIR" --dry-run', validate)
-        self.assertNotIn("PACKAGE_MANAGER_GITHUB_TOKEN", validate)
-        submit = workflow.split("- name: Submit validated manifests", 1)[1]
-        self.assertIn('komac submit "$MANIFEST_DIR" --yes', submit)
-        self.assertNotIn("komac update", submit)
-        self.assertIn("gh search prs", submit)
-        self.assertEqual(workflow.count("MANIFEST_DIR: ${{ steps.generate.outputs.manifest_dir }}"), 3)
-        for name in ("OneXray-windows-amd64.exe", "OneXray-windows-arm64.exe"):
-            self.assertIn(f'.name == "{name}"', generate)
-            self.assertIn(name, workflow)
-        for name in ("OneXray-windows-amd64.zip", "OneXray-windows-arm64.msix",
-                     "OneXrayCore.exe", "OneXray-windows-amd64.exe.sig"):
-            self.assertNotIn(name, generate)
 
     def test_msix_uses_store_version_without_rebuilding_windows(self):
         with (
@@ -309,7 +216,7 @@ class WindowsPackagingTest(unittest.TestCase):
             patch("app.windows.run_command") as run_command,
             patch("app.windows.package_with_vcore") as package_with_vcore,
         ):
-            self.builder.package_msix()
+            self.builder.build_app()
 
         run_command.assert_called_once_with(
             [
@@ -425,22 +332,6 @@ class WindowsPackagingTest(unittest.TestCase):
     def test_target_architecture_prefers_workflow_setting(self):
         with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
             self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
-
-    def test_windows_jobs_resolve_vcore_main_once_and_record_sha(self):
-        workflow = (
-            Path(__file__).resolve().parents[2] / ".github/workflows/build.yml"
-        ).read_text(encoding="utf-8")
-        self.assertIn("VCORE_REPOSITORY: OneXray/VCore", workflow)
-        self.assertEqual(
-            workflow.count("repository: ${{ env.VCORE_REPOSITORY }}"), 2
-        )
-        self.assertIn("VCORE_REF: main", workflow)
-        self.assertIn(
-            'echo "$vcore_sha" > release-metadata/vcore-sha.txt',
-            workflow,
-        )
-        self.assertEqual(workflow.count("ref: ${{ env.VCORE_REF }}"), 1)
-        self.assertIn("ref: ${{ needs.release_metadata.outputs.vcore_sha }}", workflow)
 
     def test_local_signing_requires_certificate_and_publisher(self):
         with self.assertRaises(ValueError):

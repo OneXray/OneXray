@@ -7,6 +7,8 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:path/path.dart' as p;
 
+import '../../support/test_directory.dart';
+
 void main() {
   test('builds protected desktop Core arguments', () {
     expect(
@@ -57,9 +59,7 @@ void main() {
   test(
     'replaces old inputs with one unique immutable runtime directory',
     () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'onexray-desktop-inputs-',
-      );
+      final directory = await createTestDirectory('onexray-desktop-inputs-');
       addTearDown(() => directory.delete(recursive: true));
       final api = _TestFfiApi(stopResult: true, directory: directory.path);
       addTearDown(api.stopSharedIsolate);
@@ -111,9 +111,7 @@ void main() {
   );
 
   test('inputs are unique and an invalid root is not replaced', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'onexray-desktop-legacy-',
-    );
+    final directory = await createTestDirectory('onexray-desktop-legacy-');
     addTearDown(() => directory.delete(recursive: true));
     final api = _TestFfiApi(stopResult: true, directory: directory.path);
     addTearDown(api.stopSharedIsolate);

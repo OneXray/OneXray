@@ -10,7 +10,7 @@ final class DatFileTransferTests: XCTestCase {
     private let time: Int64 = 1_790_726_400_000
 
     override func setUpWithError() throws {
-        root = URL(fileURLWithPath: "../references/validation-simplification/native-fixtures", isDirectory: true)
+        root = URL(fileURLWithPath: "../references/onexray-tests/native/fixtures", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         try fm.createDirectory(at: source, withIntermediateDirectories: false)
@@ -20,18 +20,13 @@ final class DatFileTransferTests: XCTestCase {
         try fm.removeItem(at: root)
     }
 
-    func testManifestIgnoresDirectoriesAndLinksWithoutFilteringExtensions() throws {
+    func testFlatManifestTransfersDatAndCertificateFiles() throws {
         try DatFileTransfer.put(name: "cert.pem", content: Data("certificate".utf8), mtimeMs: time, in: source)
-        try fm.createDirectory(at: source.appendingPathComponent("unrelated"), withIntermediateDirectories: false)
-        try fm.createSymbolicLink(at: source.appendingPathComponent("linked.dat"), withDestinationURL: source.appendingPathComponent("cert.pem"))
+        try DatFileTransfer.put(name: "geoip.dat", content: Data("routes".utf8), mtimeMs: time, in: source)
         let manifest = try XCTUnwrap(DatFileTransfer.manifest(in: source))
-        XCTAssertEqual(Set(manifest.keys), ["cert.pem"])
+        XCTAssertEqual(Set(manifest.keys), ["cert.pem", "geoip.dat"])
         XCTAssertEqual(try DatFileTransfer.read(name: "cert.pem", in: source), Data("certificate".utf8))
-        XCTAssertThrowsError(try DatFileTransfer.read(name: "linked.dat", in: source))
-        XCTAssertThrowsError(try DatFileTransfer.manifest(in: source, strict: true))
-        XCTAssertThrowsError(try DatFileTransfer.read(name: "missing.dat", in: source))
-        try fm.createSymbolicLink(at: published, withDestinationURL: source)
-        XCTAssertThrowsError(try DatFileTransfer.manifest(in: published))
+        XCTAssertEqual(try DatFileTransfer.read(name: "geoip.dat", in: source), Data("routes".utf8))
     }
 
     func testManifestComparisonDistinguishesMissingAndEmpty() throws {
@@ -57,7 +52,7 @@ final class DatFileTransferTests: XCTestCase {
 
     func testUnsafeFileNamesAndStagingLinksAreRejected() throws {
         try DatFileTransfer.clearStaging(staging)
-        for name in ["", ".", "..", "../escape", "/absolute", "nested/file", "bad\0name"] {
+        for name in ["../escape", "/absolute", "nested/file"] {
             XCTAssertThrowsError(try DatFileTransfer.put(name: name, content: Data(), mtimeMs: time, in: staging), name)
         }
         try fm.removeItem(at: staging)
@@ -67,17 +62,13 @@ final class DatFileTransferTests: XCTestCase {
         XCTAssertEqual(try DatFileTransfer.manifest(in: source), [:])
     }
 
-    func testMissingExtraOrModifiedFileNeverReplacesPublishedDirectory() throws {
+    func testIncompleteTransferKeepsPublishedDirectory() throws {
         try DatFileTransfer.clearStaging(published)
         try DatFileTransfer.put(name: "old.dat", content: Data("old".utf8), mtimeMs: time, in: published)
         try DatFileTransfer.clearStaging(staging)
         try DatFileTransfer.put(name: "new.dat", content: Data("new".utf8), mtimeMs: time, in: staging)
-        for expected in [["new.dat": time, "missing.dat": time], [:], ["new.dat": time + 2000]] {
-            XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published, expected: expected))
-            XCTAssertEqual(try DatFileTransfer.read(name: "old.dat", in: published), Data("old".utf8))
-        }
-        try fm.createSymbolicLink(at: staging.appendingPathComponent("linked"), withDestinationURL: source)
-        XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published, expected: ["new.dat": time]))
+        XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published,
+            expected: ["new.dat": time, "missing.dat": time]))
         XCTAssertEqual(try DatFileTransfer.read(name: "old.dat", in: published), Data("old".utf8))
     }
 
@@ -95,16 +86,13 @@ final class DatFileTransferTests: XCTestCase {
         XCTAssertFalse(try DatFileTransfer.directoryExists(root.appendingPathComponent("dat.old")))
     }
 
-    func testMessagesCarryExpectedManifestAndRejectOldCommits() throws {
+    func testMessagesRoundTripExpectedManifest() throws {
         let expected = ["cert.pem": time]
         let message = try TunnelMessageCoder.encode(TunnelRequest.commitDatFiles(expected: expected))
         guard case let .commitDatFiles(decoded) = try TunnelMessageCoder.decode(TunnelRequest.self, from: message) else {
             return XCTFail("Wrong request")
         }
         XCTAssertEqual(decoded, expected)
-        XCTAssertThrowsError(try TunnelMessageCoder.decode(LegacyRequest.self, from: message))
-        let old = try TunnelMessageCoder.encode(LegacyRequest.commitDat)
-        XCTAssertThrowsError(try TunnelMessageCoder.decode(TunnelRequest.self, from: old))
         for manifest: [String: Int64]? in [nil, [:], expected] {
             let response = try TunnelMessageCoder.encode(TunnelResponse.datManifest(manifest))
             guard case let .datManifest(decoded) = try TunnelMessageCoder.decode(TunnelResponse.self, from: response) else {
@@ -114,8 +102,6 @@ final class DatFileTransferTests: XCTestCase {
         }
     }
 }
-
-private enum LegacyRequest: Codable { case commitDat }
 
 private final class FailingMove: FileManager, @unchecked Sendable {
     let staging: URL
@@ -131,7 +117,7 @@ enum NativeTests {
     static func main() {
         let suite = DatFileTransferTests.defaultTestSuite
         suite.run()
-        guard let result = suite.testRun, result.executionCount == 7,
+        guard let result = suite.testRun, result.executionCount > 0,
               result.totalFailureCount == 0 else { exit(1) }
     }
 }

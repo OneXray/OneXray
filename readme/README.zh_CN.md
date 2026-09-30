@@ -86,7 +86,7 @@ VPN Tunnel 操作、预期行为与验证步骤。不为系统设置虚构 JSON 
 - **完整 JSON 配置**：专家模式将常规服务器选择区域替换为 Raw JSON 配置选择与编辑。隧道、日志、metrics 等运行设置仍由 OneXray 管理，具体边界见 [Xray 配置合同](../docs/xray-configuration.md)。
 - **维护与诊断**：手动或定期更新订阅和 GeoData，配置测速 URL 与超时，查看实际生成的 Xray 配置。除 macOS System Extension 版本外，可查看本地访问日志和错误日志。
 
-订阅支持 **age 加密**：填写已有密钥对，或在本地生成 X25519 / Hybrid（`ML-KEM-768 + X25519`）密钥。仅向订阅源发送公钥，私钥保存在设备上；订阅仍要求 HTTPS。参阅 [Age 加密订阅](../docs/age-encrypted-subscriptions.md)。
+订阅支持 **age 加密**：填写已有密钥对，或在本地生成 X25519 / Hybrid（`ML-KEM-768 + X25519`）密钥。仅向订阅源发送公钥，私钥保存在设备上；订阅仍要求 HTTPS。参阅 [Age 加密订阅](../docs/subscriptions-and-sharing.md#age-加密订阅)。
 
 ## 运行截图
 
@@ -171,7 +171,7 @@ winget install --id YuanDevLLC.OneXray -e --source winget
 
 EXE 和 ZIP 使用独立 Core 与原生 TUN，启动 VPN 时通过 UAC 请求管理员授权。ZIP 必须完整解压后运行，不自动注册协议链接或创建快捷方式。
 
-EXE / ZIP 与 MSIX 的数据目录独立，不能跨渠道覆盖升级。开发构建和模式选择见 [Windows 构建说明](../docs/windows-build.md)。
+EXE / ZIP 与 MSIX 的数据目录独立，不能跨渠道覆盖升级。开发构建和模式选择见 [Windows 构建说明](../build_scripts/README.md#windows)。
 
 </details>
 

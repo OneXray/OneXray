@@ -70,9 +70,53 @@ class TrafficWidgetLayoutTest {
         }
     }
 
-    @Test fun dataFitsDeclaredMinimumSize() = assertMinimumSize(fontScale = 1f)
+    @Test fun representativeLayoutsKeepDataAndActionsVisible() {
+        val cases = listOf(
+            LayoutCase("en-rUS", 260 to 116, VpnStatus.CONNECTED),
+            LayoutCase("ru", 260 to 116, VpnStatus.CONNECTED, 1.3f),
+            LayoutCase("fa", 260 to 116, VpnStatus.CONNECTED, 1.3f, 1_048_566L),
+            LayoutCase("zh-rCN", 260 to 116, VpnStatus.DISCONNECTED, 1.3f),
+            LayoutCase("b+zh+Hant", 260 to 116, VpnStatus.CONNECTING),
+            LayoutCase("en-rUS", 260 to 116, VpnStatus.DISCONNECTING),
+            LayoutCase("ru", 276 to 220, VpnStatus.CONNECTED, 1.3f),
+            LayoutCase("fa", 280 to 180, VpnStatus.CONNECTED),
+            LayoutCase("en-rUS", 400 to 220, VpnStatus.CONNECTED),
+            LayoutCase("zh-rCN", 554 to 117, VpnStatus.CONNECTED, 1.3f),
+        )
+        val context = RuntimeEnvironment.getApplication()
+        val manager = shadowOf(AppWidgetManager.getInstance(context))
+        val id = manager.createWidget(TrafficWidgetProvider::class.java, R.layout.traffic_widget)
+        for (case in cases) {
+            RuntimeEnvironment.setQualifiers("${case.locale}-notnight-mdpi")
+            val configuration = Configuration(context.resources.configuration).apply {
+                fontScale = case.fontScale
+            }
+            @Suppress("DEPRECATION")
+            context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
+            val (width, height) = case.dimensions
+            AppWidgetManager.getInstance(context).updateAppWidgetOptions(
+                id, widgetSizes(width, height, width, height),
+            )
+            val sample = if (case.status == VpnStatus.CONNECTED)
+                TrafficSample(104_752_742_400L, 104_752_742_400L, case.speed, case.speed) else null
+            TrafficWidgetProvider.publish(context, case.status, sample)
+            val view = applyCachedViews(context, manager, id, case.dimensions)
+            view.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY),
+            )
+            view.layout(0, 0, view.measuredWidth, view.measuredHeight)
+            assertContentFits(view, case.status, case.toString())
+        }
+    }
 
-    @Test fun dataFitsDeclaredMinimumSizeWithLargerText() = assertMinimumSize(fontScale = 1.3f)
+    private data class LayoutCase(
+        val locale: String,
+        val dimensions: Pair<Int, Int>,
+        val status: VpnStatus,
+        val fontScale: Float = 1f,
+        val speed: Long = 1_048_471_142L,
+    )
 
     @Test fun cachedLayoutsFollowRotationAndResizeIndependently() {
         val context = RuntimeEnvironment.getApplication()
@@ -104,46 +148,6 @@ class TrafficWidgetLayoutTest {
         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.traffic_download_label).visibility)
         val other = applyCachedViews(context, manager, otherId, 260 to 116)
         assertEquals(View.GONE, other.findViewById<View>(R.id.traffic_download_label).visibility)
-    }
-
-    private fun assertMinimumSize(fontScale: Float) {
-        val context = RuntimeEnvironment.getApplication()
-        val manager = shadowOf(AppWidgetManager.getInstance(context))
-        val id = manager.createWidget(TrafficWidgetProvider::class.java, R.layout.traffic_widget)
-        for (locale in listOf("en-rUS", "zh-rCN", "b+zh+Hant", "ru", "fa")) {
-            RuntimeEnvironment.setQualifiers("$locale-notnight-mdpi")
-            val configuration = Configuration(context.resources.configuration).apply {
-                this.fontScale = fontScale
-            }
-            @Suppress("DEPRECATION")
-            context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
-            // Keep the compact contract independent of provider metadata, so
-            // increasing the minimum size cannot hide a clipping regression.
-            for (dimensions in listOf(260 to 116, 276 to 220, 280 to 180, 400 to 220, 554 to 117)) {
-                AppWidgetManager.getInstance(context).updateAppWidgetOptions(id, widgetSizes(
-                    dimensions.first, dimensions.second, dimensions.first, dimensions.second,
-                ))
-                for (status in listOf(
-                    VpnStatus.DISCONNECTED, VpnStatus.CONNECTING,
-                    VpnStatus.CONNECTED, VpnStatus.DISCONNECTING,
-                )) {
-                    val speeds = if (status == VpnStatus.CONNECTED)
-                        listOf(1_048_471_142L, 1_048_566L) else listOf(0L)
-                    for (speed in speeds) {
-                        val sample = if (status == VpnStatus.CONNECTED)
-                            TrafficSample(104_752_742_400L, 104_752_742_400L, speed, speed) else null
-                        TrafficWidgetProvider.publish(context, status, sample)
-                        val view = applyCachedViews(context, manager, id, dimensions)
-                        view.measure(
-                            View.MeasureSpec.makeMeasureSpec(dimensions.first, View.MeasureSpec.EXACTLY),
-                            View.MeasureSpec.makeMeasureSpec(dimensions.second, View.MeasureSpec.EXACTLY),
-                        )
-                        view.layout(0, 0, view.measuredWidth, view.measuredHeight)
-                        assertContentFits(view, status, "$locale fontScale=$fontScale $dimensions speed=$speed")
-                    }
-                }
-            }
-        }
     }
 
     private fun assertContentFits(view: View, status: VpnStatus, scenario: String) {

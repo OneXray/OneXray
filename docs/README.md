@@ -1,40 +1,22 @@
 # OneXray App 文档
 
-本目录记录 OneXray App 当前有效的产品行为、数据合同和工程边界。历史实施批次、已经结束的重构计划以及一次性外部调研不作为当前事实来源。
+只记录当前实现与非显然的行为边界；同一规则只有一个权威出处。
+历史方案、阶段授权和运行记录使用 Git 历史，不作为当前验收证据。
 
-## 文档索引
+## 当前合同
 
-- [Xray 配置合同](xray-configuration.md)：节点、Smart/Custom、Raw JSON、配置编译和连接生命周期。
-- [导航与界面](app-navigation.md)：主入口、关键交互、平台差异和响应式结构。
-- [订阅、导入与分享](subscriptions-and-sharing.md)：订阅更新、导入来源、OneXray App Link 和分享边界。
-- [Age 加密订阅](age-encrypted-subscriptions.md)：密钥、下载、解密与安全边界。
-- [App 启动行为](app-startup.md)：正常启动、首次初始化、权限检查和桌面启动行为。
-- [数据管理](data-management.md)：GeoData、自动更新和数据清理。
-- [连接配置备份](backup.md)：单文件协议、平台存储、自动备份、离线恢复与安全边界。
-- [本地配置 HTTP API](local-api.md)：桌面本机认证、配置校验、编译预览和结构化诊断。
-- [Android 外部自动化](android-automation.md)：设备 Token、后台广播启停及清理/恢复准入。
-- [Windows 构建](windows-build.md)：EXE / MSIX 运行模式、EXE / ZIP / MSIX 打包、本地签名和 CI。
-- [验证边界](refactor-validation.md)：按改动选择检查项、平台验证限制和验证数据隔离。
+- [App 行为](app.md)：启动、初始化、权限、导航、主题和桌面窗口。
+- [Xray 配置](xray-configuration.md)：配置模式、编译、连接生命周期与流量读取。
+- [数据管理](data-management.md)：数据库、Geodata、队列、更新和清理。
+- [服务器与分享](subscriptions-and-sharing.md)：订阅、套餐、Age、导入和分享协议。
+- [备份](backup.md)：单文件协议、平台存储、调度与离线恢复。
+- [外部接口](external-interfaces.md)：本地 HTTP API 和 Android 自动化的独立授权边界。
+- [验证](validation.md)：场景测试、检查命令与平台验收。
 
-维护要求见 [文档规则](AGENTS.md)，仓库工程入口见 [工程约定](../AGENTS.md)。
-[旧原型](../../references/onexray-app-prototype/) 仅供历史视觉参考，不覆盖当前合同，
-不据此恢复累计流量、旧 ZIP 备份或旧 Setup 等已删除功能。
+本地开发从 [FIRST_RUN](../readme/FIRST_RUN.md) 开始；打包、签名和发布以
+[构建手册](../build_scripts/README.md) 为准。维护规则见 [AGENTS](AGENTS.md)。
 
 ## 工程技能配置
 
-- [Issue tracker](agents/issue-tracker.md)：本仓库的 GitHub 操作、审查边界与 Wayfinder 约定。
-- [Triage 标签](agents/triage-labels.md)：五个标准角色对应的标签名称。
-- [领域文档](agents/domain.md)：单一上下文下 `CONTEXT.md` 和 ADR 的按需读取规则。
-
-这些配置供 Matt Pocock 工程技能读取，不替代上述业务合同；领域术语和决策在需要时记录，不预先创建空文档。
-
-## 进行中的开发计划
-
-- [App 校验逻辑精简实施计划](../plans/validation-simplification.md)：重复检查、保存职责、配置解析、
-  备份、Geodata 与 macOS SE 文件交接的 P0–P7 步骤、验收标准及连续推进边界；实际进度见计划记录。
-- [Android 广播自动化开发计划](../plans/android-intent-automation.md)：Issue #205 的 START/STOP、设备 Token、
-  原生复用、设置入口、数据清理/恢复约束及 P0–P4 验收；实现与 API 37、Automate 联调结果见计划记录。
-- [客户端体验增强分阶段计划](../plans/client-improvements.md)：订阅套餐信息、JSON 纠错、本地配置 HTTP API、
-  目标网站诊断的实施顺序、范围、技术验证前提和逐阶段验收；P1–P3 已实现并通过本机自动验证，设备与渠道验收待执行。
-- [单文件云备份开发计划](../plans/cloud-backup.md)：已确认范围、插件使用边界、P0–P8 开发步骤及逐步验收要求；
-  本机实施结果与真实提供商待验收项单独记录；当前行为以备份合同为准，不用本机检查替代云端验收。
+[Issue tracker](agents/issue-tracker.md)、[Triage 标签](agents/triage-labels.md) 和
+[领域文档](agents/domain.md) 保持独立，供工程技能按需读取。

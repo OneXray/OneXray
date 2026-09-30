@@ -1,103 +1,56 @@
 # OneXray App
 
-Cross-platform Flutter Xray-core client. Current contracts are indexed in
-[docs](docs/README.md); old refactor plans and progress logs are historical evidence.
+Cross-platform Flutter Xray-core client. [Current contracts](docs/README.md)
+describe shipped behavior; Git history holds retired plans and progress logs.
 
-## Engineering boundaries
+## Engineering rules
 
-- Dependencies flow `pages → service → core`, never backwards. Services own
-  business logic; pages compose UI and bind callbacks to their controllers.
-- Custom page controllers extend `PageCubit`; use Bloc for observable state,
-  including dialogs, loading and expansion. Text/scroll/focus and third-party
-  controllers are UI resources, not a second state-management system.
-- `ServiceManager` owns normal startup, storage, Geodata and platform/permission
-  checks; normal startup must not depend on Setup. Establish a valid absolute
-  native data root before storage access.
-- Route connection actions, shortcuts and tray actions through
-  `ConnectionCoordinator`. Native VPN state is authoritative. After a failed
-  stop/start transition, do not restart the previous connection.
-  Android Widget/Tile may restart the existing complete `run/start.json` directly
-  in the VPN service; missing inputs or permissions fall back to the App.
-  Android authenticated automation reuses that native path without opening the
-  App. For receiver authorization or data-clear/restore admission, read
-  [Android automation](docs/android-automation.md).
-- Smart and ordinary Custom configuration use `XrayJson`; Advanced Custom
-  templates and full Raw retain user JSON through separate Map compilation.
-  Database JSON stays Base64; preserve legacy
-  Raw rows above the new-item limit and keep retired Profile/Multi-node rows
-  outside product flows.
-- Current-session traffic and speed come only from Xray metrics HTTP. Visible
-  connection pages share one foreground App sampler; Android's VPN
-  service owns notification/widget sampling independently of Flutter. Do not
-  persist traffic or maintain device totals.
-  iOS simulator SOCKS adaptation belongs in Swift, not App UI or business state.
-- Prefer shared theme changes in `lib/pages/theme/`. Use `AppTheme.appBarTheme`
-  for AppBar styling, `ThemeData.textTheme`/`AppTypography` for typography, and
-  `LucideIcons` for icons. Pages must not hardcode font sizes, families, letter spacing
-  or line heights; override AppBar styling only when the theme cannot express it.
-- UI-only work preserves fields, semantics, platform visibility, persistence
-  and validation unless the user explicitly requests those changes.
-- Before adopting or replacing a third-party dependency, verify archive status,
-  dated releases, substantive commits and maintainer responses to
-  issues/PRs, alongside current SDK/platform compatibility. Record the evidence
-  and maintenance risks; popularity or a working demo alone is insufficient.
+- Dependencies flow `pages → service → core`. Services own business logic;
+  custom page controllers extend `PageCubit` and expose Bloc state.
+  Text, scroll, focus and third-party controllers remain UI resources.
+- Prefer shared `lib/pages/theme/` changes: `AppTheme.appBarTheme`,
+  `ThemeData.textTheme` / `AppTypography`, and `LucideIcons`. Keep typography
+  out of individual pages. UI-only changes preserve behavior and data contracts.
+- Verify dependency maintenance and SDK/platform compatibility before adoption:
+  archive status, dated releases, substantive commits and maintainer responses.
 - Keep `LIBXRAY_REF` in `.github/workflows/build.yml` set to `main` unless the
-  user explicitly instructs otherwise.
-- Edit source models, ARB files, `pigeon/message.dart` or FFI definitions, then
-  regenerate the corresponding outputs. Never hand-edit generated Dart,
-  Kotlin, Swift, Drift, FFI or localization code. ARB files are source files.
+  user explicitly requests a different ref.
+- Edit source models, ARB, Pigeon and FFI definitions, then regenerate outputs.
+  Generated Dart, Kotlin, Swift, Drift, FFI and localization files are not sources.
 
 ## Read for the task
 
-- Startup, recovery or permissions: [app startup](docs/app-startup.md).
-- Configuration, Raw JSON, connection lifecycle or statistics:
+- Startup, permissions, navigation, UI or desktop windows: [App behavior](docs/app.md).
+- Configuration, validation, connection lifecycle, native VPN or traffic:
   [Xray configuration](docs/xray-configuration.md).
-- Database, migration, Geodata or updates:
-  [data management](docs/data-management.md).
-- Import, links or sharing: [subscriptions and sharing](docs/subscriptions-and-sharing.md);
-  for age keys/decryption, also read [age subscriptions](docs/age-encrypted-subscriptions.md).
-- UI/navigation: [navigation](docs/app-navigation.md). For requested visual parity,
-  consult the relevant [prototype source](../references/onexray-app-prototype/src/)
-  and reuse approved translations for unchanged features. The old
-  [product model](../references/onexray-app-prototype/PRODUCT-MODEL.md) is historical:
-  current App contracts take precedence; do not restore retired features from it.
-- Native contracts: `lib/core/pigeon/`, `pigeon/message.dart`, `swift/`,
-  Android's Kotlin bridge, and [libXray API](../libXray/README.md#api).
-  Before packaging, read [build scripts](build_scripts/README.md) and, for Windows,
-  [Windows builds](docs/windows-build.md). Apple/Android release scripts may
-  upload to stores; they are not local validation commands.
+- Database, Geodata, queues, updates or cleanup: [data management](docs/data-management.md).
+- Import, subscriptions, age or sharing: [servers and sharing](docs/subscriptions-and-sharing.md).
+- Backup protocol, restore or cloud storage: [backup](docs/backup.md).
+- Local HTTP API, Android broadcasts or command authorization:
+  [external interfaces](docs/external-interfaces.md).
+- Packaging, signing or CI releases: [build scripts](build_scripts/README.md).
+  Apple/Android release commands may upload to stores; they are not local checks.
+- Visual parity: use the relevant [prototype source](../references/onexray-app-prototype/src/)
+  and approved translations. Current App contracts take precedence over the prototype.
+- Native bridge changes: inspect `pigeon/message.dart`, `lib/core/pigeon/`,
+  Swift/Kotlin consumers and the [libXray API](../libXray/README.md#api).
 
-## Agent skills
+## Skill configuration
 
-### Issue tracker
-
-GitHub Issues for `OneXray/OneXray`. Before issue, PR or review work, read
-[issue tracker](docs/agents/issue-tracker.md).
-
-### Triage labels
-
-Use the five canonical triage labels. Before triage, read
-[label mapping](docs/agents/triage-labels.md).
-
-### Domain docs
-
-Single-context layout. Before codebase exploration or domain/ADR work,
-read [domain guidance](docs/agents/domain.md).
+- Issue, PR or review work: [issue tracker](docs/agents/issue-tracker.md).
+- Triage: [canonical labels](docs/agents/triage-labels.md).
+- Codebase exploration or domain/ADR work: [domain guidance](docs/agents/domain.md).
 
 ## Verification
 
-All `flutter` and `dart` commands must run serially across terminals, tool calls
-and agents: they share `.dart_tool` and native-asset state.
+All Flutter/Dart commands run serially across terminals and agents because
+`.dart_tool` and native build state are shared. Use [verification](docs/validation.md)
+for scenario selection, checks and platform-specific acceptance.
 
-- Match generation/checks to the change; available checks are in
-  [verification](docs/refactor-validation.md#自动验证). Verify changed native
-  contracts with the relevant supported platform build.
-- UI validation follows [platform limits](docs/refactor-validation.md#平台边界):
-  Android emulator may start VPN; macOS must not start VPN or take screenshots.
-  Skip Windows/Linux builds and runs on the current macOS host; record skips.
-- Keep demos and evidence in workspace `references/`, not system temp.
-  Use isolated test data, never the developer's main database; keep demos minimal.
-- Run `git diff --check`. Documentation-only work needs path/link checks,
-  not Flutter tests or native builds. Broaden or repeat verification only for
-  new changes, failures or unresolved concerns; distinguish static checks from
-  actual device/VPN validation.
+- Android emulator validation may start VPN. On macOS, do not start VPN or take
+  screenshots; Windows/Linux builds and runs require their own hosts.
+- Keep demos, fixtures and evidence in workspace `references/`, with isolated
+  data and minimal setup; never validate against the developer's main database.
+- Match checks to the change and run `git diff --check`. Documentation-only work
+  needs path/link checks, not App tests. Report static, automated, device and
+  release results separately. Commit, push and PR actions require user authority.

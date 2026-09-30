@@ -2,33 +2,23 @@
 
 [English](./FIRST_RUN.md) · [简体中文](./FIRST_RUN.zh_CN.md) · [Русский](./FIRST_RUN.ru.md)
 
-Prepare one target platform and run OneXray in Flutter Debug mode. This guide is not a release or store-publishing workflow.
+Prepare one target for Flutter Debug. Packaging and store deployment belong in
+[Build and release](../build_scripts/README.md), not this setup procedure.
 
-## 1. Prepare the tools
+## 1. Tools and checkouts
 
-Install [Flutter stable](https://docs.flutter.dev/install) with a Dart SDK that satisfies [pubspec.yaml](../pubspec.yaml), Git, Python 3.12+, Go matching libXray's `go.mod`, and LLVM/libclang for [FFI generation](https://pub.dev/packages/ffigen#requirements).
+Install Flutter stable with a Dart SDK satisfying [pubspec.yaml](../pubspec.yaml),
+Git, Python 3.12+, Go matching libXray's `go.mod`, and LLVM/libclang for FFI.
+Add Flutter, Go and Go-installed tools (`GOBIN`, or `GOPATH/bin`) to `PATH`.
 
-| Target | Build host and additional tools |
+| Target | Additional requirements |
 | --- | --- |
-| iOS / macOS | macOS with full Xcode and the required platform SDKs; install an iOS Simulator runtime for simulator debugging. |
-| Android | Android SDK, JDK (CI uses 21), and the SDK/NDK versions in [android/app/build.gradle.kts](../android/app/build.gradle.kts). Set `ANDROID_HOME` and `ANDROID_NDK_HOME` to the installed SDK and NDK directories. |
-| Linux | Linux with GCC/G++, Clang/libclang, CMake, Ninja, pkg-config, and the GTK/plugin dependencies below. |
-| Windows | Windows with Visual Studio C++ tools, Windows SDK, LLVM/libclang, a matching-architecture MinGW-compatible `gcc.exe` / `g++.exe`, Rust, and `uv`. See [Windows builds](../docs/windows-build.md) (Chinese). |
+| iOS / macOS | macOS, full Xcode and the target SDK/simulator runtime. |
+| Android | Android SDK/NDK from [Gradle configuration](../android/app/build.gradle.kts), and a JDK compatible with the [Gradle wrapper](../android/gradle/wrapper/gradle-wrapper.properties). Set `ANDROID_HOME` and `ANDROID_NDK_HOME`. |
+| Linux | Native Linux toolchain and GTK/plugin packages below. |
+| Windows | Native Windows, Visual Studio C++ tools, Windows SDK, Rust, `uv`, and matching-architecture Go/C compiler tools; see [Windows preparation](../build_scripts/README.md#windows). |
 
-Add Flutter and Go tools to `PATH`. Android builds install `gomobile` automatically; its installation directory (`GOBIN`, or `GOPATH/bin` when unset) must also be on `PATH`.
-
-Check the environment before building:
-
-```shell
-flutter doctor -v
-go version
-```
-
-Run all Flutter/Dart commands serially, including across terminals. Stop an active `flutter run` before starting generation, analysis, or tests.
-
-## 2. Check out the repositories
-
-From your chosen workspace directory:
+From your workspace, clone only missing repositories:
 
 ```shell
 git clone https://github.com/OneXray/OneXray.git
@@ -36,20 +26,16 @@ git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```
 
-**All remaining commands start in the OneXray App repository root**, beside `pubspec.yaml`. Skip cloning repositories you already have.
+Keep them as siblings; Windows also needs `VCore/` or `VCORE_DIR`. All commands
+below start in the App root. Use compatible dependency revisions from the
+[Build workflow](../.github/workflows/build.yml); a separate Xray-core checkout
+is unnecessary. Check `flutter doctor -v` before continuing. Run Flutter/Dart
+commands serially; stop an active `flutter run` before generation/checks.
 
-```text
-workspace/
-├── OneXray/    # Flutter App; current directory
-├── libXray/    # native libraries and GeoData
-└── VCore/      # Windows only
-```
+## 2. Native libraries and Geodata
 
-Use dependency revisions compatible with your App checkout; the [Build workflow](../.github/workflows/build.yml) defines the CI references. Do not mix old native binaries with a new App API. A separate Xray-core checkout is not needed for the standard libXray build.
-
-## 3. Prepare native libraries and GeoData
-
-Run only the section for your target. These libXray commands resolve Go dependencies and prepare `../libXray/dat/`; they do not build or publish the App.
+Run only your platform's preparation. These libXray commands prepare native
+artifacts and `../libXray/dat/`; they do not publish the App.
 
 ### iOS / macOS
 
@@ -58,9 +44,10 @@ python3 ../libXray/build/main.py apple go
 rsync -a --delete ../libXray/LibXray.xcframework/ swift/All/LibXray.xcframework/
 ```
 
-Both platforms use this framework, including its simulator slices. The sync replaces only the generated framework; keep the other files in `swift/All/`.
-
-The Xcode projects use [Swift Package Manager](https://docs.flutter.dev/packages-and-plugins/swift-package-manager/for-app-developers). There are no checked-in Podfiles: do not run `pod install` or add a Podfile as a setup step. Flutter prepares the generated plugin package during the Apple build. If you previously disabled SwiftPM globally, enable it with `flutter config --enable-swift-package-manager`.
+Replace only this generated framework, not the rest of `swift/All/`. Apple
+projects use SwiftPM, with no Podfile setup or `pod install`. Flutter prepares
+its plugin package; if globally disabled, use
+`flutter config --enable-swift-package-manager`.
 
 ### Android
 
@@ -70,14 +57,14 @@ mkdir -p android/app/libs
 cp ../libXray/libXray.aar ../libXray/libXray-sources.jar android/app/libs/
 ```
 
-The commands above use a macOS/Linux shell; on Windows, use Python and PowerShell equivalents for the build and copies. The App supports arm64-v8a and x86_64, not 32-bit ARM. Local Debug builds use the debug keystore; no Play service account or upload keystore is needed.
+Use PowerShell equivalents on Windows. The App supports arm64-v8a/x86_64;
+local Debug uses the debug keystore, not Play upload credentials.
 
 ### Linux
 
-On Debian/Ubuntu, install the build and runtime dependencies:
+On Debian/Ubuntu:
 
 ```shell
-sudo apt-get update
 sudo apt-get install -y build-essential clang libclang-dev cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev libayatana-appindicator3-dev libcap2-bin procps file
 python3 ../libXray/build/main.py linux
 mkdir -p linux/app
@@ -86,103 +73,72 @@ cp ../libXray/bin/xray linux/app/OneXrayCore
 chmod +x linux/app/OneXrayCore
 ```
 
-Build for the same architecture as the Flutter App.
-
 ### Windows
 
-From the App root, clone VCore if needed:
+Prepare the complete native bundle using [the build guide](../build_scripts/README.md#windows).
+Copying only libXray is insufficient: both modes need Core, Wintun and VCore.
+Once `windows/app/` is ready, ordinary Debug uses EXE mode.
 
-```powershell
-git clone https://github.com/OneXray/VCore.git ../VCore
-```
+### Copy the complete Geodata directory
 
-Both Windows modes need `libXray.dll`, `OneXrayCore.exe`, `wintun.dll`, and all three VCore files: `vcore.dll`, `vcore-windows-vpn-host.exe`, and `vcore-windows-session-host.exe`. Copying only libXray is not enough.
-
-Follow the [Windows build guide](../docs/windows-build.md) (Chinese) and [build scripts](../build_scripts/README.md#english) to prepare dependencies. The script builds both cores, verifies and copies matching VCore and Wintun binaries, and copies GeoData. The default command uses Fastforge to produce EXE + ZIP; Inno Setup is also required for the EXE installer:
-
-```powershell
-$env:BUILD_NUMBER = "1"
-uv run --project build_scripts python build_scripts/main.py OneXray windows
-```
-
-Once dependencies are present in `windows/app/`, `flutter run -d windows` uses EXE mode and requests UAC only when needed for Core. For MSIX, build with `--windows-mode msix` and follow the [local signing instructions](../docs/windows-build.md#本地签名包); an installed package identity is required. Bare `dart run msix:create` omits VCore manifest integration. `VCORE_DIR` may point to an existing checkout outside this workspace.
-
-### Copy GeoData — required for manual builds
-
-After the selected libXray build, copy the **whole** data directory, including the JSON indexes and timestamp, not just the two `.dat` files:
+Manual builds must copy indexes and timestamp along with the `.dat` files:
 
 ```shell
 mkdir -p assets/dat
 cp -R ../libXray/dat/. assets/dat/
 ```
 
-PowerShell equivalent:
+PowerShell: `New-Item -ItemType Directory -Force assets/dat`, then
+`Copy-Item ../libXray/dat/* assets/dat/ -Force`. The directory is Git-ignored;
+a fresh clone needs these bundled defaults. App packaging already copies it.
+Native artifact architecture must match the App.
 
-```powershell
-New-Item -ItemType Directory -Force assets/dat | Out-Null
-Copy-Item ../libXray/dat/* assets/dat/ -Force
-```
-
-`assets/dat/` is ignored by Git. A fresh clone cannot initialize its default routing data without these files. The Windows App packaging script already performs this copy.
-
-## 4. Generate local Dart files
-
-After native libraries and GeoData are ready:
+## 3. Generate and run
 
 ```shell
 flutter pub get
 flutter gen-l10n
 dart run ffigen
-```
-
-Localizations and `lib/core/ffi/generated_bindings.dart` are not tracked. Generate them even for Apple/Android builds, since shared Dart imports reference the FFI bindings. FFI configuration and header paths are already in `pubspec.yaml`; if libclang cannot be found, check your LLVM installation and the configured `llvm-path`.
-
-The checked-in model, database, asset, and Pigeon outputs do not need regeneration just to start the App. See the next section when their sources change.
-
-## 5. Start debugging
-
-For Android or the iOS Simulator, start the device, list devices, and replace `DEVICE_ID` with its actual ID:
-
-```shell
 flutter devices
 flutter run -d DEVICE_ID
 ```
 
-For macOS:
+Replace `DEVICE_ID` with the actual device, or `macos` / `windows` on those hosts.
+Localization and FFI outputs are Git-ignored; generate them even for Apple/Android
+because shared Dart imports them. FFI headers/configuration are in `pubspec.yaml`.
+Checked-in model/database/asset/Pigeon outputs need regeneration only after their
+sources change.
 
-```shell
-flutter run -d macos
-```
-
-- **iOS Simulator:** Swift automatically uses a local SOCKS inbound and bypasses unavailable VPN authorization. There is no App-level proxy switch, and this does not verify a real system VPN.
-- **Apple signing:** for your own development team, align the Runner/tunnel bundle IDs, App Group entitlements, and [Swift group identifiers](../swift/All/Constants.swift). Real devices require valid development signing and Network Extension capabilities; do not assume the repository owner's signing settings work for your account.
-- **Linux:** build the Debug bundle, grant capabilities to its actual Core binary, then launch. For x64:
+- Apple signing: align Runner/tunnel Bundle IDs, App Groups and
+  [Swift identifiers](../swift/All/Constants.swift) with your own team. Real
+  devices need development signing and Network Extension capabilities.
+- iOS Simulator uses Swift's local SOCKS adaptation and skips VPN authorization;
+  this is not real system-VPN acceptance.
+- Linux: first build Debug and grant the actual Core network capabilities:
   ```shell
   flutter build linux --debug
   sudo setcap cap_net_admin,cap_net_raw+eip build/linux/x64/debug/bundle/OneXrayCore
   flutter run -d linux --no-enable-impeller
   ```
-  Use `arm64` instead of `x64` on ARM64. Reapply capabilities if rebuilding replaces the Core binary.
-- **Windows:** use `flutter run -d windows` for EXE mode; for MSIX, launch the installed development package prepared above.
+  Use `arm64` on ARM64; reapply capabilities when rebuilding replaces Core.
+- Windows MSIX requires an installed, signed development package and its identity;
+  follow [development signing](../build_scripts/README.md#msix-and-development-signing),
+  not a bare EXE or `msix:create` shortcut.
 
-Complete the App's initial setup and import your own test servers when needed. See the repository's [validation boundaries](../docs/refactor-validation.md#平台边界) (Chinese) for platform-specific verification requirements.
+## 4. After changes
 
-## 6. After source changes
-
-| Changed source | Run from the App root |
+| Source | Regenerate |
 | --- | --- |
-| ARB translations | `flutter gen-l10n` |
+| ARB | `flutter gen-l10n` |
 | JSON/Drift models or declared assets | `dart run build_runner build --delete-conflicting-outputs` |
 | `pigeon/message.dart` | `dart run pigeon --input pigeon/message.dart` |
-| FFI headers or configuration | `dart run ffigen` |
-| libXray / native libraries | Rebuild and replace the matching native artifacts, then stop and relaunch the App; hot reload does not replace native libraries. |
+| FFI headers/configuration | `dart run ffigen` |
 
-Choose checks appropriate to your changes: `flutter analyze`, focused `flutter test`, and `git diff --check`. Keep temporary demos and test fixtures in workspace `references/`, and do not use the developer's main database.
-
-## Debug is not deployment
-
-Ordinary `flutter run` does not need `.env`, `BUILD_NUMBER`, Fastlane credentials, App Store Connect keys, or a Play upload account. Apple development signing and Windows development-package signing are separate requirements.
-
-Do not use `build_scripts/main.py` as a generic debug shortcut: Apple/Android targets may upload to stores, and `macos_se` replaces the local `macos/` tree. Read the [build documentation](../build_scripts/README.md) before packaging; do not run `build_scripts/setup_flutter.sh` against an SDK you want to preserve.
+Replace rebuilt native libraries and fully relaunch; hot reload cannot replace
+them. Keep isolated test data in workspace `references/`, not your main database.
+See [App](../docs/app.md), [Validation](../docs/validation.md) and
+[External interfaces](../docs/external-interfaces.md) for the relevant contracts.
+Ordinary Debug does not need `BUILD_NUMBER`, Fastlane or store-upload credentials;
+platform development signing is separate. For packaging, use the build guide.
 
 [Back to README](../README.md)
