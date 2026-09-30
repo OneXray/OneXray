@@ -43,6 +43,16 @@ tag 等额外校验规则，也不因 VMess 省略 security 而拒绝内核已�
 `testXray`，连接启动不再调用该预检。App 保留自定义名称校验，以及文件/链接安全、资产数量与事务完整性、
 编辑器可表达范围和平台网络策略等自身职责内的必要检查。
 
+FinalMask 的 UDPHop 只使用外层 `streamSettings.sockopt`，首次拨号和跳跃后的 socket
+都继承同一份设置；mask 内部的 `settings.sockopt` 已删除，Core 会忽略该字段。
+App 的出口网卡策略只作用于外层 socket 设置，不再生成内部覆盖。
+
+WireGuard 的 `settings.domainStrategy` 同样不再被 Core 读取。本地 peer 域名的地址族选择
+使用外层 `streamSettings.sockopt.domainStrategy`，隧道内目的域名由 WireGuard netstack
+处理；两者不是旧字段的简单改名，也不保证复现旧解析行为。
+XDNS 的 `domains`、`resolvers` 使用对象列表，分别声明域名属性及 resolver 的 `type` / `settings`；
+旧字符串列表由 Core 拒绝。App 保留用户 JSON，不自动迁移这些已改变的协议设置。
+
 接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
 测速状态直接由已有延迟值区分未检测、成功、失败与超时；地区使用出口国家代码，不保存
 测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
@@ -105,6 +115,9 @@ fallback。包含目标 IP/端口、网络、协议、操作系统或入站标�
 不添加 IPv6 阻断或额外系统路由。`XrayJson.fakedns` 仅包含 `ipPool` / `poolSize`；
 普通校验和运行共用生成逻辑。受管理的 TUN/SOCKS 入站在原 HTTP/TLS/QUIC 嗅探基础上
 增加 `fakedns`，将虚拟目的地址还原为域名后再路由，不关闭内容嗅探。
+
+Core 的根级池字段规范名为 `fakeDns`；已有 `fakedns` 写法继续识别，JSON 编辑辅助对
+两种写法的单对象池和数组池均提供字段提示，保留用户使用的键名。
 
 Raw JSON 的 DNS server 使用 `fakedns`（字符串或对象地址），或声明根级 FakeDNS 池时，
 App 只为新建的 `tunIn` 启用上述还原；已有 Raw 入站的 sniffing 原样保留，不因 FakeDNS 自动修改。

@@ -116,7 +116,7 @@ class JsonEditing {
           'inbounds',
           'dns',
           'routing',
-          'fakedns',
+          'fakeDns',
           'geodata',
         ];
       }
@@ -130,7 +130,7 @@ class JsonEditing {
         'api',
         'stats',
         'metrics',
-        'fakedns',
+        'fakeDns',
         'observatory',
         'burstObservatory',
         'transport',
@@ -222,7 +222,12 @@ class JsonEditing {
         if (!advanced) 'queryStrategy',
       ];
     }
-    if (_matches(path, ['fakedns', '*'])) return const ['ipPool', 'poolSize'];
+    if (_matches(path, ['fakeDns']) ||
+        _matches(path, ['fakeDns', '*']) ||
+        _matches(path, ['fakedns']) ||
+        _matches(path, ['fakedns', '*'])) {
+      return const ['ipPool', 'poolSize'];
+    }
     if (_matches(path, ['geodata']) && (custom || advanced)) {
       return const ['assets'];
     }
@@ -243,8 +248,64 @@ class JsonEditing {
               'grpcSettings',
               'xhttpSettings',
               'httpupgradeSettings',
+              'masqueSettings',
+              'xdriveSettings',
+              'finalmask',
               'sockopt',
             ];
+    }
+    if (!custom && !advanced) {
+      if (tail == 'masqueSettings') {
+        return const ['host', 'path', 'user', 'pass', 'headers'];
+      }
+      if (tail == 'xdriveSettings') {
+        return const [
+          'remoteFolder',
+          'service',
+          'secrets',
+          'segmentBytes',
+          'flushIntervalMs',
+          'pollIntervalMs',
+          'concurrency',
+          'template',
+        ];
+      }
+      if (_endsWith(path, ['streamSettings', 'finalmask'])) {
+        return const ['tcp', 'udp', 'quicParams'];
+      }
+      if (_endsWith(path, ['streamSettings', 'finalmask', 'udp', '*']) ||
+          _endsWith(path, ['streamSettings', 'finalmask', 'tcp', '*'])) {
+        return const ['type', 'settings'];
+      }
+      final maskType = _udpMaskType(path, shape);
+      if (maskType != null) {
+        return switch (maskType) {
+          'xdns' => const ['domains', 'resolvers', 'extraPoll'],
+          'noise' => const ['reset', 'noise'],
+          'udphop' => const ['mode', 'interval', 'remoteIPs', 'remotePorts'],
+          _ => const [],
+        };
+      }
+      if (_endsWith(path, ['domains', '*']) &&
+          _udpMaskType(path.sublist(0, path.length - 2), shape) == 'xdns') {
+        return const ['name', 'lenLimit', 'labelLimit', 'types', 'edns0'];
+      }
+      if (_endsWith(path, ['resolvers', '*']) &&
+          _udpMaskType(path.sublist(0, path.length - 2), shape) == 'xdns') {
+        return const ['type', 'settings'];
+      }
+      if (_endsWith(path, ['resolvers', '*', 'settings']) &&
+          _udpMaskType(path.sublist(0, path.length - 3), shape) == 'xdns') {
+        return const ['addr'];
+      }
+      if (_endsWith(path, ['noise', '*']) &&
+          _udpMaskType(path.sublist(0, path.length - 2), shape) == 'noise') {
+        return const ['rand', 'randRange', 'type', 'packet', 'delay'];
+      }
+      if (tail == 'sockopt' &&
+          _udpMaskType(path.sublist(0, path.length - 1), shape) == 'udphop') {
+        return const [];
+      }
     }
     if (tail == 'sockopt') {
       return advanced
@@ -323,6 +384,11 @@ class JsonEditing {
           ],
           'socks' => const ['auth', 'users', 'accounts', 'udp'],
           'http' => const ['users', 'accounts'],
+          'masque' when kind == JsonEditorKind.raw => const [
+            'users',
+            'address',
+            'mtu',
+          ],
           'tunnel' => const ['rewriteAddress', 'rewritePort', 'allowedNetwork'],
           _ => const [],
         };
@@ -351,6 +417,12 @@ class JsonEditing {
           'peers',
           'mtu',
           'reserved',
+          'remoteDNS',
+        ],
+        'masque' when !custom && !advanced => const [
+          'address',
+          'port',
+          'remoteDNS',
         ],
         'loopback' => const ['inboundTag'],
         _ => const [],
@@ -428,6 +500,7 @@ class JsonEditing {
                 'vmess',
                 'trojan',
                 'shadowsocks',
+                'masque',
                 'tun',
               ];
       }
@@ -447,6 +520,7 @@ class JsonEditing {
                 'blackhole',
                 'dns',
                 'wireguard',
+                'masque',
                 'loopback',
               ];
       }
@@ -457,7 +531,7 @@ class JsonEditing {
     if (field == 'network') {
       if (rule) return const ['tcp', 'udp', 'tcp,udp'];
       if (parent.lastOrNull == 'streamSettings') {
-        return const [
+        return [
           'raw',
           'tcp',
           'ws',
@@ -465,7 +539,28 @@ class JsonEditing {
           'xhttp',
           'httpupgrade',
           'kcp',
+          if (!managed) ...['masque', 'xdrive'],
         ];
+      }
+    }
+    if (!managed) {
+      if (field == 'service' && parent.lastOrNull == 'xdriveSettings') {
+        return const ['local', 'Google Drive', 'template'];
+      }
+      if (field == 'type') {
+        if (_endsWith(parent, ['streamSettings', 'finalmask', 'udp', '*'])) {
+          return const ['noise', 'xdns', 'udphop'];
+        }
+        if (_endsWith(parent, ['resolvers', '*']) &&
+            _udpMaskType(parent.sublist(0, parent.length - 2), shape) ==
+                'xdns') {
+          return const ['tcp', 'udp'];
+        }
+        if (_endsWith(parent, ['noise', '*']) &&
+            _udpMaskType(parent.sublist(0, parent.length - 2), shape) ==
+                'noise') {
+          return const ['array', 'str', 'hex', 'base64', 'exp'];
+        }
       }
     }
     if (field == 'action' && dnsRule) {
@@ -485,6 +580,11 @@ class JsonEditing {
       return const ['auto', 'aes-128-gcm', 'chacha20-poly1305', 'none', 'zero'];
     }
     if (field == 'domainStrategy') {
+      if (parent.lastOrNull == 'settings' &&
+          shape.value([...parent.sublist(0, parent.length - 1), 'protocol']) ==
+              'wireguard') {
+        return const [];
+      }
       if (kind == JsonEditorKind.customRouting) return const ['IPIfNonMatch'];
       return parent.length == 1 && parent.single == 'routing'
           ? const ['AsIs', 'IPIfNonMatch', 'IPOnDemand']
@@ -561,6 +661,20 @@ bool _isDnsRule(List<Object> path, _Shape shape) =>
     _endsWith(path, ['settings', 'rules', '*']) &&
     shape.value([...path.sublist(0, path.length - 3), 'protocol']) == 'dns';
 
+String? _udpMaskType(List<Object> settingsPath, _Shape shape) =>
+    _endsWith(settingsPath, [
+      'streamSettings',
+      'finalmask',
+      'udp',
+      '*',
+      'settings',
+    ])
+    ? shape.value([
+        ...settingsPath.sublist(0, settingsPath.length - 1),
+        'type',
+      ])?.toLowerCase()
+    : null;
+
 String? _geodataType(List<Object> path, _Shape shape) {
   if (path.isEmpty) return null;
   final fieldPath = path.last is int ? path.sublist(0, path.length - 1) : path;
@@ -592,6 +706,9 @@ List<String> _accountFields(
   if (_matches(path, ['inbounds', '*', 'settings', 'users', '*']) ||
       _matches(path, ['inbounds', '*', 'settings', 'accounts', '*'])) {
     final protocol = shape.value([...path.sublist(0, 2), 'protocol']);
+    if (protocol == 'masque' && kind == JsonEditorKind.raw) {
+      return const ['pass', 'level', 'email'];
+    }
     return protocol == 'socks' || protocol == 'http'
         ? const ['user', 'pass']
         : const [];

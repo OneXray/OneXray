@@ -284,6 +284,61 @@ void main() {
     expect(result['routing']['balancers'][0]['selector'], ['app-entry-0']);
   });
 
+  test('FakeDNS root aliases preserve pools and runtime recovery', () {
+    for (final poolKey in ['fakeDns', 'fakedns']) {
+      for (final pools in <dynamic>[
+        {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
+        [
+          {'ipPool': '198.19.0.0/16', 'poolSize': 1024},
+        ],
+      ]) {
+        for (final explicit in [false, true]) {
+          final source = <String, dynamic>{
+            'outbounds': [{}],
+            'dns': {
+              'servers': ['9.9.9.9'],
+            },
+            poolKey: pools,
+            if (explicit)
+              'inbounds': [
+                {
+                  'tag': 'tunIn',
+                  'sniffing': {'enabled': false},
+                },
+              ],
+          };
+          final original = jsonEncode(source);
+          final state = AdvancedRoutingDocument.parse(original).state;
+          expect(state.toJson(), source);
+          expect(jsonDecode(state.encode()), source);
+
+          final compiled = ConnectionCompiler.compile(
+            settings: ConnectionSettings(trafficMode: TrafficMode.custom),
+            custom: state,
+            entries: [node(1)],
+            regions: catalog,
+            options: options(),
+          ).config;
+          expect(compiled[poolKey], pools);
+          expect(
+            compiled.containsKey(poolKey == 'fakeDns' ? 'fakedns' : 'fakeDns'),
+            false,
+          );
+          if (explicit) {
+            expect(compiled['inbounds'][0]['sniffing'], {'enabled': false});
+          } else {
+            expect(
+              compiled['inbounds'][0]['sniffing']['destOverride'],
+              contains('fakedns'),
+            );
+          }
+          expect(state.toJson(), source);
+          expect(jsonEncode(source), original);
+        }
+      }
+    }
+  });
+
   test(
     'FakeDNS preserves explicit pools and sniffing; defaults only when absent',
     () {

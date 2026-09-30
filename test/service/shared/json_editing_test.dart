@@ -81,6 +81,176 @@ void main() {
     );
   });
 
+  test('FakeDNS uses the canonical key and recognizes both pool forms', () {
+    for (final kind in [JsonEditorKind.raw, JsonEditorKind.advancedRouting]) {
+      expect(labels('{"fake|"}', kind), ['fakeDns']);
+      for (final key in ['fakeDns', 'fakedns']) {
+        expect(labels('{"$key":{"ip|"}}', kind), ['ipPool']);
+        expect(labels('{"$key":[{"pool|"}]}', kind), ['poolSize']);
+      }
+    }
+    expect(labels('{"fake|"}', JsonEditorKind.customRouting), isEmpty);
+  });
+
+  test('WireGuard removes only the obsolete settings strategy suggestions', () {
+    for (final kind in [JsonEditorKind.outbound, JsonEditorKind.raw]) {
+      String source(String body) => kind == JsonEditorKind.outbound
+          ? '{"protocol":"wireguard",$body}'
+          : '{"outbounds":[{"protocol":"wireguard",$body}]}';
+      expect(labels(source('"settings":{"dom|"}'), kind), isEmpty);
+      expect(
+        labels(source('"settings":{"domainStrategy":"U|"}'), kind),
+        isEmpty,
+      );
+      expect(labels(source('"settings":{"remote|"}'), kind), ['remoteDNS']);
+      expect(
+        labels(
+          source('"streamSettings":{"sockopt":{"domainStrategy":"UseIPv|"}}'),
+          kind,
+        ),
+        ['UseIPv4', 'UseIPv6'],
+      );
+    }
+    expect(
+      labels(
+        '{"protocol":"freedom","settings":{"domainStrategy":"UseIPv|"}}',
+        JsonEditorKind.outbound,
+      ),
+      ['UseIPv4', 'UseIPv6'],
+    );
+  });
+
+  test(
+    'MASQUE and XDrive suggestions preserve advanced template boundaries',
+    () {
+      expect(labels('{"protocol":"ma|"}', JsonEditorKind.outbound), ['masque']);
+      expect(labels('{"inbounds":[{"protocol":"ma|"}]}', JsonEditorKind.raw), [
+        'masque',
+      ]);
+      expect(labels('{"protocol":"xd|"}', JsonEditorKind.outbound), isEmpty);
+      expect(
+        labels(
+          '{"protocol":"masque","settings":{"remote|"}}',
+          JsonEditorKind.outbound,
+        ),
+        ['remoteDNS'],
+      );
+      expect(
+        labels(
+          '{"inbounds":[{"protocol":"masque","settings":{"users":[{"pa|"}]}}]}',
+          JsonEditorKind.raw,
+        ),
+        ['pass'],
+      );
+      for (final kind in [JsonEditorKind.outbound, JsonEditorKind.raw]) {
+        String source(String stream) => kind == JsonEditorKind.outbound
+            ? '{"streamSettings":{$stream}}'
+            : '{"outbounds":[{"streamSettings":{$stream}}]}';
+        expect(labels(source('"network":"ma|"'), kind), ['masque']);
+        expect(labels(source('"network":"xd|"'), kind), ['xdrive']);
+        expect(labels(source('"masqueSettings":{"pa|"}'), kind), [
+          'path',
+          'pass',
+        ]);
+        expect(labels(source('"xdriveSettings":{"se|"}'), kind), [
+          'service',
+          'secrets',
+          'segmentBytes',
+        ]);
+        expect(labels(source('"xdriveSettings":{"service":"G|"}'), kind), [
+          'Google Drive',
+        ]);
+        expect(
+          labels(source('"xdriveSettings":{"secrets":["|"]}'), kind),
+          isEmpty,
+        );
+      }
+      for (final body in [
+        '"protocol":"ma|"',
+        '"streamSettings":{"ma|"}',
+        '"streamSettings":{"xdriveSettings":{"se|"}}',
+        '"streamSettings":{"network":"ma|"}',
+        '"streamSettings":{"network":"xd|"}',
+      ]) {
+        expect(
+          labels('{"outbounds":[{}, {$body}]}', JsonEditorKind.advancedRouting),
+          isEmpty,
+        );
+      }
+    },
+  );
+
+  test('XDNS completes object domains and typed resolvers in UDP masks', () {
+    String source(String settings) =>
+        '{"outbounds":[{"streamSettings":{"finalmask":{"udp":[{"type":"XDNS","settings":{$settings}}]}}}]}';
+    expect(labels(source('"ex|"'), JsonEditorKind.raw), ['extraPoll']);
+    expect(labels(source('"domains":[{"na|"}]'), JsonEditorKind.raw), ['name']);
+    expect(labels(source('"domains":[{"len|"}]'), JsonEditorKind.raw), [
+      'lenLimit',
+    ]);
+    expect(labels(source('"resolvers":[{"type":"u|"}]'), JsonEditorKind.raw), [
+      'udp',
+    ]);
+    expect(
+      labels(
+        source('"resolvers":[{"type":"tcp","settings":{"ad|"}}]'),
+        JsonEditorKind.raw,
+      ),
+      ['addr'],
+    );
+    expect(
+      labels('{"future":{"domains":[{"na|"}]}}', JsonEditorKind.raw),
+      isEmpty,
+    );
+    expect(labels(source('"ex|"'), JsonEditorKind.advancedRouting), isEmpty);
+  });
+
+  test('noise expressions and UDPHop fields follow their UDP mask owner', () {
+    String source(String type, String settings, {String network = 'udp'}) =>
+        '{"streamSettings":{"finalmask":{"$network":[{"type":"$type","settings":{$settings}}]}}}';
+    expect(
+      labels(source('noise', '"noise":[{"ty|"}]'), JsonEditorKind.outbound),
+      ['type'],
+    );
+    expect(
+      labels(
+        source('noise', '"noise":[{"type":"e|"}]'),
+        JsonEditorKind.outbound,
+      ),
+      ['exp'],
+    );
+    expect(
+      labels(
+        source('noise', '"noise":[{"packet":"<|"}]'),
+        JsonEditorKind.outbound,
+      ),
+      isEmpty,
+    );
+    expect(
+      labels(
+        source('xdns', '"noise":[{"type":"e|"}]'),
+        JsonEditorKind.outbound,
+      ),
+      isEmpty,
+    );
+    expect(
+      labels(
+        source('noise', '"noise":[{"type":"e|"}]', network: 'tcp'),
+        JsonEditorKind.outbound,
+      ),
+      isEmpty,
+    );
+    expect(labels(source('UDPHOP', '"re|"'), JsonEditorKind.outbound), [
+      'remoteIPs',
+      'remotePorts',
+    ]);
+    expect(labels(source('UDPHOP', '"so|"'), JsonEditorKind.outbound), isEmpty);
+    expect(
+      labels(source('UDPHOP', '"sockopt":{"in|"}'), JsonEditorKind.outbound),
+      isEmpty,
+    );
+  });
+
   test('offers only token-end replacements, including unfinished strings', () {
     const source = '{"中文😀":true,\r\n"protocol":"vl|';
     final suggestion = completions(source, JsonEditorKind.outbound).single;

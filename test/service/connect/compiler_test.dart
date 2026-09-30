@@ -1316,7 +1316,7 @@ void main() {
 
   for (final maskType in ['udphop', 'UDPHOP', 'UdpHop']) {
     test(
-      'UDP hopping ($maskType) follows the App interface policy in normal and Raw modes',
+      'UDP hopping ($maskType) inherits the outer socket policy without mask rewrites',
       () {
         final source = <String, dynamic>{
           'tag': 'Hysteria2',
@@ -1326,6 +1326,7 @@ void main() {
             'network': 'hysteria',
             'security': 'tls',
             'hysteriaSettings': {'version': 2, 'auth': 'test'},
+            'sockopt': {'interface': 'old-interface', 'mark': 7},
             'finalmask': {
               'udp': [
                 {
@@ -1338,7 +1339,6 @@ void main() {
                     'mode': 'intervalLocal,intervalRemote',
                     'remotePorts': '443,8443',
                     'interval': 30,
-                    'sockopt': {'interface': 'old-interface', 'mark': 7},
                   },
                 },
               ],
@@ -1368,19 +1368,15 @@ void main() {
               ),
             );
             final stream = plan.config['outbounds'][0]['streamSettings'];
-            final hop = stream['finalmask']['udp'][1]['settings'];
             expect(stream['finalmask']['udp'][1]['type'], maskType);
             final interface =
                 platform == ConnectionPlatform.windows ||
                     platform == ConnectionPlatform.linux
                 ? 'selected-interface'
                 : null;
-            expect(hop['sockopt']['interface'], interface);
-            expect(hop['sockopt']['mark'], 7);
-            expect(
-              stream['finalmask']['udp'][0],
-              source['streamSettings']['finalmask']['udp'][0],
-            );
+            expect(stream['sockopt']['interface'], interface);
+            expect(stream['sockopt']['mark'], 7);
+            expect(stream['finalmask'], source['streamSettings']['finalmask']);
             expect(jsonEncode(source), before);
           }
         }

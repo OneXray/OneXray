@@ -588,18 +588,6 @@ class ConnectionCompiler {
       final stream = _object(outbound, 'streamSettings');
       final sockopt = _object(stream, 'sockopt');
       _applyInterfacePolicy(sockopt, options);
-      // UDP hopping redials with its own socket options, not the stream's.
-      if (stream['finalmask'] case final Map<String, dynamic> mask) {
-        for (final entry in _objects(mask, 'udp')) {
-          // Core resolves mask IDs case-insensitively; preserve the JSON value.
-          final type = entry['type'];
-          if (type is! String || type.toLowerCase() != 'udphop') continue;
-          final settings = _object(entry, 'settings');
-          final hopSocket = _object(settings, 'sockopt');
-          _applyInterfacePolicy(hopSocket, options);
-          if (hopSocket.isEmpty) settings.remove('sockopt');
-        }
-      }
       if (!raw) {
         sockopt.remove('domainStrategy');
         final settings = outbound['settings'];

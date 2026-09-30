@@ -139,6 +139,7 @@ final class AdvancedRoutingDocument {
       'inbounds',
       'dns',
       'routing',
+      'fakeDns',
       'fakedns',
       if (allowMetadata) ...['name', 'geodata'],
     }, const []);
