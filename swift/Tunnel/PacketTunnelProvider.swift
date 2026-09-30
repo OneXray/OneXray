@@ -147,7 +147,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         } else {
             YGLog("startTunnel on-demand, skipping XPC sync")
         }
-        guard let dat = datDir(), try routingDataReady(dat) else {
+        guard let dat = datDir(), try DatFileTransfer.directoryExists(dat) else {
             throw TunnelError.noRoutingData
         }
 
@@ -296,18 +296,29 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
         }
 
         let response: TunnelResponse
-        switch request {
-        case .listDat:
-            response = .datManifest(listDatManifest())
-        case .clearDat:
-            response = clearStaging() ? .ok : .error("clear")
-        case let .putDat(name, content, mtimeMs):
-            response = putStaged(name: name, content: content, mtimeMs: mtimeMs) ? .ok : .error("put \(name)")
-        case .commitDat:
-            response = commitStaging() ? .ok : .error("commit")
-        case .startXray:
-            fulfillStartSignal()
-            response = .ok
+        do {
+            guard let dat = datDir(), let staging = stagingDir() else {
+                throw TunnelError.noGroupContainer
+            }
+            switch request {
+            case .listDat:
+                response = .datManifest(try DatFileTransfer.manifest(in: dat))
+            case .clearDat:
+                try DatFileTransfer.clearStaging(staging)
+                response = .ok
+            case let .putDat(name, content, mtimeMs):
+                try DatFileTransfer.put(name: name, content: content, mtimeMs: mtimeMs, in: staging)
+                response = .ok
+            case let .commitDatFiles(expected):
+                try DatFileTransfer.commit(staging: staging, to: dat, expected: expected)
+                response = .ok
+            case .startXray:
+                fulfillStartSignal()
+                response = .ok
+            }
+        } catch {
+            YGLog("dat transfer error: \(error)")
+            response = .error(String(describing: error))
         }
         return try? TunnelMessageCoder.encode(response)
     }
@@ -341,98 +352,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider, @unchecked Sendable {
 
     private func stagingDir() -> URL? {
         extensionGroupContainerURL()?.adaptedAppendPath(path: "dat.staging")
-    }
-
-    private func routingDataReady(_ directory: URL) throws -> Bool {
-        guard try runtimeDirectoryExists(directory) else { return false }
-        for name in ["geosite.dat", "geoip.dat"] {
-            let values = try directory.adaptedAppendPath(path: name).resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
-            guard values.isRegularFile == true, values.isSymbolicLink != true, (values.fileSize ?? 0) > 0 else { return false }
-        }
-        return true
-    }
-
-    private func listDatManifest() -> [String: Int64] {
-        let fm = FileManager.default
-        guard let dir = datDir(),
-              let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey]) else {
-            return [:]
-        }
-        var result: [String: Int64] = [:]
-        for url in entries {
-            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey])
-            guard values?.isRegularFile == true, values?.isSymbolicLink != true, let mtime = values?.contentModificationDate else { continue }
-            result[url.lastPathComponent] = Int64(mtime.timeIntervalSince1970 * 1000)
-        }
-        return result
-    }
-
-    private func clearStaging() -> Bool {
-        let fm = FileManager.default
-        guard let dir = stagingDir() else { return false }
-        try? fm.removeItem(at: dir)
-        do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            return true
-        } catch {
-            YGLog("clearStaging error: \(error)")
-            return false
-        }
-    }
-
-    private func putStaged(name: String, content: Data, mtimeMs: Int64) -> Bool {
-        let fm = FileManager.default
-        guard let dir = stagingDir() else { return false }
-        // Reject path traversal. File names must be single segments.
-        let sanitized = (name as NSString).lastPathComponent
-        guard !sanitized.isEmpty, sanitized == name, name != ".", name != ".." else {
-            YGLog("putStaged invalid name: \(name)")
-            return false
-        }
-        let target = dir.adaptedAppendPath(path: sanitized)
-        do {
-            guard try runtimeDirectoryExists(dir) else { return false }
-            try content.write(to: target, options: .atomic)
-            let date = Date(timeIntervalSince1970: TimeInterval(mtimeMs) / 1000.0)
-            try fm.setAttributes([.modificationDate: date], ofItemAtPath: target.adaptedPath())
-            return true
-        } catch {
-            YGLog("putStaged write \(sanitized) error: \(error)")
-            return false
-        }
-    }
-
-    private func commitStaging() -> Bool {
-        let fm = FileManager.default
-        guard let staging = stagingDir(), let dat = datDir() else { return false }
-        guard (try? routingDataReady(staging)) == true else {
-            YGLog("commitStaging: incomplete routing data")
-            return false
-        }
-        let parent = dat.deletingLastPathComponent()
-        let backup = parent.adaptedAppendPath(path: "dat.old")
-        try? fm.removeItem(at: backup)
-        // If current dat/ exists, move aside first; otherwise just rename staging → dat.
-        if fm.fileExists(atPath: dat.adaptedPath()) {
-            do {
-                try fm.moveItem(at: dat, to: backup)
-            } catch {
-                YGLog("commitStaging move dat→dat.old error: \(error)")
-                return false
-            }
-        }
-        do {
-            try fm.moveItem(at: staging, to: dat)
-        } catch {
-            YGLog("commitStaging move staging→dat error: \(error)")
-            // Rollback.
-            if fm.fileExists(atPath: backup.adaptedPath()) {
-                try? fm.moveItem(at: backup, to: dat)
-            }
-            return false
-        }
-        try? fm.removeItem(at: backup)
-        return true
     }
 
     // MARK: - Xray lifecycle

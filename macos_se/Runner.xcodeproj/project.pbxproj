@@ -41,10 +41,12 @@
 		EBD200022FE8000000000002 /* DockIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD200012FE8000000000001 /* DockIcon.swift */; };
 		EBE36B562F9684A700686880 /* LibXray.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = EBE36B502F9684A700686880 /* LibXray.xcframework */; };
 		EBE36B572F9684A700686880 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B522F9684A700686880 /* Model.swift */; };
+		EBD300022FE9000000000002 /* DatFileTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD300012FE9000000000001 /* DatFileTransfer.swift */; };
 		EBE36B582F9684A700686880 /* Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B532F9684A700686880 /* Tools.swift */; };
 		EBE36B592F9684A700686880 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B4F2F9684A700686880 /* Constants.swift */; };
 		EBE36B5A2F9684A700686880 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B512F9684A700686880 /* Logger.swift */; };
 		EBE36B5B2F9684A700686880 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B522F9684A700686880 /* Model.swift */; };
+		EBD300032FE9000000000003 /* DatFileTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD300012FE9000000000001 /* DatFileTransfer.swift */; };
 		EBE36B5C2F9684A700686880 /* Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B532F9684A700686880 /* Tools.swift */; };
 		EBE36B5D2F9684A700686880 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B4F2F9684A700686880 /* Constants.swift */; };
 		EBE36B5E2F9684A700686880 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE36B512F9684A700686880 /* Logger.swift */; };
@@ -133,6 +135,7 @@
 		EBE36B502F9684A700686880 /* LibXray.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = LibXray.xcframework; sourceTree = "<group>"; };
 		EBE36B512F9684A700686880 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		EBE36B522F9684A700686880 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		EBD300012FE9000000000001 /* DatFileTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatFileTransfer.swift; sourceTree = "<group>"; };
 		EBE36B532F9684A700686880 /* Tools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tools.swift; sourceTree = "<group>"; };
 		EBE36B542F9684A700686880 /* WireGuardKitC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WireGuardKitC.h; sourceTree = "<group>"; };
 		EBE36B602F9684BD00686880 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
@@ -294,6 +297,7 @@
 				EBE36B502F9684A700686880 /* LibXray.xcframework */,
 				EBE36B512F9684A700686880 /* Logger.swift */,
 				EBE36B522F9684A700686880 /* Model.swift */,
+				EBD300012FE9000000000001 /* DatFileTransfer.swift */,
 				EBE36B532F9684A700686880 /* Tools.swift */,
 				EBE36B542F9684A700686880 /* WireGuardKitC.h */,
 			);
@@ -479,6 +483,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBE36B572F9684A700686880 /* Model.swift in Sources */,
+				EBD300022FE9000000000002 /* DatFileTransfer.swift in Sources */,
 				EBE36B582F9684A700686880 /* Tools.swift in Sources */,
 				EBE36B592F9684A700686880 /* Constants.swift in Sources */,
 				EBE36B5A2F9684A700686880 /* Logger.swift in Sources */,
@@ -500,6 +505,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBE36B5B2F9684A700686880 /* Model.swift in Sources */,
+				EBD300032FE9000000000003 /* DatFileTransfer.swift in Sources */,
 				EBE36B5C2F9684A700686880 /* Tools.swift in Sources */,
 				EBE36B622F9684BD00686880 /* PacketTunnelProvider.swift in Sources */,
 				EBE36B5D2F9684A700686880 /* Constants.swift in Sources */,

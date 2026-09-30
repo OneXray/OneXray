@@ -22,6 +22,11 @@ git diff --check
 命令必须串行，不得由多个任务同时运行。生成和测试通过只能证明共享合同，不代表平台 VPN、
 权限、签名或渠道包已经验证。
 
+macOS SE 资源交接的文件操作及内部消息测试使用 `bash tool/test_dat_file_transfer.sh`。
+它在 macOS 编译真实 Swift 实现，以隔离目录覆盖清单、完整空集合、路径保护及发布回滚，
+不启动 App 或 VPN；二进制、测试文件和运行证据位于工作空间 `references/`。
+此检查不能替代 App↔扩展、按需启动或扩展升级的实机验收。
+
 仅修改文档时检查本地路径、链接和 `git diff --check`，不运行 Flutter 测试或原生构建。
 
 Android Widget 回归使用仅用于测试的 Robolectric，加载正式资源并重新应用缓存的

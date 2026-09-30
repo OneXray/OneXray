@@ -625,9 +625,11 @@ class VPNManager {
             throw VPNError.routingDataSyncFailed
         }
         let directory = userGroup.adaptedAppendPath(path: "dat")
-        let local = try buildLocalDatManifest(directory: directory)
+        guard let local = try DatFileTransfer.manifest(in: directory) else {
+            throw VPNError.routingDataSyncFailed
+        }
 
-        let remote: [String: Int64]
+        let remote: [String: Int64]?
         let listResp = try await sendTunnelRequest(session: session, .listDat, timeoutSeconds: 10)
         if case let .datManifest(m) = listResp {
             remote = m
@@ -635,18 +637,18 @@ class VPNManager {
             throw VPNError.routingDataSyncFailed
         }
 
-        if needsDatSync(local: local, remote: remote) {
+        if DatFileTransfer.needsSync(local: local, remote: remote) {
             YGLog("dat manifest mismatch, syncing \(local.count) files")
             guard case .ok = try await sendTunnelRequest(session: session, .clearDat, timeoutSeconds: 10) else {
                 throw VPNError.routingDataSyncFailed
             }
             for (name, mtime) in local {
-                let content = try Data(contentsOf: directory.adaptedAppendPath(path: name))
+                let content = try DatFileTransfer.read(name: name, in: directory)
                 guard case .ok = try await sendTunnelRequest(session: session, .putDat(name: name, content: content, mtimeMs: mtime), timeoutSeconds: 10) else {
                     throw VPNError.routingDataSyncFailed
                 }
             }
-            guard case .ok = try await sendTunnelRequest(session: session, .commitDat, timeoutSeconds: 10) else {
+            guard case .ok = try await sendTunnelRequest(session: session, .commitDatFiles(expected: local), timeoutSeconds: 10) else {
                 throw VPNError.routingDataSyncFailed
             }
         } else {
@@ -696,36 +698,6 @@ class VPNManager {
         }
     }
 
-    private func buildLocalDatManifest(directory: URL) throws -> [String: Int64] {
-        let fm = FileManager.default
-        let directoryValues = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-        guard directoryValues.isDirectory == true, directoryValues.isSymbolicLink != true else {
-            throw VPNError.routingDataSyncFailed
-        }
-        let keys: Set<URLResourceKey> = [.contentModificationDateKey, .isRegularFileKey, .isSymbolicLinkKey]
-        let entries = try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: Array(keys))
-        var result: [String: Int64] = [:]
-        for url in entries {
-            let values = try url.resourceValues(forKeys: keys)
-            guard values.isRegularFile == true, values.isSymbolicLink != true, let mtime = values.contentModificationDate else {
-                throw VPNError.routingDataSyncFailed
-            }
-            result[url.lastPathComponent] = Int64(mtime.timeIntervalSince1970 * 1000)
-        }
-        guard result["geosite.dat"] != nil, result["geoip.dat"] != nil else {
-            throw VPNError.routingDataSyncFailed
-        }
-        return result
-    }
-
-    private func needsDatSync(local: [String: Int64], remote: [String: Int64]) -> Bool {
-        if Set(local.keys) != Set(remote.keys) { return true }
-        for (name, localMtime) in local {
-            guard let remoteMtime = remote[name] else { return true }
-            if abs(localMtime - remoteMtime) > 1000 { return true }
-        }
-        return false
-    }
 }
 
 @MainActor
