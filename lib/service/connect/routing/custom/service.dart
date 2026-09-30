@@ -1,4 +1,5 @@
 import 'package:onexray/core/db/database/database.dart';
+import 'package:collection/collection.dart';
 import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
@@ -81,32 +82,50 @@ class CustomRoutingService {
     return XrayValidation.normal(config);
   }
 
-  Future<int> save(RoutingConfiguration state) async {
+  /// A preflight before confirmation; the write repeats this inside its transaction.
+  Future<RoutingProfileData?> checkSave(
+    RoutingConfiguration state, {
+    RoutingProfileData? original,
+  }) async {
     final name = state.name.trim();
     if (name.isEmpty || name.runes.length > 32) {
-      throw const FormatException(
-        'Custom route name must contain 1–32 characters',
-      );
+      throw const CustomRoutingEditorException('name');
     }
-    final value = state.copyWith(name: name);
-    value.validate();
-    return database.transaction(() async {
-      if ((await database.routingProfileDao.allRows).any(
-        (row) =>
-            row.id != value.id &&
-            row.name.trim().toLowerCase() == name.toLowerCase(),
-      )) {
-        throw const FormatException('Custom route names must be unique');
+    final rows = await database.routingProfileDao.allRows;
+    if (rows.any(
+      (row) =>
+          row.id != state.id &&
+          row.name.trim().toLowerCase() == name.toLowerCase(),
+    )) {
+      throw const CustomRoutingEditorException('duplicate');
+    }
+    final previous = rows.firstWhereOrNull((row) => row.id == state.id);
+    if (original != null && previous != original) {
+      throw const CustomRoutingEditorException('changed');
+    }
+    if (state.id == null && rows.length >= 3) {
+      throw const CustomRoutingEditorException('limit');
+    }
+    if (state.id != null) {
+      if (previous == null) throw const CustomRoutingEditorException('missing');
+      if (previous.advanced != state.advanced) {
+        throw const FormatException('Custom routing mode cannot be changed');
       }
+    }
+    return previous;
+  }
+
+  Future<int> save(
+    RoutingConfiguration state, {
+    RoutingProfileData? original,
+  }) async {
+    final value = state.copyWith(name: state.name.trim());
+    return database.transaction(() async {
+      final previous = await checkSave(value, original: original);
       if (value.id == null) {
         return database.routingProfileDao.insertRow(value.insertCompanion);
       }
-      final previous = await database.routingProfileDao.searchRow(value.id!);
-      if (previous == null) throw StateError('Custom route no longer exists');
-      if (previous.advanced != value.advanced) {
-        throw const FormatException('Custom routing mode cannot be changed');
-      }
-      await database.routingProfileDao.updateRow(value.updateData(previous));
+      await database.routingProfileDao.updateRow(value.updateData(previous!));
       return value.id!;
     });
   }

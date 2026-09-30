@@ -15,6 +15,12 @@ String subscriptionFailureMessage(
           ? const AppFailure(FailureCategory.conflict, 'notFound')
           : null),
   operation: switch (status) {
+    SubscriptionUpdateResult.nameRequired => l.validationNameRequired,
+    SubscriptionUpdateResult.urlRequired => l.validationUrlRequired,
+    SubscriptionUpdateResult.urlInvalid => l.validationUrlInvalid,
+    SubscriptionUpdateResult.duplicateUrl => l.validationUrlDuplicate,
+    SubscriptionUpdateResult.incompleteAgeKeys =>
+      l.prototypeAgeBothKeysRequired,
     SubscriptionUpdateResult.downloadFailed => l.subscriptionDownloadFailed,
     SubscriptionUpdateResult.hwidRequired => l.subscriptionHwidRequired,
     SubscriptionUpdateResult.hwidLimitReached => l.subscriptionHwidLimitReached,

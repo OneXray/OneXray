@@ -226,20 +226,6 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
       emit(state.copyWith(error: hint));
       return false;
     }
-    try {
-      service.validate(current);
-    } on FormatException catch (error) {
-      emit(
-        state.copyWith(
-          error: connectionFailureMessage(
-            l,
-            error: error,
-            operation: l.buttonSaveFailed,
-          ),
-        ),
-      );
-      return false;
-    }
     emit(state.copyWith(busy: true, error: null));
     try {
       final saved = await service.save(

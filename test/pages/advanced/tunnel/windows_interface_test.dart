@@ -115,7 +115,8 @@ void main() {
       expect(save().onPressed, isNotNull);
       expect(
         controller.service
-            .validate(controller.draft!)
+            .prepare(controller.draft!)
+            .policy
             .toWindowsPolicy()
             .toJson()['excludedCidrs'],
         ['192.168.1.0/24'],

@@ -53,7 +53,7 @@ class PolicyEditorService {
         (android['includedAppPackageNames'] as List).isEmpty;
   }
 
-  PlatformPolicy validate(PolicyEditorDraft draft) {
+  ({PlatformPolicy policy, Object runtime}) prepare(PolicyEditorDraft draft) {
     final value = draft.copy().policy;
     final apple =
         platform == ConnectionPlatform.ios ||
@@ -68,33 +68,46 @@ class PolicyEditorService {
               .toList();
     }
     final policy = PlatformPolicy.fromJson(value);
-    policy.validateDns(platform, windowsMode: windowsMode);
     if (requiresInterface && policy.xrayOutboundInterfaceName.trim().isEmpty) {
       throw const FormatException('Network interface is required');
     }
+    Map<String, dynamic>? appleTun;
     if (supportsWindowsSystemVpn) {
       policy.toWindowsPolicy();
     } else if (apple) {
-      policy.toTun(platform);
+      appleTun = policy.toTun(platform).toJson();
+    } else {
+      policy.validateDns(platform, windowsMode: windowsMode);
     }
-    return policy;
+    return (
+      policy: policy,
+      runtime: _effectiveRuntime(
+        policy,
+        platform,
+        windowsMode: windowsMode,
+        appleTun: appleTun,
+      ),
+    );
   }
 
   Future<bool> save({
     required PolicyEditorDraft draft,
     required Future<bool> Function(bool disconnect) confirm,
   }) async {
-    final policy = validate(draft);
+    final prepared = prepare(draft);
+    final policy = prepared.policy;
     await coordinator.initialize();
     await coordinator.refresh();
     if ((await coordinator.configuration).encode() != draft.original.encode()) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final changed = !sameRuntime(
-      draft.original.policy,
-      policy,
-      platform,
-      windowsMode: windowsMode,
+    final changed = !const DeepCollectionEquality().equals(
+      _effectiveRuntime(
+        draft.original.policy,
+        platform,
+        windowsMode: windowsMode,
+      ),
+      prepared.runtime,
     );
     final disconnect =
         platform == ConnectionPlatform.android && emptyAndroidScope(policy);
@@ -124,42 +137,48 @@ class PolicyEditorService {
     PlatformPolicy b,
     ConnectionPlatform platform, {
     WindowsMode? windowsMode,
-  }) {
-    Object effective(PlatformPolicy policy) {
-      final json = policy.toJson();
-      final result = <String, dynamic>{
-        'ipv6': policy.ipv6Enabled,
-        'dnsIpv4Address': policy.dnsIpv4Address,
-        if (policy.ipv6Enabled ||
-            (platform == ConnectionPlatform.windows &&
-                (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
-          'dnsIpv6Address': policy.dnsIpv6Address,
-        'log': json['log'],
-      };
-      if (platform == ConnectionPlatform.android) {
-        final android = json['android'] as Map<String, dynamic>;
-        final scope = android['appScope'];
-        final packages = switch (scope) {
-          'included' => List<String>.from(android['includedAppPackageNames']),
-          'excluded' => List<String>.from(android['excludedAppPackageNames']),
-          _ => <String>[],
-        }..sort();
-        result['android'] = {'scope': scope, 'packages': packages};
-      } else if (platform == ConnectionPlatform.ios ||
-          platform == ConnectionPlatform.macos) {
-        final tun = policy.toTun(platform).toJson();
-        if (tun['enableDot'] != true) tun.remove('dnsServerName');
-        result['apple'] = tun;
-      } else {
-        result['interface'] = policy.xrayOutboundInterfaceName;
-        if (platform == ConnectionPlatform.windows &&
-            (windowsMode ?? windowsBuildMode) == WindowsMode.msix) {
-          result['windows'] = json['windows'];
-        }
-      }
-      return result;
-    }
+  }) => const DeepCollectionEquality().equals(
+    _effectiveRuntime(a, platform, windowsMode: windowsMode),
+    _effectiveRuntime(b, platform, windowsMode: windowsMode),
+  );
 
-    return const DeepCollectionEquality().equals(effective(a), effective(b));
+  static Object _effectiveRuntime(
+    PlatformPolicy policy,
+    ConnectionPlatform platform, {
+    WindowsMode? windowsMode,
+    Map<String, dynamic>? appleTun,
+  }) {
+    final json = policy.toJson();
+    final result = <String, dynamic>{
+      'ipv6': policy.ipv6Enabled,
+      'dnsIpv4Address': policy.dnsIpv4Address,
+      if (policy.ipv6Enabled ||
+          (platform == ConnectionPlatform.windows &&
+              (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
+        'dnsIpv6Address': policy.dnsIpv6Address,
+      'log': json['log'],
+    };
+    if (platform == ConnectionPlatform.android) {
+      final android = json['android'] as Map<String, dynamic>;
+      final scope = android['appScope'];
+      final packages = switch (scope) {
+        'included' => List<String>.from(android['includedAppPackageNames']),
+        'excluded' => List<String>.from(android['excludedAppPackageNames']),
+        _ => <String>[],
+      }..sort();
+      result['android'] = {'scope': scope, 'packages': packages};
+    } else if (platform == ConnectionPlatform.ios ||
+        platform == ConnectionPlatform.macos) {
+      final tun = appleTun ?? policy.toTun(platform).toJson();
+      if (tun['enableDot'] != true) tun.remove('dnsServerName');
+      result['apple'] = tun;
+    } else {
+      result['interface'] = policy.xrayOutboundInterfaceName;
+      if (platform == ConnectionPlatform.windows &&
+          (windowsMode ?? windowsBuildMode) == WindowsMode.msix) {
+        result['windows'] = json['windows'];
+      }
+    }
+    return result;
   }
 }

@@ -12,6 +12,7 @@ import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';

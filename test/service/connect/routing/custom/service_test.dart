@@ -7,11 +7,40 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 
 void main() {
+  test(
+    'commit rejects an original changed after a successful preflight',
+    () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      addTearDown(db.close);
+      final service = CustomRoutingService(db);
+      final id = await service.save(RoutingProfileState(name: 'Original'));
+      final original = (await db.routingProfileDao.searchRow(id))!;
+      final draft = RoutingProfileState(id: id, name: 'Draft');
+      await service.checkSave(draft, original: original);
+      await service.save(RoutingProfileState(id: id, name: 'Concurrent edit'));
+      await expectLater(
+        service.save(draft, original: original),
+        throwsA(
+          isA<CustomRoutingEditorException>().having(
+            (e) => e.reason,
+            'reason',
+            'changed',
+          ),
+        ),
+      );
+      expect(
+        (await db.routingProfileDao.searchRow(id))!.name,
+        'Concurrent edit',
+      );
+    },
+  );
+
   test('FakeDNS persists in Base64 DNS settings and is generated for validation only', () async {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
@@ -113,7 +142,13 @@ void main() {
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Route');
       await expectLater(
         service.save(RoutingProfileState(name: 'route')),
-        throwsFormatException,
+        throwsA(
+          isA<CustomRoutingEditorException>().having(
+            (e) => e.reason,
+            'reason',
+            'duplicate',
+          ),
+        ),
       );
       final name = List.filled(32, '🌐').join();
       await service.save(RoutingProfileState(id: id, name: name));
@@ -162,7 +197,13 @@ void main() {
       await service.save(RoutingProfileState(name: 'Three'));
       await expectLater(
         service.save(RoutingProfileState(name: 'Four')),
-        throwsStateError,
+        throwsA(
+          isA<CustomRoutingEditorException>().having(
+            (e) => e.reason,
+            'reason',
+            'limit',
+          ),
+        ),
       );
       await service.save(state.copyWith(id: id, name: 'Edited'));
       expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
