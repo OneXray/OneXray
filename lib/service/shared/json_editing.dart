@@ -309,6 +309,18 @@ class JsonEditing {
       final protocol = shape.value([...parent, 'protocol']);
       if (_matches(parent, ['inbounds', '*'])) {
         return switch (protocol) {
+          'tun' when kind == JsonEditorKind.raw => const [
+            'name',
+            'desc',
+            'mtu',
+            'gateway',
+            'dns',
+            'userLevel',
+            'autoSystemRoutingTable',
+            'autoOutboundsInterface',
+            'autoSystemDnsToGateway',
+            'autoSystemWfpBlockLeak',
+          ],
           'socks' => const ['auth', 'users', 'accounts', 'udp'],
           'http' => const ['users', 'accounts'],
           'tunnel' => const ['rewriteAddress', 'rewritePort', 'allowedNetwork'],
@@ -486,6 +498,13 @@ class JsonEditing {
     }
     if (field == 'destOverride' && parent.lastOrNull == 'sniffing') {
       return const ['http', 'tls', 'quic', 'fakedns'];
+    }
+    if (kind == JsonEditorKind.raw &&
+        field == 'autoSystemWfpBlockLeak' &&
+        _matches(parent, ['inbounds', '*', 'settings']) &&
+        shape.value([...parent.sublist(0, parent.length - 1), 'protocol']) ==
+            'tun') {
+      return const ['dns', 'misconfigtun'];
     }
     if (field == 'type' &&
         _matches(parent, ['routing', 'balancers', '*', 'strategy'])) {

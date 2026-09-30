@@ -69,7 +69,8 @@ concurrency:
 
 env:
   NDK_VERSION: r29
-  LIBXRAY_REF: main
+  # Xray-core v26.9.30 native TUN DNS/WFP support.
+  LIBXRAY_REF: 38980a66da8cb3f2945852bfa7928a304d863018
   VCORE_REPOSITORY: OneXray/VCore
   VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}

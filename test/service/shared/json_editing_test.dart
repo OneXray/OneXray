@@ -48,6 +48,39 @@ void main() {
     );
   });
 
+  test('completes the core TUN DNS and WFP options only in Raw', () {
+    String settings(String body, {String protocol = 'tun'}) =>
+        '{"inbounds":[{"tag":"tunIn","protocol":"$protocol","settings":{$body}}]}';
+    expect(labels(settings('"autoSystem|"'), JsonEditorKind.raw), [
+      'autoSystemRoutingTable',
+      'autoSystemDnsToGateway',
+      'autoSystemWfpBlockLeak',
+    ]);
+    expect(
+      labels(settings('"autoSystemWfpBlockLeak":["|"]'), JsonEditorKind.raw),
+      ['dns', 'misconfigtun'],
+    );
+    expect(
+      labels(settings('"autoSystemWfpBlockLeak":["mi|"]'), JsonEditorKind.raw),
+      ['misconfigtun'],
+    );
+    expect(
+      labels(settings('"autoSystem|"'), JsonEditorKind.advancedRouting),
+      isEmpty,
+    );
+    expect(
+      labels(settings('"autoSystem|"', protocol: 'socks'), JsonEditorKind.raw),
+      isEmpty,
+    );
+    expect(
+      labels(
+        settings('"autoSystemWfpBlockLeak":["|"]', protocol: 'socks'),
+        JsonEditorKind.raw,
+      ),
+      isEmpty,
+    );
+  });
+
   test('offers only token-end replacements, including unfinished strings', () {
     const source = '{"中文😀":true,\r\n"protocol":"vl|';
     final suggestion = completions(source, JsonEditorKind.outbound).single;

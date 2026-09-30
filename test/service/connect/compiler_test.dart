@@ -526,6 +526,7 @@ void main() {
                 'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
                 'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
                 'autoOutboundsInterface': 'Ethernet 2',
+                'autoSystemWfpBlockLeak': ['dns'],
               });
             }
           }
@@ -533,6 +534,99 @@ void main() {
       }
     },
   );
+
+  test(
+    'TUN DNS protection defaults follow the actual platform tunnel owner',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        for (final windowsMode in WindowsMode.values) {
+          for (final ipv6 in [false, true]) {
+            for (final raw in [false, true]) {
+              final config = ConnectionCompiler.compile(
+                settings: ConnectionSettings(expert: raw),
+                entries: raw ? [] : [node(1)],
+                raw: raw
+                    ? {
+                        'outbounds': [
+                          {'protocol': 'freedom'},
+                        ],
+                      }
+                    : null,
+                regions: catalog,
+                options: options(
+                  platform: platform,
+                  windowsMode: windowsMode,
+                  ipv6: ipv6,
+                  interfaceName: 'Ethernet',
+                ),
+              ).config;
+              final settings = config['inbounds'].single['settings'] as Map;
+              final windowsTun =
+                  platform == ConnectionPlatform.windows &&
+                  windowsMode == WindowsMode.exe;
+              expect(
+                settings['autoSystemWfpBlockLeak'],
+                windowsTun ? ['dns'] : null,
+              );
+              expect(settings.containsKey('autoSystemDnsToGateway'), false);
+              if (windowsTun) {
+                expect(settings['dns'], isNotEmpty);
+                expect(settings['autoSystemRoutingTable'], isNotEmpty);
+                expect(
+                  settings['autoSystemWfpBlockLeak'],
+                  isNot(contains('misconfigtun')),
+                );
+              }
+            }
+          }
+        }
+      }
+    },
+  );
+
+  test('Raw retains explicit core TUN DNS and WFP options', () {
+    for (final platform in [
+      ConnectionPlatform.linux,
+      ConnectionPlatform.windows,
+    ]) {
+      for (final filters in <List<String>>[
+        [],
+        ['dns', 'misconfigtun'],
+      ]) {
+        final source = <String, dynamic>{
+          'inbounds': [
+            {
+              'tag': 'tunIn',
+              'protocol': 'tun',
+              'settings': {
+                'autoSystemDnsToGateway': true,
+                'autoSystemWfpBlockLeak': filters,
+              },
+            },
+          ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        };
+        final before = jsonEncode(source);
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          entries: [],
+          raw: source,
+          regions: catalog,
+          options: options(
+            platform: platform,
+            ipv6: false,
+            interfaceName: 'Ethernet',
+          ),
+        ).config;
+        final settings = config['inbounds'].single['settings'] as Map;
+        expect(settings['autoSystemDnsToGateway'], true);
+        expect(settings['autoSystemWfpBlockLeak'], filters);
+        expect(jsonEncode(source), before);
+      }
+    }
+  });
 
   test(
     'normal 1/2/3 nodes always use full selectors and immutable mappings',

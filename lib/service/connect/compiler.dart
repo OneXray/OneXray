@@ -438,6 +438,9 @@ class ConnectionCompiler {
           ? ['0.0.0.0/0', if (options.ipv6) '::/0']
           : null,
       autoOutboundsInterface: nativeTun ? options.interfaceName : null,
+      autoSystemWfpBlockLeak: options.platform == ConnectionPlatform.windows
+          ? ['dns']
+          : null,
     );
   }
 
@@ -526,6 +529,13 @@ class ConnectionCompiler {
           } else {
             settings.remove(key);
           }
+        }
+        // Raw may explicitly opt out or select additional core-side filters.
+        if (platform.containsKey('autoSystemWfpBlockLeak')) {
+          settings.putIfAbsent(
+            'autoSystemWfpBlockLeak',
+            () => platform['autoSystemWfpBlockLeak'],
+          );
         }
       }
     }

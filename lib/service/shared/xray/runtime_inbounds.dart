@@ -7,6 +7,7 @@ XrayInbound createTunInbound({
   List<String>? dns,
   List<String>? autoSystemRoutingTable,
   String? autoOutboundsInterface,
+  List<String>? autoSystemWfpBlockLeak,
   bool fakeDns = false,
 }) => XrayInbound(
   listen: NetConstants.proxyHost,
@@ -18,6 +19,7 @@ XrayInbound createTunInbound({
     dns: dns,
     autoSystemRoutingTable: autoSystemRoutingTable,
     autoOutboundsInterface: autoOutboundsInterface,
+    autoSystemWfpBlockLeak: autoSystemWfpBlockLeak,
   ).toJson(),
   tag: 'tunIn',
   sniffing: _createSniffing(fakeDns),

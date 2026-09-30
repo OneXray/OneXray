@@ -257,6 +257,8 @@ class XrayInboundTunSettings {
   List<String>? dns;
   List<String>? autoSystemRoutingTable;
   String? autoOutboundsInterface;
+  bool? autoSystemDnsToGateway;
+  List<String>? autoSystemWfpBlockLeak;
 
   XrayInboundTunSettings({
     this.name,
@@ -265,6 +267,8 @@ class XrayInboundTunSettings {
     this.dns,
     this.autoSystemRoutingTable,
     this.autoOutboundsInterface,
+    this.autoSystemDnsToGateway,
+    this.autoSystemWfpBlockLeak,
   });
 
   factory XrayInboundTunSettings.fromJson(Map<String, dynamic> json) =>
