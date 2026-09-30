@@ -30,6 +30,8 @@
 
 ## 进行中的开发计划
 
+- [App 校验逻辑精简实施计划](../plans/validation-simplification.md)：重复检查、保存职责、配置解析、
+  备份、Geodata 与 macOS SE 文件交接的 P0–P7 步骤、验收标准及连续推进边界；实际进度见计划记录。
 - [Android 广播自动化开发计划](../plans/android-intent-automation.md)：Issue #205 的 START/STOP、设备 Token、
   原生复用、设置入口、数据清理/恢复约束及 P0–P4 验收；实现与 API 37、Automate 联调结果见计划记录。
 - [客户端体验增强分阶段计划](../plans/client-improvements.md)：订阅套餐信息、JSON 纠错、本地配置 HTTP API、
