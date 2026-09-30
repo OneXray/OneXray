@@ -183,7 +183,7 @@ void main() {
           addTearDown(tester.view.resetPhysicalSize);
           final builtIn = _file(-1, 'geoip', 12 * 1024 * 1024);
           final custom = _file(42, 'custom-domain', 3 * 1024 * 1024);
-          final actions = <(String, PublishedGeoData)>[];
+          final actions = <(String, GeoDataFile)>[];
 
           await tester.pumpWidget(
             MaterialApp(

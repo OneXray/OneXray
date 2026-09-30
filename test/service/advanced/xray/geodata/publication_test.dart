@@ -125,6 +125,65 @@ void main() {
   );
 
   test(
+    'list metadata and healthy details survive an unrelated broken index',
+    () async {
+      await service.ensureInstalled();
+      await service.add(input('healthy.dat'));
+      await service.add(input('broken.dat'));
+      final healthy = (await db.geoDataDao.searchRowByName('healthy'))!;
+      final broken = (await db.geoDataDao.searchRowByName('broken'))!;
+      await File(p.join(datRoot.path, 'broken.json')).writeAsString('{invalid');
+      final files = await service.watchPublished().first;
+      expect(files, hasLength(4));
+      expect(files.every((file) => file.failure == null), true);
+      expect(
+        (await service.watchFile(healthy.id).first)!.index.categoryCount,
+        1,
+      );
+      await expectLater(
+        service.watchFile(broken.id).first,
+        throwsFormatException,
+      );
+      final preview = await service.previewRestore([input('healthy.dat')]);
+      expect(preview.reusable['healthy'], healthy);
+      expect(preview.pendingCount, 0);
+      expect(
+        (await service.previewRestore([input('broken.dat')])).pendingCount,
+        1,
+      );
+    },
+  );
+
+  test(
+    'missing files keep their list row and restore offline as pending',
+    () async {
+      await service.ensureInstalled();
+      await service.add(input());
+      final original = (await db.geoDataDao.searchRowByName('custom'))!;
+      await File(p.join(datRoot.path, 'custom.dat')).delete();
+      final files = await service.watchPublished().first;
+      final missing = files.singleWhere((file) => file.row.id == original.id);
+      expect(missing.row.installed, true);
+      expect(missing.bytes, isNull);
+      expect(missing.failure, isNotNull);
+      expect(
+        files
+            .where((file) => file.builtIn)
+            .every((file) => file.failure == null),
+        true,
+      );
+      final preview = await service.previewRestore([input()]);
+      expect(preview.pendingCount, 1);
+      await service.restoreSources(preview, (write) => write());
+      final restored = (await db.geoDataDao.allRows).single;
+      expect(restored.installed, false);
+      expect(restored.id, isNot(original.id));
+      expect(await File(p.join(datRoot.path, 'custom.json')).exists(), false);
+      expect(downloads, 1);
+    },
+  );
+
+  test(
     'offline restore registers pending sources and startup never downloads',
     () async {
       await service.ensureInstalled();
@@ -133,7 +192,7 @@ void main() {
       await service.restoreSources(preview, (write) => write());
       final pending = (await db.geoDataDao.allRows).single;
       expect(pending.installed, false);
-      expect(await service.publishedFiles(), hasLength(2));
+      expect(await service.watchPublished().first, hasLength(2));
       await service.ensureInstalled();
       expect(downloads, 0);
       failDownload = 'custom';
@@ -145,7 +204,7 @@ void main() {
       failDownload = null;
       await service.updateCustom(pending);
       expect((await db.geoDataDao.allRows).single.installed, true);
-      expect(await service.publishedFiles(), hasLength(3));
+      expect(await service.watchPublished().first, hasLength(3));
     },
   );
 
@@ -156,7 +215,7 @@ void main() {
     await datRoot.delete(recursive: true);
     await service.ensureInstalled();
     expect((await db.geoDataDao.allRows).single.installed, false);
-    expect(await service.publishedFiles(), hasLength(2));
+    expect(await service.watchPublished().first, hasLength(2));
     expect(downloads, 0);
   });
 
@@ -293,7 +352,7 @@ void main() {
           copyBundled: (_) async => fail('Defaults must be retained'),
         );
         await cold.ensureInstalled();
-        expect(await cold.publishedFiles(), hasLength(committed ? 2 : 3));
+        expect(await cold.watchPublished().first, hasLength(committed ? 2 : 3));
         expect(await stage.exists(), false);
       },
     );
@@ -359,7 +418,9 @@ void main() {
       try {
         expect(await saving.timeout(const Duration(seconds: 1)), isTrue);
         expect(
-          await service.publishedFiles().timeout(const Duration(seconds: 1)),
+          await service.watchPublished().first.timeout(
+            const Duration(seconds: 1),
+          ),
           hasLength(2),
         );
         expect((await coordinator.configuration).policy.ipv6Enabled, isFalse);
@@ -387,7 +448,7 @@ void main() {
     await downloading.future;
     final reader = service.withFiles(() async {
       // A nested read shares the same access, instead of queuing behind itself.
-      expect(await service.publishedFiles(), hasLength(2));
+      expect(await service.watchPublished().first, hasLength(2));
       reading.complete();
       await releaseReader.future;
       expect(
@@ -434,7 +495,7 @@ void main() {
     () async {
       await service.ensureInstalled();
 
-      final files = await service.publishedFiles();
+      final files = await service.watchPublished().first;
       expect(downloads, 0);
       expect(files.map((file) => file.row.id).toSet(), {-1, -2});
       expect(files.map((file) => file.data.parent.path).toSet(), {
@@ -530,7 +591,7 @@ void main() {
     }
     await started.future;
     expect(
-      await service.publishedFiles().timeout(const Duration(seconds: 1)),
+      await service.watchPublished().first.timeout(const Duration(seconds: 1)),
       hasLength(2),
     );
 
@@ -555,7 +616,7 @@ void main() {
 
     await service.ensureInstalled();
 
-    expect(await service.publishedFiles(), hasLength(2));
+    expect(await service.watchPublished().first, hasLength(2));
   });
 
   test('deleted dat directory rebuilds a clean default publication', () async {
@@ -569,7 +630,7 @@ void main() {
       -2,
       -1,
     });
-    expect((await service.publishedFiles()).length, 2);
+    expect((await service.watchPublished().first).length, 2);
     expect(await File(p.join(datRoot.path, 'geoip.dat')).exists(), isTrue);
     expect(await File(p.join(datRoot.path, 'geosite.dat')).exists(), isTrue);
     expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
@@ -599,7 +660,7 @@ void main() {
       (await database.geoDataDao.publishedRows).map((row) => row.id).toSet(),
       {-2, -1},
     );
-    expect((await recreated.publishedFiles()).length, 2);
+    expect((await recreated.watchPublished().first).length, 2);
     expect((await database.connectionConfigDao.read()).configurationJson, '{}');
     expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isFalse);
     expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isFalse);
@@ -634,7 +695,7 @@ void main() {
     await service.ensureInstalled();
 
     expect(downloads, 0);
-    expect(await service.publishedFiles(), hasLength(2));
+    expect(await service.watchPublished().first, hasLength(2));
     expect(await unrelated.readAsString(), 'legacy');
   });
 
@@ -644,7 +705,7 @@ void main() {
 
     await service.ensureInstalled();
 
-    expect(await service.publishedFiles(), hasLength(2));
+    expect(await service.watchPublished().first, hasLength(2));
     expect(downloads, 0);
     expect(
       await File(p.join(datRoot.path, 'legacy.dat')).readAsString(),
@@ -737,7 +798,7 @@ void main() {
         await File(p.join(datRoot.path, 'geosite.dat')).readAsString(),
         'bundled',
       );
-      expect((await service.publishedFiles()).length, 3);
+      expect((await service.watchPublished().first).length, 3);
       expect((await db.geoDataDao.allRows).single, custom);
       expect(
         await File(p.join(datRoot.path, 'custom.dat')).readAsBytes(),
@@ -786,7 +847,7 @@ void main() {
         'orphan',
       );
       await service.updateCustom((await db.geoDataDao.allRows).single);
-      expect(await service.publishedFiles(), hasLength(3));
+      expect(await service.watchPublished().first, hasLength(3));
     },
   );
 
@@ -832,7 +893,7 @@ void main() {
     () async {
       await service.ensureInstalled();
       await service.add(input());
-      final original = (await service.publishedFiles()).firstWhere(
+      final original = (await service.watchPublished().first).firstWhere(
         (file) => !file.builtIn,
       );
       final dataPath = original.data.path;
@@ -850,7 +911,7 @@ void main() {
 
       await db.customStatement('DROP TRIGGER fail_geo_update');
       await service.updateCustom(original.row);
-      final updated = (await service.publishedFiles()).firstWhere(
+      final updated = (await service.watchPublished().first).firstWhere(
         (file) => !file.builtIn,
       );
       expect(updated.data.path, dataPath);
@@ -1065,10 +1126,13 @@ void main() {
       });
       await published.future;
       var read = false;
-      final reading = service.publishedFiles().then((files) {
-        read = true;
-        return files;
-      });
+      final reading = service
+          .watchPublished()
+          .firstWhere((files) => files.any((file) => file.row.name == 'custom'))
+          .then((files) {
+            read = true;
+            return files;
+          });
       await Future<void>.delayed(Duration.zero);
       expect(read, isFalse);
       release.complete();

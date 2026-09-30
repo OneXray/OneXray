@@ -163,8 +163,13 @@ class GeoDataService {
     _FlatFileChange? change;
     try {
       await _copyBundled(stage.path);
+      final indexes = <String, XrayGeoList>{};
       for (final source in _defaults) {
-        await _index(stage.path, source.name, source.type);
+        indexes[source.name] = await _index(
+          stage.path,
+          source.name,
+          source.type,
+        );
       }
       final timestamp = await _assetTimestamp(stage.path);
       change = resetPublication
@@ -175,7 +180,7 @@ class GeoDataService {
           if (resetPublication) {
             await _db.geoDataDao.clearPublished();
           }
-          await _publishDefaults(_root, timestamp);
+          await _publishDefaults(_root, timestamp, indexes: indexes);
         });
       } catch (_) {
         await change.rollback();
@@ -197,9 +202,6 @@ class GeoDataService {
     return true;
   }
 
-  Future<List<PublishedGeoData>> publishedFiles() =>
-      withFiles(() async => _readAll(await _db.geoDataDao.publishedRows));
-
   /// Only registered dependencies of the selected runtime are checked. This
   /// does not download, validate Xray semantics or block unrelated configs.
   Future<void> requireDependencies(Map<String, GeoDataType> references) =>
@@ -218,41 +220,58 @@ class GeoDataService {
         }
       });
 
-  Stream<List<PublishedGeoData>> watchPublished() =>
-      _db.geoDataDao.publishedRowsStream.asyncMap((_) => publishedFiles());
+  Stream<List<GeoDataFile>> watchPublished() =>
+      _db.geoDataDao.publishedRowsStream.asyncMap(
+        (rows) => withFiles(
+          () async => [for (final row in rows) await _readSummary(row)],
+        ),
+      );
+
+  Stream<PublishedGeoData?> watchFile(int id) => _db.geoDataDao
+      .watchPublishedRow(id)
+      .asyncMap(
+        (row) => withFiles(
+          () async => row == null ? null : await _readPublished(row),
+        ),
+      );
 
   Stream<List<GeoDataData>> watchPending() => _db.geoDataDao.allSourcesStream
       .map((rows) => rows.where((row) => !row.installed).toList());
 
-  Future<GeoDataRestorePlan> previewRestore(List<GeoDataInput> sources) =>
-      withFiles(() async {
-        final installed = await publishedFiles();
-        final rows = await _db.geoDataDao.allRows;
-        final reusable = <String, GeoDataData>{};
-        final conflicts = <GeoDataData>[];
-        for (final source in sources) {
-          final old = rows
-              .where(
-                (row) => row.name.toLowerCase() == source.name.toLowerCase(),
-              )
-              .firstOrNull;
-          if (old == null) continue;
-          if (old.name == source.name &&
-              old.type == source.type.name &&
-              old.url == source.url) {
-            if (installed.any((file) => file.row.id == old.id)) {
-              reusable[source.name] = old;
-            }
-          } else {
-            conflicts.add(old);
+  Future<GeoDataRestorePlan> previewRestore(
+    List<GeoDataInput> sources,
+  ) => withFiles(() async {
+    final rows = await _db.geoDataDao.allRows;
+    final reusable = <String, GeoDataData>{};
+    final conflicts = <GeoDataData>[];
+    for (final source in sources) {
+      final old = rows
+          .where((row) => row.name.toLowerCase() == source.name.toLowerCase())
+          .firstOrNull;
+      if (old == null) continue;
+      if (old.name == source.name &&
+          old.type == source.type.name &&
+          old.url == source.url) {
+        if (old.installed) {
+          try {
+            await _readPublished(old);
+            reusable[source.name] = old;
+          } on FileSystemException {
+            // Unavailable candidates remain pending; unrelated files are not read.
+          } on FormatException {
+            // Invalid indexes are downloaded again after an offline restore.
           }
         }
-        return GeoDataRestorePlan(
-          sources: sources,
-          reusable: reusable,
-          conflicts: conflicts,
-        );
-      });
+      } else {
+        conflicts.add(old);
+      }
+    }
+    return GeoDataRestorePlan(
+      sources: sources,
+      reusable: reusable,
+      conflicts: conflicts,
+    );
+  });
 
   /// Offline restoration of declarations. The caller replaces connection
   /// assets in the same DB transaction as writeMetadata. No download or index
@@ -282,9 +301,22 @@ class GeoDataService {
           flush: true,
         );
         for (final row in removals) {
+          _checkName(row.name);
           for (final suffix in ['dat', 'json']) {
             final name = '${row.name}.$suffix';
-            await File(p.join(_root, name)).rename(p.join(journal.path, name));
+            final file = File(p.join(_root, name));
+            final type = await FileSystemEntity.type(
+              file.path,
+              followLinks: false,
+            );
+            if (type == FileSystemEntityType.notFound) continue;
+            if (type != FileSystemEntityType.file) {
+              throw FileSystemException(
+                'Routing data must be a regular file',
+                file.path,
+              );
+            }
+            await file.rename(p.join(journal.path, name));
           }
         }
       }
@@ -421,17 +453,24 @@ class GeoDataService {
     final stage = await _newStage('download-');
     _FlatFileChange? change;
     try {
+      final indexes = <String, XrayGeoList>{};
       for (final source in _defaults) {
         await _download(
           source.url,
           File(p.join(stage.path, '${source.name}.dat')),
         );
-        await _index(stage.path, source.name, source.type);
+        indexes[source.name] = await _index(
+          stage.path,
+          source.name,
+          source.type,
+        );
       }
       await withFiles(() async {
         change = await _applyFiles(await _stageFiles(stage));
         try {
-          await _db.transaction(() => _publishDefaults(_root, DateTime.now()));
+          await _db.transaction(
+            () => _publishDefaults(_root, DateTime.now(), indexes: indexes),
+          );
         } catch (_) {
           await change!.rollback();
           rethrow;
@@ -574,7 +613,10 @@ class GeoDataService {
         final timestamp = DateTime.now();
         for (final source in sources) {
           await _regularFile(File(p.join(_root, source.fileName)));
-          await _readIndex(File(p.join(_root, '${source.name}.json')));
+          await _regularFile(
+            File(p.join(_root, '${source.name}.json')),
+            limit: 32 * 1024 * 1024,
+          );
           final index = indexes[source.name]!;
           await _db.geoDataDao.insertRow(
             GeoDataCompanion.insert(
@@ -667,14 +709,18 @@ class GeoDataService {
     );
   }
 
-  Future<void> _publishDefaults(String directory, DateTime timestamp) async {
-    await _validateDefaultFiles(directory);
+  Future<void> _publishDefaults(
+    String directory,
+    DateTime timestamp, {
+    Map<String, XrayGeoList>? indexes,
+  }) async {
     final existing = await _db.geoDataDao.allSources;
     _checkDefaultRows(existing);
     for (final source in _defaults) {
-      final index = await _readIndex(
-        File(p.join(directory, '${source.name}.json')),
-      );
+      await _regularFile(File(p.join(directory, '${source.name}.dat')));
+      final index =
+          indexes?[source.name] ??
+          await _readIndex(File(p.join(directory, '${source.name}.json')));
       final old = existing.where((row) => row.id == source.id).firstOrNull;
       final next = GeoDataCompanion.insert(
         id: Value(source.id),
@@ -697,13 +743,6 @@ class GeoDataService {
       )) {
         throw StateError('Default routing data is unavailable');
       }
-    }
-  }
-
-  Future<void> _validateDefaultFiles(String directory) async {
-    for (final source in _defaults) {
-      await _regularFile(File(p.join(directory, '${source.name}.dat')));
-      await _readIndex(File(p.join(directory, '${source.name}.json')));
     }
   }
 
@@ -761,26 +800,45 @@ class GeoDataService {
     }
   }
 
-  Future<List<PublishedGeoData>> _readAll(List<GeoDataData> rows) async {
-    await _ensureRoot();
-    _checkDefaultRows(rows);
-    final result = <PublishedGeoData>[];
-    for (final row in rows) {
+  Future<GeoDataFile> _readSummary(GeoDataData row) async {
+    final data = File(p.join(_root, '${row.name}.dat'));
+    final index = File(p.join(_root, '${row.name}.json'));
+    try {
+      await _ensureRoot();
+      _checkDefaultRows([row]);
       _checkName(row.name);
-      final data = File(p.join(_root, '${row.name}.dat'));
-      final index = File(p.join(_root, '${row.name}.json'));
       await _regularFile(data);
-      result.add(
-        PublishedGeoData(
-          row: row,
-          data: data,
-          indexFile: index,
-          index: await _readIndex(index),
-          bytes: await data.length(),
-        ),
+      await _regularFile(index, limit: 32 * 1024 * 1024);
+      return GeoDataFile(
+        row: row,
+        data: data,
+        indexFile: index,
+        bytes: await data.length(),
+      );
+    } catch (error) {
+      return GeoDataFile(
+        row: row,
+        data: data,
+        indexFile: index,
+        failure: error,
       );
     }
-    return result;
+  }
+
+  Future<PublishedGeoData> _readPublished(GeoDataData row) async {
+    await _ensureRoot();
+    _checkDefaultRows([row]);
+    _checkName(row.name);
+    final data = File(p.join(_root, '${row.name}.dat'));
+    final index = File(p.join(_root, '${row.name}.json'));
+    await _regularFile(data);
+    return PublishedGeoData(
+      row: row,
+      data: data,
+      indexFile: index,
+      index: await _readIndex(index),
+      bytes: await data.length(),
+    );
   }
 
   Future<void> _checkConflicts(
@@ -909,7 +967,12 @@ class GeoDataService {
     if (value is! Map<String, dynamic>) {
       throw const FormatException('Invalid Geodata index');
     }
-    final index = XrayGeoList.fromJson(value);
+    final XrayGeoList index;
+    try {
+      index = XrayGeoList.fromJson(value);
+    } on TypeError {
+      throw const FormatException('Invalid Geodata index');
+    }
     if ((index.categoryCount ?? 0) <= 0 ||
         (index.ruleCount ?? 0) <= 0 ||
         index.codes == null ||

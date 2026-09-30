@@ -19,7 +19,7 @@ import 'package:onexray/service/advanced/xray/geodata/validator.dart';
 @immutable
 class GeoDataPageState {
   GeoDataPageState({
-    List<PublishedGeoData> files = const [],
+    List<GeoDataFile> files = const [],
     List<GeoDataData> pending = const [],
     Map<int, String> errors = const {},
     this.formError,
@@ -38,7 +38,7 @@ class GeoDataPageState {
        updating = Set.unmodifiable(updating),
        deleting = Set.unmodifiable(deleting);
 
-  final List<PublishedGeoData> files;
+  final List<GeoDataFile> files;
   final List<GeoDataData> pending;
   final Map<int, String> errors;
   final String? formError;
@@ -52,16 +52,16 @@ class GeoDataPageState {
   final Set<int> deleting;
   final bool adding;
 
-  List<PublishedGeoData> get defaults =>
+  List<GeoDataFile> get defaults =>
       files.where((file) => file.builtIn).toList(growable: false);
-  List<PublishedGeoData> get custom =>
+  List<GeoDataFile> get custom =>
       files.where((file) => !file.builtIn).toList(growable: false);
   bool get canUpdateAll => !updatingAll && updating.isEmpty && deleting.isEmpty;
   bool fileBusy(int id) =>
       updatingAll || updating.contains(id) || deleting.contains(id);
 
   GeoDataPageState copyWith({
-    List<PublishedGeoData>? files,
+    List<GeoDataFile>? files,
     List<GeoDataData>? pending,
     Map<int, String>? errors,
     String? formError,
@@ -100,7 +100,7 @@ class GeoDataController extends PageCubit<GeoDataPageState> {
   final GeoDataService service;
   final name = TextEditingController();
   final url = TextEditingController();
-  StreamSubscription<List<PublishedGeoData>>? _subscription;
+  StreamSubscription<List<GeoDataFile>>? _subscription;
   StreamSubscription<List<GeoDataData>>? _pendingSubscription;
 
   Future<void> initialize() async {
@@ -287,12 +287,14 @@ class GeoDataFilePageState {
     this.query = '',
     this.loading = true,
     this.failed = false,
+    this.failure,
   });
 
   final PublishedGeoData? file;
   final String query;
   final bool loading;
   final bool failed;
+  final Object? failure;
 
   List<XrayGeoListCodes> get codes {
     final normalizedQuery = query.trim().toLowerCase();
@@ -309,11 +311,13 @@ class GeoDataFilePageState {
     String? query,
     bool? loading,
     bool? failed,
+    Object? failure,
   }) => GeoDataFilePageState(
     file: clearFile ? null : file ?? this.file,
     query: query ?? this.query,
     loading: loading ?? this.loading,
     failed: failed ?? this.failed,
+    failure: failed == false ? null : failure ?? this.failure,
   );
 }
 
@@ -324,23 +328,26 @@ class GeoDataFileController extends PageCubit<GeoDataFilePageState> {
 
   final int fileId;
   final GeoDataService service;
-  StreamSubscription<List<PublishedGeoData>>? _subscription;
+  StreamSubscription<PublishedGeoData?>? _subscription;
 
   void searchChanged(String value) => emit(state.copyWith(query: value));
 
   void initialize() {
     emit(state.copyWith(loading: true, failed: false));
-    _subscription = service.watchPublished().listen((files) {
-      final file = files.where((item) => item.row.id == fileId).firstOrNull;
-      emit(
-        state.copyWith(
-          file: file,
-          clearFile: file == null,
-          loading: false,
-          failed: false,
-        ),
-      );
-    }, onError: (_) => emit(state.copyWith(loading: false, failed: true)));
+    _subscription = service.watchFile(fileId).listen(
+      (file) {
+        emit(
+          state.copyWith(
+            file: file,
+            clearFile: file == null,
+            loading: false,
+            failed: false,
+          ),
+        );
+      },
+      onError: (Object error) =>
+          emit(state.copyWith(loading: false, failed: true, failure: error)),
+    );
   }
 
   Future<void> copy(BuildContext context, String value, String success) async {

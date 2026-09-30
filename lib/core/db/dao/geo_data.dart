@@ -33,6 +33,11 @@ class GeoDataDao extends DatabaseAccessor<AppDatabase> with _$GeoDataDaoMixin {
     )..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
   }
 
+  Stream<GeoDataData?> watchPublishedRow(int id) =>
+      (select(geoData)
+            ..where((row) => row.id.equals(id) & row.installed.equals(true)))
+          .watchSingleOrNull();
+
   Future<GeoDataData?> searchRowByName(String name) async {
     return (select(
       geoData,
