@@ -24,6 +24,46 @@ void main() {
   });
 
   test(
+    'host rejects malformed allocations before returning them to callers',
+    () async {
+      const channel = BasicMessageChannel<Object?>(
+        'dev.flutter.pigeon.onexray.BridgeHostApi.invoke',
+        BridgeHostApi.pigeonChannelCodec,
+      );
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      List<int>? ports;
+      messenger.setMockDecodedMessageHandler(
+        channel,
+        (_) async => [
+          jsonEncode({
+            'success': true,
+            'data': {'ports': ports},
+            'error': '',
+          }),
+        ],
+      );
+      addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
+      for (final invalid in <List<int>?>[
+        null,
+        [],
+        [11000],
+        [11000, 11000],
+        [0, 11000],
+        [11000, 65536],
+        [18587, 11000],
+      ]) {
+        ports = invalid;
+        await expectLater(
+          AppHostApi().getFreePorts(2, excludePorts: [18587]),
+          throwsA(isA<LibXrayInvokeException>()),
+        );
+      }
+    },
+    skip: !(Platform.isMacOS || Platform.isIOS || Platform.isAndroid),
+  );
+
+  test(
     'host forwards exclusions without changing the version or response',
     () async {
       const channel = BasicMessageChannel<Object?>(

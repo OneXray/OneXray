@@ -123,7 +123,7 @@ void main() {
     final draft = PolicyEditorDraft(original);
     draft.policy['windows']['alwaysOn'] = true;
     draft.policy['windows']['excludedCidrs'] = ['invalid', 'fd00::/64'];
-    final policy = service.validate(draft);
+    final policy = service.prepare(draft).policy;
     expect(service.supportsWindowsSystemVpn, false);
     expect(
       () => policy.toTun(
@@ -515,7 +515,7 @@ void main() {
       );
       final draft = await service.load();
       draft.policy['apple']['excludedCidrs'] = ['10.250.0.0/16'];
-      final changed = service.validate(draft);
+      final changed = service.prepare(draft).policy;
       expect(
         PolicyEditorService.sameRuntime(
           draft.original.policy,
@@ -558,13 +558,13 @@ void main() {
       expect(
         PolicyEditorService.sameRuntime(
           inactive,
-          service.validate(disabledDraft),
+          service.prepare(disabledDraft).policy,
           ConnectionPlatform.ios,
         ),
         true,
       );
       disabledDraft.policy['apple']['captureAllTraffic'] = false;
-      expect(() => service.validate(disabledDraft), throwsFormatException);
+      expect(() => service.prepare(disabledDraft), throwsFormatException);
     },
   );
 
@@ -584,15 +584,19 @@ void main() {
       final draft = PolicyEditorDraft(original);
       draft.policy['windows']['excludedCidrs'] = [' 192.168.1.0/24 ', ''];
       expect(
-        service.validate(draft).toWindowsPolicy().toJson()['excludedCidrs'],
+        service
+            .prepare(draft)
+            .policy
+            .toWindowsPolicy()
+            .toJson()['excludedCidrs'],
         ['192.168.1.0/24'],
       );
       draft.policy['windows']['excludedCidrs'] = ['fd00::/64'];
       draft.policy['ipv6Enabled'] = false;
-      expect(() => service.validate(draft), throwsFormatException);
+      expect(() => service.prepare(draft), throwsFormatException);
       expect(draft.policy['windows']['excludedCidrs'], ['fd00::/64']);
       draft.policy['windows']['excludedCidrs'] = ['192.168.1.1/24'];
-      expect(() => service.validate(draft), throwsFormatException);
+      expect(() => service.prepare(draft), throwsFormatException);
     },
   );
 }

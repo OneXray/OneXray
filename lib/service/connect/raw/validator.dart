@@ -13,6 +13,7 @@ class XrayRawValidationResult {
   final String? normalizedText;
   final String? name;
   final JsonDiagnostic? diagnostic;
+  final Map<String, dynamic>? json;
 
   const XrayRawValidationResult._(
     this.isValid,
@@ -20,15 +21,19 @@ class XrayRawValidationResult {
     this.normalizedText,
     this.name,
     this.diagnostic,
+    this.json,
   );
 
-  const XrayRawValidationResult.valid(String normalizedText, String name)
-    : this._(true, "", normalizedText, name, null);
+  const XrayRawValidationResult._valid(
+    String normalizedText,
+    String name,
+    Map<String, dynamic> json,
+  ) : this._(true, "", normalizedText, name, null, json);
 
   const XrayRawValidationResult.invalid(
     String error, {
     JsonDiagnostic? diagnostic,
-  }) : this._(false, error, null, null, diagnostic);
+  }) : this._(false, error, null, null, diagnostic, null);
 }
 
 class XrayRawValidator {
@@ -38,7 +43,7 @@ class XrayRawValidator {
   }) {
     late final Map<String, dynamic> jsonMap;
     final normalizedNameOverride = nameOverride?.trim();
-    final overrideName = normalizedNameOverride?.isNotEmpty == true;
+    var overrideName = false;
     try {
       final decoded = JsonTool.decoder.convert(rawText);
       if (decoded is! Map<String, dynamic>) {
@@ -48,6 +53,9 @@ class XrayRawValidator {
         );
       }
       jsonMap = decoded;
+      overrideName =
+          normalizedNameOverride?.isNotEmpty == true &&
+          jsonMap['name'] != normalizedNameOverride;
       if (overrideName) {
         jsonMap['name'] = normalizedNameOverride;
       }
@@ -71,23 +79,25 @@ class XrayRawValidator {
     final normalizedText = overrideName
         ? JsonTool.encoder.convert(jsonMap)
         : rawText;
-    return XrayRawValidationResult.valid(normalizedText, name);
+    return XrayRawValidationResult._valid(normalizedText, name, jsonMap);
   }
 
   static Future<XrayRawValidationResult> validate(
     String rawText, {
     Future<String> Function(String)? testXray,
+  }) => validateParsed(normalize(rawText), testXray: testXray);
+
+  /// The parsed draft belongs to this operation, not a reusable validation cache.
+  static Future<XrayRawValidationResult> validateParsed(
+    XrayRawValidationResult normalized, {
+    Future<String> Function(String)? testXray,
   }) => GeoDataService().withFiles(() async {
-    final normalized = normalize(rawText);
     if (!normalized.isValid) {
       return normalized;
     }
 
-    final jsonMap = JsonTool.decoder.convert(
-      normalized.normalizedText!,
-    ) as Map<String, dynamic>;
     final res = await (testXray ?? AppHostApi().testXray)(
-      XrayValidation.raw(jsonMap),
+      XrayValidation.raw(normalized.json!),
     );
     if (res.isNotEmpty) {
       return XrayRawValidationResult.invalid(res);

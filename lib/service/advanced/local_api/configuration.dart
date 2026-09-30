@@ -8,9 +8,7 @@ import 'package:onexray/core/tools/json_document.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/raw/validator.dart';
-import 'package:onexray/service/connect/routing/custom/advanced.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
-import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -207,24 +205,27 @@ final class _Configuration {
           outbound: copyOutboundMap(value, nameAlias: name),
         );
       case 'routing':
-        final document = RoutingProfileDocument.parse(text, name: name);
-        ConfigurationTransferService.read(text, ConfigurationKind.custom);
-        return _Configuration(routing: document.state);
-      case 'advanced-routing':
-        final document = AdvancedRoutingDocument.parse(text, name: name);
-        ConfigurationTransferService.read(
-          text,
-          ConfigurationKind.customAdvanced,
+        return _Configuration(
+          routing: ConfigurationTransferService.read(
+            text,
+            ConfigurationKind.custom,
+            nameOverride: name,
+          ).routing!,
         );
-        return _Configuration(routing: document.state);
+      case 'advanced-routing':
+        return _Configuration(
+          routing: ConfigurationTransferService.read(
+            text,
+            ConfigurationKind.customAdvanced,
+            nameOverride: name,
+          ).routing!,
+        );
       case 'raw':
         final normalized = XrayRawValidator.normalize(text, nameOverride: name);
         if (!normalized.isValid) {
           throw normalized.diagnostic ?? FormatException(normalized.error);
         }
-        return _Configuration(
-          raw: jsonDecode(normalized.normalizedText!) as Map<String, dynamic>,
-        );
+        return _Configuration(raw: normalized.json!);
       default:
         throw const FormatException(
           'kind must be outbound, routing, advanced-routing or raw',

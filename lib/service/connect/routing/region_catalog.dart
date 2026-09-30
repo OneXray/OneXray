@@ -56,7 +56,8 @@ final class RegionCatalog {
   /// An absent/empty index offers no categories, never a bundled fallback.
   static List<String> codesFromIndex(Map<String, dynamic> index) => [
     for (final entry in index['codes'] as List<dynamic>? ?? const [])
-      if (entry['code'] is String &&
+      if (entry is Map<String, dynamic> &&
+          entry['code'] is String &&
           (entry['code'] as String).isNotEmpty &&
           (entry['ruleCount'] as num? ?? 0) > 0)
         entry['code'] as String,

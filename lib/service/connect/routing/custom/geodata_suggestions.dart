@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:path/path.dart' as p;
@@ -19,15 +20,8 @@ class RoutingGeodataIndex {
     String? directory,
   }) async {
     if (directory == null) {
-      final files = await GeoDataService().publishedFiles();
-      Map<String, List<String>> entries(String type) => {
-        for (final file in files)
-          if (file.row.type == type)
-            file.fileName: RegionCatalog.codesFromIndex(file.index.toJson()),
-      };
-      return RoutingGeodataIndex(
-        domainFiles: entries('domain'),
-        ipFiles: entries('ip'),
+      return GeoDataService().withFiles(
+        () => load(database: database, directory: VpnConstants.datDir),
       );
     }
     final db = database ?? AppDatabase();
@@ -35,7 +29,7 @@ class RoutingGeodataIndex {
     final files = <String, String>{'geosite.dat': 'domain', 'geoip.dat': 'ip'};
     for (final row in await db.geoDataDao.allRows) {
       if (!row.installed) continue;
-      final name = row.name.endsWith('.dat') ? row.name : '${row.name}.dat';
+      final name = '${row.name}.dat';
       if (p.posix.basename(name) != name || p.windows.basename(name) != name) {
         continue;
       }
@@ -54,6 +48,7 @@ class RoutingGeodataIndex {
         final codes = RegionCatalog.codesFromIndex(
           jsonDecode(await index.readAsString()) as Map<String, dynamic>,
         );
+        if (codes.isEmpty) continue;
         (file.value == 'domain' ? domains : ips)[file.key] = codes;
       } on FormatException {
         // A broken index offers no fabricated categories; manual input remains.

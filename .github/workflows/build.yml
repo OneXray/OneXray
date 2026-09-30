@@ -68,7 +68,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NDK_VERSION: r29
+  NDK_VERSION: r30
   LIBXRAY_REF: main
   VCORE_REPOSITORY: OneXray/VCore
   VCORE_REF: main
@@ -170,7 +170,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -250,7 +251,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -334,7 +336,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -399,10 +402,12 @@ jobs:
           ref: ${{ needs.release_metadata.outputs.libxray_sha }}
           path: libXray
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          # Gradle 9.7 supports Java up to 26; Java 27 requires Gradle 9.8.
+          java-version: "26"
+          check-latest: true
 
       - uses: actions/setup-go@v7
         with:
@@ -414,14 +419,16 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
 
       - name: Setup Android NDK
+        id: ndk
         # libXray's Android builder invokes `gomobile bind`, which needs an NDK.
-        # nttld/setup-ndk pins the version and exports ANDROID_NDK_HOME/ANDROID_NDK_ROOT.
+        # Pass the installed NDK path explicitly to the build below.
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: ${{ env.NDK_VERSION }}
@@ -452,6 +459,8 @@ jobs:
         run: sudo gem install fastlane --no-document
 
       - name: Build & upload
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: uv run --project build_scripts python build_scripts/main.py OneXray android
 
       - name: Upload artifact
@@ -501,6 +510,7 @@ jobs:
       ONEXRAY_VCORE_SHA: ${{ needs.release_metadata.outputs.vcore_sha }}
       GOARCH: ${{ matrix.goarch }}
       ONEXRAY_WINDOWS_ARCH: ${{ matrix.arch }}
+      INNO_SETUP_MAJOR: "7"
     defaults:
       run:
         shell: bash
@@ -527,8 +537,9 @@ jobs:
           go-version: stable
           check-latest: true
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@v1
         with:
+          toolchain: stable
           targets: ${{ matrix.rust_target }}
 
       - uses: Swatinem/rust-cache@v2
@@ -540,7 +551,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh
@@ -625,12 +637,33 @@ jobs:
       - name: Install Inno Setup
         if: matrix.mode == 'exe'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $toolDir = Join-Path $env:GITHUB_WORKSPACE "references/windows-build"
           New-Item -ItemType Directory -Force -Path $toolDir | Out-Null
-          $installer = Join-Path $toolDir "innosetup-6.7.3.exe"
-          Invoke-WebRequest -Uri "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe" -OutFile $installer
-          $expectedHash = "9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732"
+          $headers = @{
+            Accept = "application/vnd.github+json"
+            Authorization = "Bearer $env:GH_TOKEN"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $releases = Invoke-RestMethod -Headers $headers `
+            -Uri "https://api.github.com/repos/jrsoftware/issrc/releases?per_page=100"
+          $release = $releases | Where-Object {
+            -not $_.draft -and -not $_.prerelease -and
+            $_.tag_name -match "^is-$($env:INNO_SETUP_MAJOR)_\d+_\d+$"
+          } | Select-Object -First 1
+          if ($null -eq $release) { throw "No stable Inno Setup $env:INNO_SETUP_MAJOR release found" }
+          $asset = $release.assets | Where-Object {
+            $_.name -match "^innosetup-$($env:INNO_SETUP_MAJOR)\.\d+\.\d+-x64\.exe$"
+          } | Select-Object -First 1
+          if ($null -eq $asset -or $asset.digest -notmatch '^sha256:[0-9a-f]{64}$') {
+            throw "Inno Setup release is missing the x64 installer or its SHA-256 digest"
+          }
+          Write-Host "Downloading Inno Setup $($release.tag_name): $($asset.name)"
+          $installer = Join-Path $toolDir $asset.name
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer
+          $expectedHash = $asset.digest.Substring(7)
           if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLower() -ne $expectedHash) {
             throw "Inno Setup installer hash mismatch"
           }
@@ -721,7 +754,8 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
-      - uses: astral-sh/setup-uv@v7
+      - name: Install uv
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Setup Flutter
         run: bash build_scripts/setup_flutter.sh

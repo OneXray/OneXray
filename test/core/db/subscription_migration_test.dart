@@ -418,7 +418,7 @@ void main() {
           await File(p.join(datRoot.path, 'legacy-geosite.dat')).readAsString(),
           'legacy-geosite',
         );
-        expect(await service.publishedFiles(), hasLength(3));
+        expect(await service.watchPublished().first, hasLength(3));
       },
     );
 

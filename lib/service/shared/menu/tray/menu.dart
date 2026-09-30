@@ -6,7 +6,7 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/servers/catalog.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:onexray/service/shared/menu/tray/entry.dart';
 
 /// Desktop-only menu content. Database streams keep names, selections and
 /// available choices current; native VPN state remains owned by the coordinator.
@@ -56,25 +56,28 @@ class TrayMenuData {
     };
   });
 
-  List<MenuItem> selectionItems(AppLocalizations l, {required bool busy}) {
+  List<TrayMenuEntry> selectionItems(AppLocalizations l, {required bool busy}) {
     final selected = configuration.selection;
-    MenuItem choice(
+    TrayMenuEntry choice(
       String key,
       String label,
       bool checked, {
       bool enabled = true,
-    }) => MenuItem.checkbox(
+    }) => TrayMenuEntry(
       key: key,
       label: label,
       checked: checked,
       disabled: busy || !enabled,
     );
-    MenuItem group(String label, List<MenuItem> items, {bool enabled = true}) =>
-        MenuItem.submenu(
-          label: label,
-          disabled: busy || !enabled || items.isEmpty,
-          submenu: Menu(items: items),
-        );
+    TrayMenuEntry group(
+      String label,
+      List<TrayMenuEntry> items, {
+      bool enabled = true,
+    }) => TrayMenuEntry(
+      label: label,
+      disabled: busy || !enabled || items.isEmpty,
+      children: items,
+    );
     bool isSelected(ServerSelection selection) =>
         !configuration.expert &&
         selected.kind == selection.kind &&
@@ -154,10 +157,10 @@ class TrayMenuData {
     ];
   }
 
-  List<MenuItem> updateItems(AppLocalizations l, Set<String> pending) {
-    MenuItem update(String key, String label, {String? allKey}) {
+  List<TrayMenuEntry> updateItems(AppLocalizations l, Set<String> pending) {
+    TrayMenuEntry update(String key, String label, {String? allKey}) {
       final active = pending.contains(key) || pending.contains(allKey);
-      return MenuItem(
+      return TrayMenuEntry(
         key: key,
         label: active ? '$label · ${l.prototypePleaseWait}' : label,
         disabled: active,
@@ -165,41 +168,37 @@ class TrayMenuData {
     }
 
     return [
-      MenuItem.submenu(
+      TrayMenuEntry(
         label: l.menuShortcutUpdateSubscriptions,
         disabled: catalog.sources.isEmpty,
-        submenu: Menu(
-          items: [
-            update('updateSubscriptions', l.prototypeUpdateAll),
-            MenuItem.separator(),
-            for (final source in catalog.sources.take(_maxDataItems))
-              update(
-                'updateSubscription:${source.id}',
-                source.name,
-                allKey: 'updateSubscriptions',
-              ),
-          ],
-        ),
-      ),
-      MenuItem.submenu(
-        label: l.prototypeRoutingData,
-        submenu: Menu(
-          items: [
-            update('updateGeodata', l.prototypeUpdateAll),
-            MenuItem.separator(),
+        children: [
+          update('updateSubscriptions', l.prototypeUpdateAll),
+          TrayMenuEntry.separator(),
+          for (final source in catalog.sources.take(_maxDataItems))
             update(
-              'updateDefaultGeodata',
-              l.prototypeDefaultRoutingData,
+              'updateSubscription:${source.id}',
+              source.name,
+              allKey: 'updateSubscriptions',
+            ),
+        ],
+      ),
+      TrayMenuEntry(
+        label: l.prototypeRoutingData,
+        children: [
+          update('updateGeodata', l.prototypeUpdateAll),
+          TrayMenuEntry.separator(),
+          update(
+            'updateDefaultGeodata',
+            l.prototypeDefaultRoutingData,
+            allKey: 'updateGeodata',
+          ),
+          for (final file in geodata.take(_maxDataItems))
+            update(
+              'updateGeodata:${file.id}',
+              '${file.name}.dat',
               allKey: 'updateGeodata',
             ),
-            for (final file in geodata.take(_maxDataItems))
-              update(
-                'updateGeodata:${file.id}',
-                '${file.name}.dat',
-                allKey: 'updateGeodata',
-              ),
-          ],
-        ),
+        ],
       ),
     ];
   }

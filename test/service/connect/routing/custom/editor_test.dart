@@ -17,6 +17,7 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import '../../../../support/fake_geodata_import.dart';
 
 import 'package:onexray/service/connect/routing/custom/editor.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/advanced.dart';

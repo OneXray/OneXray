@@ -187,10 +187,13 @@ void main() {
       'dns': ['8.8.8.8', '2001:4860:4860::8888'],
       'autoSystemRoutingTable': ['0.0.0.0/0', '::/0'],
       'autoOutboundsInterface': 'en0',
+      'autoSystemDnsToGateway': true,
+      'autoSystemWfpBlockLeak': ['dns'],
     };
     final socks = {'auth': 'noauth', 'udp': true};
     expect(XrayInboundTunSettings.fromJson(tun).toJson(), tun);
     expect(XrayInboundSocksSettings.fromJson(socks).toJson(), socks);
+    expect(XrayInboundTunSettings().toJson(), isEmpty);
   });
 
   test('round-trips the three App-managed system outbounds', () {

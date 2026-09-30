@@ -121,19 +121,34 @@ jobs:
             exit 1
           fi
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v7
         if: steps.verify.outputs.should_update == 'true'
+        with:
+          python-version: "3.x"
+          check-latest: true
 
-      - uses: cargo-bins/cargo-binstall@main
+      - name: Install uv
         if: steps.verify.outputs.should_update == 'true'
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+        run: 'python -m pip install --upgrade --only-binary=:all: "uv>=0,<1"'
 
       - name: Install Komac
         if: steps.verify.outputs.should_update == 'true'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: cargo binstall komac --version '=2.16.0' --locked --no-confirm
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          release_json="$(gh api 'repos/russellbanks/Komac/releases?per_page=100' \
+            --jq '[.[] | select(.draft == false and .prerelease == false and (.tag_name | test("^v2\\.")))][0]')"
+          asset_json="$(jq -e '.assets[] | select(.name | endswith("-x86_64-unknown-linux-gnu.tar.gz"))' <<<"$release_json")"
+          digest="$(jq -er '.digest | select(test("^sha256:[0-9a-f]{64}$"))' <<<"$asset_json")"
+          tool_dir="$GITHUB_WORKSPACE/references/winget-tools"
+          mkdir -p "$tool_dir"
+          archive="$tool_dir/komac.tar.gz"
+          curl -fsSL "$(jq -r '.browser_download_url' <<<"$asset_json")" -o "$archive"
+          printf '%s  %s\n' "${digest#sha256:}" "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$tool_dir"
+          test -x "$tool_dir/komac"
+          echo "$tool_dir" >> "$GITHUB_PATH"
+          "$tool_dir/komac" --version
 
       - name: Generate winget manifests
         id: generate

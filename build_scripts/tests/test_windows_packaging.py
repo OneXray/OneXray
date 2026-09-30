@@ -14,7 +14,6 @@ from app.windows import (
     WindowsBuilder,
     _copy_vcore_artifacts,
     _VCORE_ARTIFACTS,
-    _VCORE_IDENTITY,
     _RUNTIME_FILES,
     _WINTUN_VERSION,
 )
@@ -253,6 +252,11 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertIn("working-directory: OneXray/build_scripts", windows)
         self.assertIn("python -m unittest discover -s tests", windows)
         self.assertIn('"INNO_SETUP_PATH=$installDir" >> $env:GITHUB_ENV', windows)
+        self.assertIn('INNO_SETUP_MAJOR: "7"', windows)
+        self.assertIn("repos/jrsoftware/issrc/releases?per_page=100", windows)
+        self.assertIn("-not $_.draft -and -not $_.prerelease", windows)
+        self.assertIn("$asset.digest.Substring(7)", windows)
+        self.assertNotIn("innosetup-6.7.3.exe", windows)
         self.assertNotIn('"ISCC=$compiler"', windows)
 
     def test_winget_workflow_publishes_stable_exe_installers_only(self):
@@ -264,7 +268,11 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertNotIn("winget-releaser@", workflow)
         self.assertIn("contents: read", workflow)
         self.assertIn("defaults:\n      run:\n        shell: bash", workflow)
-        self.assertIn("--version '=2.16.0'", workflow)
+        self.assertIn("repos/russellbanks/Komac/releases?per_page=100", workflow)
+        self.assertIn('test("^v2\\\\.")', workflow)
+        self.assertIn(".draft == false and .prerelease == false", workflow)
+        self.assertIn("sha256sum --check", workflow)
+        self.assertNotIn("cargo-bins/cargo-binstall@", workflow)
         self.assertIn("secrets.PACKAGE_MANAGER_GITHUB_TOKEN", workflow)
         phases = ["Generate winget manifests", "Fix installer fields",
                   "Validate winget manifests", "Submit validated manifests"]
@@ -461,27 +469,26 @@ class WindowsPackagingTest(unittest.TestCase):
         for name in _VCORE_ARTIFACTS:
             self.assertTrue(os.path.isfile(os.path.join(destination, name)))
 
-    def test_vcore_artifacts_require_exact_schema_27_identity(self):
-        for revision in (13, 26, 27, 28):
-            with self.subTest(config_revision=revision):
-                source = os.path.join(self.temp_dir.name, f"vcore-schema-{revision}")
-                destination = os.path.join(self.project_dir, f"app-schema-{revision}")
+    def test_vcore_artifacts_ignore_build_identity(self):
+        identities = {
+            "omitted": None,
+            "schema31": "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=31",
+            "other": "different build identity",
+        }
+        for name, identity in identities.items():
+            with self.subTest(identity=name):
+                source = os.path.join(self.temp_dir.name, f"vcore-{name}")
+                destination = os.path.join(self.project_dir, f"app-{name}")
                 manifest = _write_vcore_set(source)
-                manifest["buildIdentity"] = (
-                    "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;"
-                    f"configVersion={revision}"
-                )
+                if identity is not None:
+                    manifest["buildIdentity"] = identity
                 _write_manifest(source, manifest)
-                if revision == 27:
-                    _copy_vcore_artifacts(source, destination, "x64")
-                    self.assertEqual(set(os.listdir(destination)), set(_VCORE_ARTIFACTS))
-                else:
-                    with self.assertRaisesRegex(ValueError, "incompatible VCore"):
-                        _copy_vcore_artifacts(source, destination, "x64")
-                    self.assertFalse(os.path.exists(destination))
+                _copy_vcore_artifacts(source, destination, "x64")
+                self.assertEqual(set(os.listdir(destination)), set(_VCORE_ARTIFACTS))
 
     def test_vcore_artifact_manifest_rejects_incompatible_sets(self):
         mutations = {
+            "format": lambda manifest: manifest.update(formatVersion=2),
             "revision": lambda manifest: manifest.update(
                 windowsPackageIntegrationRevision=1
             ),
@@ -489,7 +496,6 @@ class WindowsPackagingTest(unittest.TestCase):
                 windowsPackageIntegrationRevision=2
             ),
             "architecture": lambda manifest: manifest.update(architecture="arm64"),
-            "identity": lambda manifest: manifest.update(buildIdentity="old"),
             "file set": lambda manifest: manifest["artifacts"].pop(
                 "vcore-windows-session-host.exe"
             ),
@@ -631,7 +637,6 @@ def _write_vcore_set(path):
         "formatVersion": 1,
         "windowsPackageIntegrationRevision": 3,
         "architecture": "x64",
-        "buildIdentity": _VCORE_IDENTITY,
         "artifacts": hashes,
     }
     _write_manifest(path, manifest)

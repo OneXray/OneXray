@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/logger.dart';
@@ -14,28 +13,19 @@ class XrayShareReader {
       text,
       ageSecretKey: ageSecretKey,
     );
-    return readXrayJsonOutbounds({'outbounds': outbounds});
+    return readOutbounds(outbounds);
   }
 
-  @visibleForTesting
-  Future<List<CoreConfigCompanion>> readXrayJsonOutbounds(
-    Map<String, dynamic> xrayJson,
+  Future<List<CoreConfigCompanion>> readOutbounds(
+    List<Map<String, dynamic>> outbounds,
   ) async {
     final res = <CoreConfigCompanion>[];
-    final outbounds = xrayJson['outbounds'];
-    if (outbounds is! List<dynamic>) {
-      return res;
-    }
 
     for (var index = 0; index < outbounds.length; index++) {
       if (index > 0 && index % 64 == 0) {
         await Future<void>.delayed(Duration.zero);
       }
-      final value = outbounds[index];
-      if (value is! Map<String, dynamic>) {
-        continue;
-      }
-      final outbound = copyOutboundMap(value);
+      final outbound = copyOutboundMap(outbounds[index]);
       try {
         res.add(outboundCompanion(outbound));
       } catch (error, stackTrace) {

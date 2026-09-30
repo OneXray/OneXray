@@ -338,7 +338,6 @@ void main() {
       final inputs = <SubscriptionInput>[];
       final controller = ServerImportController(
         loadSubscription: (_) async => null,
-        validateSubscription: (_, _) async => null,
         insertSubscription: (input) async {
           inputs.add(input);
           return const SubscriptionInsertResult(
@@ -614,10 +613,6 @@ void main() {
         hwid: 'saved-device-id',
         timestamp: DateTime(2026),
       ),
-      validateSubscription: (_, id) async {
-        expect(id, 7);
-        return null;
-      },
       saveSubscriptionInput: (id, input) async {
         savedId = id;
         saved = input;

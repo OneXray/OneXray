@@ -1,5 +1,4 @@
 import 'package:collection/collection.dart';
-import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/asset_edit.dart';
@@ -10,17 +9,6 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
-
-class CustomRoutingEditorException extends AppFailure {
-  final String reason;
-  const CustomRoutingEditorException(this.reason)
-    : super(
-        reason == 'changed' || reason == 'missing'
-            ? FailureCategory.conflict
-            : FailureCategory.input,
-        reason,
-      );
-}
 
 class CustomRoutingEditorDraft {
   final RoutingProfileData? original;
@@ -69,21 +57,14 @@ class CustomRoutingEditorService {
     ConfigurationImportDraft? imported,
   }) async {
     final name = draft.state.name.trim();
-    if (name.isEmpty || name.runes.length > 32) {
-      throw const CustomRoutingEditorException('name');
-    }
     final original = draft.original;
     final state = draft.state.copyWith(
       id: original?.id,
       clearId: original == null,
       name: name,
     );
-    state.validate();
-    await _checkName(name, original?.id);
-    if (original != null) await _checkOriginal(original);
-    if (original == null && (await rows).length >= 3) {
-      throw const CustomRoutingEditorException('limit');
-    }
+    final service = CustomRoutingService(db);
+    await service.checkSave(state, original: original);
     final configuration = await coordinator.readForEditing();
     final connection = configuration.connection;
     final selected = original != null && _selects(connection, original.id);
@@ -118,9 +99,7 @@ class CustomRoutingEditorService {
                 )
           : null,
       writeAssets: () async {
-        await _checkName(name, original?.id);
-        if (original != null) await _checkOriginal(original);
-        savedId = await CustomRoutingService(db).save(state);
+        savedId = await service.save(state, original: original);
       },
     );
     return saved ? savedId : null;
@@ -178,15 +157,6 @@ class CustomRoutingEditorService {
         current.name != original.name ||
         current.advanced != original.advanced) {
       throw const CustomRoutingEditorException('changed');
-    }
-  }
-
-  Future<void> _checkName(String name, int? id) async {
-    if ((await rows).any(
-      (row) =>
-          row.id != id && row.name.trim().toLowerCase() == name.toLowerCase(),
-    )) {
-      throw const CustomRoutingEditorException('duplicate');
     }
   }
 

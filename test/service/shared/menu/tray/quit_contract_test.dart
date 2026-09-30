@@ -18,7 +18,7 @@ void main() {
     expect(
       compact,
       contains(
-        'if (_canQuitWithoutStoppingVpn) { items.add( MenuItem( '
+        'if (_canQuitWithoutStoppingVpn) { items.add( TrayMenuEntry( '
         'key: _TrayMenuKey.quitAndStopVpn.name, '
         'label: appLocalizationsNoContext().menuBarQuitAndStopVpn,',
       ),

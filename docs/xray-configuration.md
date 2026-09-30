@@ -43,6 +43,16 @@ tag 等额外校验规则，也不因 VMess 省略 security 而拒绝内核已�
 `testXray`，连接启动不再调用该预检。App 保留自定义名称校验，以及文件/链接安全、资产数量与事务完整性、
 编辑器可表达范围和平台网络策略等自身职责内的必要检查。
 
+FinalMask 的 UDPHop 只使用外层 `streamSettings.sockopt`，首次拨号和跳跃后的 socket
+都继承同一份设置；mask 内部的 `settings.sockopt` 已删除，Core 会忽略该字段。
+App 的出口网卡策略只作用于外层 socket 设置，不再生成内部覆盖。
+
+WireGuard 的 `settings.domainStrategy` 同样不再被 Core 读取。本地 peer 域名的地址族选择
+使用外层 `streamSettings.sockopt.domainStrategy`，隧道内目的域名由 WireGuard netstack
+处理；两者不是旧字段的简单改名，也不保证复现旧解析行为。
+XDNS 的 `domains`、`resolvers` 使用对象列表，分别声明域名属性及 resolver 的 `type` / `settings`；
+旧字符串列表由 Core 拒绝。App 保留用户 JSON，不自动迁移这些已改变的协议设置。
+
 接入按选择范围与测速结果确定；已运行节点不会因后台测速或订阅更新而被热替换。
 测速状态直接由已有延迟值区分未检测、成功、失败与超时；地区使用出口国家代码，不保存
 测量来源或时间，也不引入时间过期判定或新的“是否测过”字段。
@@ -106,6 +116,9 @@ fallback。包含目标 IP/端口、网络、协议、操作系统或入站标�
 普通校验和运行共用生成逻辑。受管理的 TUN/SOCKS 入站在原 HTTP/TLS/QUIC 嗅探基础上
 增加 `fakedns`，将虚拟目的地址还原为域名后再路由，不关闭内容嗅探。
 
+Core 的根级池字段规范名为 `fakeDns`；已有 `fakedns` 写法继续识别，JSON 编辑辅助对
+两种写法的单对象池和数组池均提供字段提示，保留用户使用的键名。
+
 Raw JSON 的 DNS server 使用 `fakedns`（字符串或对象地址），或声明根级 FakeDNS 池时，
 App 只为新建的 `tunIn` 启用上述还原；已有 Raw 入站的 sniffing 原样保留，不因 FakeDNS 自动修改。
 高级模板没有提供 sniffing 时也使用 App 默认值，显式提供则按整对象保留。用户原文、DNS 地址、池及额外入站保持不变，
@@ -129,6 +142,30 @@ TUN 入站也使用这些地址。Windows MSIX 将其用于网络设置和排除
 服务器域名仅用于 Apple DNS over TLS，不作为搜索域。开启 DoT 时，地址与域名必须属于
 同一服务，并与其 TLS 证书匹配。有效 DNS 设置的修改复用现有保存及确认重连流程；修改
 未生效的服务器域名或 IPv6 设置不触发重连。恢复默认只修改草稿，保存后才生效。
+
+### Xray 原生 TUN 的 DNS 防泄漏
+
+Windows EXE 默认生成 `tunIn.settings.autoSystemWfpBlockLeak: ["dns"]`，由内核使用
+Windows Filtering Platform 限制其他进程在 TUN 外的 DNS 查询。对应的 TUN DNS 和默认
+系统路由由 App 一并生成；MSIX 使用 VCore，不生成这项配置。该限制不等同于拦截所有
+应用自带的 DoH。过滤器创建失败由内核报告启动失败；关闭或进程退出后由 Windows 清理。
+这会影响 TUN 外的本地 DNS、其他 VPN 的 DNS、虚拟机 NAT DNS 或门户登录等场景；
+完整 Raw 可显式设置空列表关闭过滤，不新增自动绕过或失败回退。
+App 不启用 `misconfigtun`，避免在关闭 IPv6 接管时额外禁止该协议族的普通网络流量。
+WFP 对宿主 EXE 的出站连接放行，由内核处理网卡绑定与自身解析，不新增 App 原生接口或检查。
+
+Linux 的 `autoSystemDnsToGateway` 保持内核默认关闭，不对所有发行版无条件接管系统
+DNS。完整 Raw 可在 `tunIn.settings` 中显式设置 `true`：必须使用可工作的
+systemd-resolved（systemd ≥240，`resolvectl` 可用），并提供独立于系统解析器的 Core DNS
+上游，以及将 TUN 的 53 端口交给 `protocol: "dns"` 出站的路由。缺少这些条件，内核拒绝
+启动；App 不探测发行版或自动改写用户 DNS/路由。系统 DNS 使用 App 生成的首个 IPv4
+gateway 加一，即 `198.18.0.2`，而不是隧道页的 DNS 地址；正常关闭时内核恢复设置，
+强制杀进程后可能需要手动执行 `resolvectl revert OneXrayTun`。
+
+两个选项仅作用于对应平台的 Xray 原生 TUN；Apple、Android 的系统隧道保持原生管理。
+其他上游变化（Windows 复用同名网卡、DNS 缓存刷新与解析器处理、UDP 统计和 flow 生命周期
+修复）由新版内核负责，不在 Dart 或 Native 重复实现。
+实现依据：[Xray-core TUN 说明](https://github.com/XTLS/Xray-core/blob/v26.9.30/proxy/tun/README.md)。
 
 ## Apple 路由与 VPN 图标
 
@@ -249,6 +286,9 @@ Raw 保存完整原文，不经过 Profile 或 `XrayJson`，不因保存或校�
 仅合并 settings 的 name、mtu、gateway、dns、autoSystemRoutingTable、autoOutboundsInterface。
 Windows EXE/Linux 按平台生成六项；Apple/Android 移除不适用的后四项，只更新 name/mtu，
 保留 desc、userLevel 等其他设置。settings 格式无效、重复 tunIn 或 TUN 平台协议不符时报错。
+新建或已有 Windows EXE 入站未填写 `autoSystemWfpBlockLeak` 时补默认 `["dns"]`；Raw
+显式填写的列表原样保留，可用 `[]` 关闭 WFP 过滤。`autoSystemDnsToGateway` 同样保留
+用户值，其平台依赖与启动限制见[原生 TUN DNS 防泄漏](#xray-原生-tun-的-dns-防泄漏)。
 整条 tunIn 缺失时才创建默认入站。MSIX/iOS 模拟器明确转换 protocol/listen/port/settings 为
 内部 SOCKS，仍保留用户 sniffing 和其他无需转换的内容。数据库及源 JSON 不变。
 

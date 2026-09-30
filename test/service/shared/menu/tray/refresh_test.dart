@@ -8,37 +8,94 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/menu/tray/service.dart';
+import 'package:onexray/service/shared/menu/tray/entry.dart';
+import 'package:onexray/service/shared/menu/tray/platform.dart';
 
-Iterable<Map<dynamic, dynamic>> _items(Map<dynamic, dynamic> menu) sync* {
-  for (final item in menu['items'] as List) {
-    yield item as Map<dynamic, dynamic>;
-    final submenu = item['submenu'];
-    if (submenu != null) yield* _items(submenu as Map<dynamic, dynamic>);
+Iterable<TrayMenuEntry> _items(List<TrayMenuEntry> entries) sync* {
+  for (final entry in entries) {
+    yield entry;
+    if (entry.children case final children?) yield* _items(children);
   }
 }
 
+final class _FakeTrayPlatform implements TrayPlatform {
+  _FakeTrayPlatform({
+    required this.calls,
+    required this.menus,
+    required this.beforeIcon,
+    required this.popup,
+  });
+
+  final List<MethodCall> calls;
+  final List<List<TrayMenuEntry>> menus;
+  final Future<void> Function() beforeIcon;
+  final Future<void> Function() popup;
+  late void Function() _onClick;
+  late void Function(bool) _onMenuVisibility;
+  late void Function(TrayMenuEntry) _onSelect;
+
+  @override
+  void init({
+    required void Function() onClick,
+    required void Function(bool) onMenuVisibility,
+  }) {
+    _onClick = onClick;
+    _onMenuVisibility = onMenuVisibility;
+    calls.add(const MethodCall('setToolTip', {'toolTip': 'OneXray'}));
+    if (AppPlatform.isMacOS) {
+      calls.add(const MethodCall('setTitle', {'title': ''}));
+    }
+  }
+
+  void click() => _onClick();
+  void select(TrayMenuEntry entry) => _onSelect(entry);
+
+  @override
+  Future<void> setIcon(String path) async {
+    calls.add(MethodCall('setIcon', {'path': path}));
+    await beforeIcon();
+  }
+
+  @override
+  void setMenu(
+    List<TrayMenuEntry> entries,
+    void Function(TrayMenuEntry) onSelect,
+  ) {
+    calls.add(const MethodCall('setContextMenu'));
+    menus.add(List.unmodifiable(entries));
+    _onSelect = onSelect;
+  }
+
+  @override
+  Future<void> openMenu() async {
+    _onMenuVisibility(true);
+    try {
+      await popup();
+    } finally {
+      _onMenuVisibility(false);
+    }
+  }
+
+  @override
+  void dispose() {}
+}
+
 void main() {
-  final binding = TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('tray_manager');
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late _FakeTrayPlatform platform;
   late AppDatabase db;
   late TrayService tray;
   late ConnectionCoordinator coordinator;
   late Completer<void> popupClosed;
   Completer<void>? iconReady;
-  final menus = <Map<dynamic, dynamic>>[];
+  final menus = <List<TrayMenuEntry>>[];
   final calls = <MethodCall>[];
   final choices = <Map<String, dynamic>>[];
   var popups = 0;
   var connections = 0;
 
-  Future<void> click(int id) async {
-    await binding.defaultBinaryMessenger.handlePlatformMessage(
-      channel.name,
-      const StandardMethodCodec().encodeMethodCall(
-        MethodCall('onTrayMenuItemClick', {'id': id}),
-      ),
-      (_) {},
-    );
+  Future<void> click(TrayMenuEntry entry) async {
+    platform.select(entry);
     await pumpEventQueue();
   }
 
@@ -56,32 +113,20 @@ void main() {
     addTearDown(db.close);
     coordinator = ConnectionCoordinator(database: db, disposeStatus: () {});
     addTearDown(coordinator.dispose);
-    binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
-      call,
-    ) async {
-      calls.add(call);
-      switch (call.method) {
-        case 'setIcon':
-          await iconReady?.future;
-        case 'setContextMenu':
-          menus.add(call.arguments['menu'] as Map<dynamic, dynamic>);
-        case 'popUpContextMenu':
-          popups++;
-          // AppKit/Win32's menu tracking call returns when the popup closes.
-          await popupClosed.future;
-      }
-      return null;
-    });
-    addTearDown(
-      () => binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        channel,
-        null,
-      ),
+    platform = _FakeTrayPlatform(
+      calls: calls,
+      menus: menus,
+      beforeIcon: () async => await iconReady?.future,
+      popup: () async {
+        popups++;
+        await popupClosed.future;
+      },
     );
     tray =
         TrayService.forTesting(
             database: db,
             coordinator: coordinator,
+            platform: platform,
             connect: () async => connections++,
             notify: (_) async => fail('No notification is expected'),
             showMainWindow: () async => fail('No window is needed'),
@@ -131,7 +176,7 @@ void main() {
           .map((call) => call.arguments['toolTip']),
       everyElement('OneXray'),
     );
-    expect(_items(menus.last).any((item) => item['key'] == 'stopVpn'), isTrue);
+    expect(_items(menus.last).any((item) => item.key == 'stopVpn'), isTrue);
     expect(calls.where((call) => call.method == 'setIcon'), hasLength(2));
     expect(titles, AppPlatform.isMacOS ? hasLength(1) : isEmpty);
 
@@ -161,14 +206,10 @@ void main() {
         final oldMenu = menus.last;
         final published = menus.length;
         final start = _items(oldMenu)
-            .singleWhere((item) => item['key'] == 'startVpn');
+            .singleWhere((item) => item.key == 'startVpn');
         final automatic = _items(oldMenu)
-            .singleWhere((item) => item['key'] == 'automatic');
-        if (rightClick) {
-          tray.onTrayIconRightMouseDown();
-        } else {
-          tray.onTrayIconMouseDown();
-        }
+            .singleWhere((item) => item.key == 'automatic');
+        platform.click();
         await pumpEventQueue();
         expect(popups, 1);
 
@@ -180,8 +221,8 @@ void main() {
         await tray.refreshTrayManager();
         await tray.refreshTrayManager();
         expect(menus.length, published);
-        await click(start['id'] as int);
-        await click(automatic['id'] as int);
+        await click(start);
+        await click(automatic);
         expect(connections, 1);
         expect(choices, hasLength(1));
         expect(menus.length, published);
@@ -190,14 +231,14 @@ void main() {
         await pumpEventQueue();
         expect(menus.length, published + 1);
         expect(
-          _items(
-            menus.last,
-          ).singleWhere((item) => item['key'] == 'source:$sourceId')['label'],
+          _items(menus.last)
+              .singleWhere((item) => item.key == 'source:$sourceId')
+              .label,
           'Renamed provider',
         );
         final newStart = _items(menus.last)
-            .singleWhere((item) => item['key'] == 'startVpn');
-        await click(newStart['id'] as int);
+            .singleWhere((item) => item.key == 'startVpn');
+        await click(newStart);
         expect(connections, 2);
       },
     );
@@ -217,9 +258,9 @@ void main() {
       );
     }
     await pumpEventQueue();
-    Iterable<Object?> sourceKeys(Map<dynamic, dynamic> menu, String prefix) =>
+    Iterable<String?> sourceKeys(List<TrayMenuEntry> menu, String prefix) =>
         _items(menu)
-            .map((item) => item['key'])
+            .map((item) => item.key)
             .where((key) => key is String && key.startsWith(prefix));
     final oldMenu = menus.last;
     final published = menus.length;
@@ -230,8 +271,8 @@ void main() {
     }
     expect(await db.subscriptionDao.allRows, hasLength(12));
     final choice = _items(oldMenu)
-        .singleWhere((item) => item['key'] == 'source:${ids[9]}');
-    tray.onTrayIconMouseDown();
+        .singleWhere((item) => item.key == 'source:${ids[9]}');
+    platform.click();
     await pumpEventQueue();
     expect(popups, 1);
 
@@ -239,7 +280,7 @@ void main() {
     await pumpEventQueue();
     await tray.refreshTrayManager();
     expect(menus, hasLength(published));
-    await click(choice['id'] as int);
+    await click(choice);
     expect(choices.single, {
       'expert': false,
       'selection': {'kind': 'source', 'id': ids[9]},
@@ -265,7 +306,7 @@ void main() {
         phase: ConnectionPhase.connected,
       );
       final refresh = tray.refreshTrayManager();
-      tray.onTrayIconMouseDown();
+      platform.click();
       await pumpEventQueue();
       expect(popups, 0);
       await tray.refreshTrayManager();
@@ -283,7 +324,7 @@ void main() {
   );
 
   test('popup failure releases queued refreshes', () async {
-    tray.onTrayIconMouseDown();
+    platform.click();
     await pumpEventQueue();
     final published = menus.length;
     await tray.refreshTrayManager();
@@ -292,5 +333,20 @@ void main() {
     expect(menus.length, published + 1);
     await tray.refreshTrayManager();
     expect(menus.length, published + 2);
+  });
+
+  test('disposing the tray cancels an in-flight menu publication', () async {
+    iconReady = Completer<void>();
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+    );
+    final refreshing = tray.refreshTrayManager();
+    final published = menus.length;
+    tray.dispose();
+    iconReady!.complete();
+
+    await refreshing;
+
+    expect(menus, hasLength(published));
   });
 }

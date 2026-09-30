@@ -213,32 +213,3 @@ enum RuntimeStateError: String, Error {
     case invalid = "runtimeStateInvalid"
     case timeout = "runtimeStateTimeout"
 }
-
-// MARK: - System extension app-provider messages (app ↔ tunnel)
-
-enum TunnelRequest: Codable {
-    case listDat
-    case clearDat
-    case putDat(name: String, content: Data, mtimeMs: Int64)
-    case commitDat
-    case startXray
-}
-
-enum TunnelResponse: Codable {
-    case ok
-    case datManifest([String: Int64])
-    case error(String)
-}
-
-enum TunnelMessageCoder {
-    static func encode<T: Encodable>(_ value: T) throws -> Data {
-        let encoder = PropertyListEncoder()
-        encoder.outputFormat = .binary
-        return try encoder.encode(value)
-    }
-
-    static func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
-        let decoder = PropertyListDecoder()
-        return try decoder.decode(type, from: data)
-    }
-}

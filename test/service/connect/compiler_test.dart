@@ -526,6 +526,7 @@ void main() {
                 'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
                 'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
                 'autoOutboundsInterface': 'Ethernet 2',
+                'autoSystemWfpBlockLeak': ['dns'],
               });
             }
           }
@@ -533,6 +534,99 @@ void main() {
       }
     },
   );
+
+  test(
+    'TUN DNS protection defaults follow the actual platform tunnel owner',
+    () {
+      for (final platform in ConnectionPlatform.values) {
+        for (final windowsMode in WindowsMode.values) {
+          for (final ipv6 in [false, true]) {
+            for (final raw in [false, true]) {
+              final config = ConnectionCompiler.compile(
+                settings: ConnectionSettings(expert: raw),
+                entries: raw ? [] : [node(1)],
+                raw: raw
+                    ? {
+                        'outbounds': [
+                          {'protocol': 'freedom'},
+                        ],
+                      }
+                    : null,
+                regions: catalog,
+                options: options(
+                  platform: platform,
+                  windowsMode: windowsMode,
+                  ipv6: ipv6,
+                  interfaceName: 'Ethernet',
+                ),
+              ).config;
+              final settings = config['inbounds'].single['settings'] as Map;
+              final windowsTun =
+                  platform == ConnectionPlatform.windows &&
+                  windowsMode == WindowsMode.exe;
+              expect(
+                settings['autoSystemWfpBlockLeak'],
+                windowsTun ? ['dns'] : null,
+              );
+              expect(settings.containsKey('autoSystemDnsToGateway'), false);
+              if (windowsTun) {
+                expect(settings['dns'], isNotEmpty);
+                expect(settings['autoSystemRoutingTable'], isNotEmpty);
+                expect(
+                  settings['autoSystemWfpBlockLeak'],
+                  isNot(contains('misconfigtun')),
+                );
+              }
+            }
+          }
+        }
+      }
+    },
+  );
+
+  test('Raw retains explicit core TUN DNS and WFP options', () {
+    for (final platform in [
+      ConnectionPlatform.linux,
+      ConnectionPlatform.windows,
+    ]) {
+      for (final filters in <List<String>>[
+        [],
+        ['dns', 'misconfigtun'],
+      ]) {
+        final source = <String, dynamic>{
+          'inbounds': [
+            {
+              'tag': 'tunIn',
+              'protocol': 'tun',
+              'settings': {
+                'autoSystemDnsToGateway': true,
+                'autoSystemWfpBlockLeak': filters,
+              },
+            },
+          ],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        };
+        final before = jsonEncode(source);
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          entries: [],
+          raw: source,
+          regions: catalog,
+          options: options(
+            platform: platform,
+            ipv6: false,
+            interfaceName: 'Ethernet',
+          ),
+        ).config;
+        final settings = config['inbounds'].single['settings'] as Map;
+        expect(settings['autoSystemDnsToGateway'], true);
+        expect(settings['autoSystemWfpBlockLeak'], filters);
+        expect(jsonEncode(source), before);
+      }
+    }
+  });
 
   test(
     'normal 1/2/3 nodes always use full selectors and immutable mappings',
@@ -1062,16 +1156,13 @@ void main() {
 
   test('Raw semantic comparison includes fields unknown to the App', () {
     Map<String, dynamic> semantic(String value) =>
-        ConnectionCompiler.rawSemanticJson(
-          jsonEncode({
-            'name': 'Ignored display name',
-            'outbounds': [
-              {'tag': 'direct', 'protocol': 'freedom'},
-            ],
-            'futureRoot': {'value': value},
-          }),
-          options(),
-        );
+        ConnectionCompiler.rawSemanticJson({
+          'name': 'Ignored display name',
+          'outbounds': [
+            {'tag': 'direct', 'protocol': 'freedom'},
+          ],
+          'futureRoot': {'value': value},
+        }, options());
 
     expect(semantic('one').containsKey('name'), false);
     expect(semantic('one')['futureRoot'], {'value': 'one'});
@@ -1225,7 +1316,7 @@ void main() {
 
   for (final maskType in ['udphop', 'UDPHOP', 'UdpHop']) {
     test(
-      'UDP hopping ($maskType) follows the App interface policy in normal and Raw modes',
+      'UDP hopping ($maskType) inherits the outer socket policy without mask rewrites',
       () {
         final source = <String, dynamic>{
           'tag': 'Hysteria2',
@@ -1235,6 +1326,7 @@ void main() {
             'network': 'hysteria',
             'security': 'tls',
             'hysteriaSettings': {'version': 2, 'auth': 'test'},
+            'sockopt': {'interface': 'old-interface', 'mark': 7},
             'finalmask': {
               'udp': [
                 {
@@ -1247,7 +1339,6 @@ void main() {
                     'mode': 'intervalLocal,intervalRemote',
                     'remotePorts': '443,8443',
                     'interval': 30,
-                    'sockopt': {'interface': 'old-interface', 'mark': 7},
                   },
                 },
               ],
@@ -1277,19 +1368,15 @@ void main() {
               ),
             );
             final stream = plan.config['outbounds'][0]['streamSettings'];
-            final hop = stream['finalmask']['udp'][1]['settings'];
             expect(stream['finalmask']['udp'][1]['type'], maskType);
             final interface =
                 platform == ConnectionPlatform.windows ||
                     platform == ConnectionPlatform.linux
                 ? 'selected-interface'
                 : null;
-            expect(hop['sockopt']['interface'], interface);
-            expect(hop['sockopt']['mark'], 7);
-            expect(
-              stream['finalmask']['udp'][0],
-              source['streamSettings']['finalmask']['udp'][0],
-            );
+            expect(stream['sockopt']['interface'], interface);
+            expect(stream['sockopt']['mark'], 7);
+            expect(stream['finalmask'], source['streamSettings']['finalmask']);
             expect(jsonEncode(source), before);
           }
         }

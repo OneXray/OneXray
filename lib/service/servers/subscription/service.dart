@@ -21,6 +21,7 @@ import 'package:onexray/service/shared/ping/service.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/user_info.dart';
+import 'package:onexray/service/servers/subscription/validator.dart';
 import 'package:uuid/uuid.dart';
 
 final class SubscriptionLoadResult {
@@ -166,7 +167,14 @@ class SubscriptionService {
   Future<SubscriptionInsertResult> _insertSubscription(
     SubscriptionInput input,
   ) async {
+    final problem = SubscriptionValidator.validate(input);
+    if (problem != null) return SubscriptionInsertResult(status: problem);
     try {
+      if (await _database.subscriptionDao.urlExists(input.url)) {
+        return const SubscriptionInsertResult(
+          status: SubscriptionUpdateResult.duplicateUrl,
+        );
+      }
       if (input.hwidEnabled && input.hwid == null) {
         input = input.withHwid(createHwid());
       }
@@ -182,6 +190,12 @@ class SubscriptionService {
       final rows = loaded.rows;
       final db = _database;
       return await db.transaction(() async {
+        // A concurrent import may have completed while this source downloaded.
+        if (await db.subscriptionDao.urlExists(input.url)) {
+          return const SubscriptionInsertResult(
+            status: SubscriptionUpdateResult.duplicateUrl,
+          );
+        }
         final row = SubscriptionCompanion.insert(
           name: input.name,
           url: input.url,
@@ -205,9 +219,6 @@ class SubscriptionService {
           rows,
           nextSubId,
         );
-        if (count != rows.length) {
-          throw StateError('insert subscription configs failed');
-        }
         return SubscriptionInsertResult(
           status: SubscriptionUpdateResult.success,
           subId: nextSubId,
@@ -230,15 +241,8 @@ class SubscriptionService {
     int id,
     SubscriptionInput input,
   ) async {
-    final uri = Uri.tryParse(input.url);
-    if (input.name.trim().isEmpty ||
-        uri == null ||
-        !NetClient.isHttpsDownloadUri(uri)) {
-      return SubscriptionUpdateResult.invalidContent;
-    }
-    if (input.hasIncompleteAgeKeyPair) {
-      return SubscriptionUpdateResult.invalidAgeSecretKey;
-    }
+    final problem = SubscriptionValidator.validate(input);
+    if (problem != null) return problem;
     _refreshes.remove(id);
     final generation = _beginUpdate(id);
     try {
@@ -250,7 +254,7 @@ class SubscriptionService {
           input.url,
           excludingId: id,
         )) {
-          return SubscriptionUpdateResult.invalidContent;
+          return SubscriptionUpdateResult.duplicateUrl;
         }
         // Once generated, the identity belongs to this subscription, not its URL.
         final hwid =
@@ -464,9 +468,6 @@ class SubscriptionService {
         loaded.rows,
         current.id,
       );
-      if (count != loaded.rows.length) {
-        throw StateError('replace subscription configs failed');
-      }
       final updated = current.copyWith(
         timestamp: DateTime.now(),
         uploadBytes: Value(loaded.userInfo?.uploadBytes),

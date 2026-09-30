@@ -11,6 +11,7 @@ import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/shared/widgets/responsive_content.dart';
 import 'package:onexray/pages/shared/widgets/setting_row.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
+import 'package:onexray/service/shared/failure.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class GeoDataFilePage extends StatefulWidget {
@@ -57,7 +58,15 @@ class _GeoDataFilePageState extends State<GeoDataFilePage> {
               child: state.loading
                   ? const Center(child: CircularProgressIndicator())
                   : file == null || state.failed
-                  ? Center(child: Text(l.prototypeRoutingFileUnavailable))
+                  ? Center(
+                      child: Text(
+                        appFailureMessage(
+                          l,
+                          state.failure,
+                          operation: l.prototypeRoutingFileUnavailable,
+                        ),
+                      ),
+                    )
                   : Scrollbar(
                       controller: scroll,
                       child: CustomScrollView(

@@ -91,14 +91,14 @@ class PendingGeoDataRow extends StatelessWidget {
 /// Default and custom datasets share file rows, never a second detail screen
 /// embedded in the list. Only custom rows expose their dataset actions.
 class GeoDataRows extends StatelessWidget {
-  final List<PublishedGeoData> files;
+  final List<GeoDataFile> files;
   final bool custom;
   final bool busy;
   final Set<int> updating;
   final Set<int> deleting;
-  final void Function(PublishedGeoData) onOpen;
-  final void Function(PublishedGeoData) onUpdate;
-  final void Function(PublishedGeoData) onDelete;
+  final void Function(GeoDataFile) onOpen;
+  final void Function(GeoDataFile) onUpdate;
+  final void Function(GeoDataFile) onDelete;
   const GeoDataRows({
     super.key,
     required this.files,
@@ -111,7 +111,7 @@ class GeoDataRows extends StatelessWidget {
     required this.onDelete,
   });
 
-  bool _busy(PublishedGeoData file) =>
+  bool _busy(GeoDataFile file) =>
       busy || updating.contains(file.row.id) || deleting.contains(file.row.id);
 
   @override
@@ -187,7 +187,10 @@ class GeoDataRows extends StatelessWidget {
                   child: line([
                     _name(context, file),
                     value(file.sourceHost, ltr: true),
-                    value(formatTraffic(file.bytes), ltr: true),
+                    value(
+                      file.bytes == null ? "—" : formatTraffic(file.bytes!),
+                      ltr: true,
+                    ),
                     value(
                       DateFormat.yMd(Localizations.localeOf(context).toString())
                           .add_Hm()
@@ -205,7 +208,7 @@ class GeoDataRows extends StatelessWidget {
 
   Widget _mobileList(BuildContext context) {
     final palette = ColorManager.palette(context);
-    Widget group(List<PublishedGeoData> rows) => Container(
+    Widget group(List<GeoDataFile> rows) => Container(
       decoration: BoxDecoration(
         color: palette.card,
         border: Border.all(color: palette.border),
@@ -230,7 +233,7 @@ class GeoDataRows extends StatelessWidget {
     );
   }
 
-  Widget _mobileRow(BuildContext context, PublishedGeoData file) {
+  Widget _mobileRow(BuildContext context, GeoDataFile file) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     final date = file.row.timestamp.toLocal();
@@ -318,7 +321,7 @@ class GeoDataRows extends StatelessWidget {
                     Expanded(
                       child: field(
                         l.prototypeSize,
-                        formatTraffic(file.bytes),
+                        file.bytes == null ? "—" : formatTraffic(file.bytes!),
                         ltr: true,
                       ),
                     ),
@@ -381,7 +384,7 @@ class GeoDataRows extends StatelessWidget {
     );
   }
 
-  Widget _name(BuildContext context, PublishedGeoData file) => TextButton(
+  Widget _name(BuildContext context, GeoDataFile file) => TextButton(
     style: TextButton.styleFrom(
       alignment: AlignmentDirectional.centerStart,
       minimumSize: Size.zero,
@@ -400,7 +403,7 @@ class GeoDataRows extends StatelessWidget {
     ),
   );
 
-  Widget _actions(BuildContext context, PublishedGeoData file) {
+  Widget _actions(BuildContext context, GeoDataFile file) {
     final l = AppLocalizations.of(context)!;
     final palette = ColorManager.palette(context);
     return Row(

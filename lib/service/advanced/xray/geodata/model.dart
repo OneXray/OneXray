@@ -67,18 +67,18 @@ class GeoDataInput {
   }
 }
 
-class PublishedGeoData {
+class GeoDataFile {
   final GeoDataData row;
   final File data;
   final File indexFile;
-  final XrayGeoList index;
-  final int bytes;
-  const PublishedGeoData({
+  final int? bytes;
+  final Object? failure;
+  const GeoDataFile({
     required this.row,
     required this.data,
     required this.indexFile,
-    required this.index,
-    required this.bytes,
+    this.bytes,
+    this.failure,
   });
 
   String get fileName => '${row.name}.dat';
@@ -86,6 +86,17 @@ class PublishedGeoData {
   bool get builtIn => row.id == -1 || row.id == -2;
   String reference(String code) =>
       builtIn ? '${row.name}:$code' : 'ext:$fileName:$code';
+}
+
+class PublishedGeoData extends GeoDataFile {
+  final XrayGeoList index;
+  const PublishedGeoData({
+    required super.row,
+    required super.data,
+    required super.indexFile,
+    required super.bytes,
+    required this.index,
+  });
 }
 
 class GeoDataRestorePlan {

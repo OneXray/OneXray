@@ -29,8 +29,20 @@ BackupDocument decodeBackup(Uint8List bytes) {
 }
 
 Uint8List encodeBackup(BackupDocument document) {
+  if (document.format != 'onexray-backup' ||
+      document.version != 1 ||
+      document.createdAt <= 0) {
+    throw const FormatException('Unsupported backup format');
+  }
+  try {
+    DateTime.fromMillisecondsSinceEpoch(document.createdAt);
+  } on ArgumentError {
+    throw const FormatException('Invalid backup creation time');
+  }
   final bytes = Uint8List.fromList(utf8.encode(jsonEncode(document.toJson())));
-  decodeBackup(bytes);
+  if (bytes.length > backupByteLimit) {
+    throw const FormatException('Backup must be between 1 byte and 64 MiB');
+  }
   return bytes;
 }
 

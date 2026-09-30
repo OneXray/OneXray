@@ -132,7 +132,7 @@ final class PlatformPolicy {
 
     if (platform == ConnectionPlatform.windows &&
         (windowsMode ?? windowsBuildMode) == WindowsMode.msix) {
-      toWindowsPolicy();
+      _windowsPolicy();
     } else if (platform == ConnectionPlatform.android) {
       final android = policy['android'] as Map<String, dynamic>;
       final scope = android['appScope'];
@@ -198,6 +198,10 @@ final class PlatformPolicy {
 
   WindowsVpnPolicy toWindowsPolicy() {
     validateDns(ConnectionPlatform.windows, windowsMode: WindowsMode.msix);
+    return _windowsPolicy();
+  }
+
+  WindowsVpnPolicy _windowsPolicy() {
     final policy = toJson();
     final windows = policy['windows'] as Map<String, dynamic>;
     final cidrs = (windows['excludedCidrs'] as List).cast<String>();

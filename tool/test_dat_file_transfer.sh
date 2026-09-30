@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+platform=$(xcrun --sdk macosx --show-sdk-platform-path)
+evidence=../references/validation-simplification
+mkdir -p "$evidence"
+xcrun swiftc \
+  -F "$platform/Developer/Library/Frameworks" \
+  -I "$platform/Developer/usr/lib" \
+  -L "$platform/Developer/usr/lib" \
+  -Xlinker -rpath -Xlinker "$platform/Developer/Library/Frameworks" \
+  -Xlinker -rpath -Xlinker "$platform/Developer/usr/lib" \
+  swift/All/DatFileTransfer.swift test/native/DatFileTransferTests.swift \
+  -o "$evidence/dat-transfer-tests"
+"$evidence/dat-transfer-tests"

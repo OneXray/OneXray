@@ -33,6 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          check-latest: true
+
       - name: Inspect Build run
         id: build
         env:
@@ -79,7 +84,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Download Microsoft Store packages
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: windows-store-*
           path: store-packages/input

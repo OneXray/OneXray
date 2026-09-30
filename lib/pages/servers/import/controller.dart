@@ -146,7 +146,6 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   final Future<SubscriptionData?> Function(int) _loadSubscription;
   final Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)
   _saveSubscriptionInput;
-  final Future<String?> Function(SubscriptionInput, int?) _validateSubscription;
   final Future<SubscriptionInsertResult> Function(SubscriptionInput)
   _insertSubscription;
   ServerImportController({
@@ -155,7 +154,6 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     Future<SubscriptionData?> Function(int)? loadSubscription,
     Future<SubscriptionUpdateResult> Function(int, SubscriptionInput)?
     saveSubscriptionInput,
-    Future<String?> Function(SubscriptionInput, int?)? validateSubscription,
     Future<SubscriptionInsertResult> Function(SubscriptionInput)?
     insertSubscription,
   }) : service = service ?? ServerImportService(),
@@ -165,16 +163,6 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
            saveSubscriptionInput ?? SubscriptionService().saveSubscriptionInput,
        _insertSubscription =
            insertSubscription ?? SubscriptionService().insertSubscription,
-       _validateSubscription =
-           validateSubscription ??
-           ((input, id) async {
-             final result = await SubscriptionValidator.validate(
-               input.name,
-               input.url,
-               excludingId: id,
-             );
-             return result.item1 ? null : result.item2;
-           }),
        super(ServerImportPageState()) {
     jsonText.addListener(_changed);
     for (final field in [text, name, url, secretKey, publicKey]) {
@@ -201,11 +189,15 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
   bool canSubmit(ServerImportAction action) {
     if (state.busy || state.generatingAgeKey || state.loadFailed) return false;
     if (action == ServerImportAction.subscription) {
-      final uri = Uri.tryParse(SubscriptionUrl.normalize(state.url));
-      return state.name.trim().isNotEmpty &&
-          uri != null &&
-          NetClient.isHttpsDownloadUri(uri) &&
-          !state.incompleteKeys;
+      return SubscriptionValidator.validate(
+            SubscriptionInput(
+              name: state.name,
+              url: SubscriptionUrl.normalize(state.url),
+              ageSecretKey: state.secretKey,
+              agePublicKey: state.publicKey,
+            ),
+          ) ==
+          null;
     }
     return action == ServerImportAction.file ||
         action == ServerImportAction.scan ||
@@ -760,19 +752,14 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
         hwidEnabled: state.hwidEnabled,
         hwid: _hwid,
       );
-      if (input.hasIncompleteAgeKeyPair) {
-        if (!context.mounted) return;
-        emit(
-          state.copyWith(
-            error: AppLocalizations.of(context)!.prototypeAgeBothKeysRequired,
-          ),
-        );
-        return;
-      }
-      final problem = await _validateSubscription(input, subscriptionId);
+      final problem = SubscriptionValidator.validate(input);
       if (!isPageActive || !context.mounted) return;
       if (problem != null) {
-        emit(state.copyWith(error: problem));
+        emit(
+          state.copyWith(
+            error: subscriptionError(AppLocalizations.of(context)!, problem),
+          ),
+        );
         return;
       }
       if (subscriptionId != null) {

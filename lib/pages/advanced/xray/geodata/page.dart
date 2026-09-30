@@ -114,6 +114,12 @@ class _GeoDataPageState extends State<GeoDataPage> {
                           ),
                           if (state.errors[-1] != null)
                             _error(context, state.errors[-1]!),
+                          for (final file in state.defaults)
+                            if (file.failure != null)
+                              _error(
+                                context,
+                                '${file.fileName}: ${appFailureMessage(l, file.failure)}',
+                              ),
                           SizedBox(height: mobile ? 18 : 24),
                           _heading(
                             context,
@@ -168,12 +174,18 @@ class _GeoDataPageState extends State<GeoDataPage> {
                               onDelete: (file) =>
                                   controller.delete(context, file.row),
                             ),
-                          for (final file in state.custom)
+                          for (final file in state.custom) ...[
+                            if (file.failure != null)
+                              _error(
+                                context,
+                                '${file.fileName}: ${appFailureMessage(l, file.failure)}',
+                              ),
                             if (state.errors[file.row.id] != null)
                               _error(
                                 context,
                                 '${file.fileName}: ${state.errors[file.row.id]}',
                               ),
+                          ],
                           for (final row in state.pending) ...[
                             PendingGeoDataRow(
                               row: row,

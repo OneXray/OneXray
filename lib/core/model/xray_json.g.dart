@@ -263,6 +263,10 @@ XrayInboundTunSettings _$XrayInboundTunSettingsFromJson(
       ?.map((e) => e as String)
       .toList(),
   autoOutboundsInterface: json['autoOutboundsInterface'] as String?,
+  autoSystemDnsToGateway: json['autoSystemDnsToGateway'] as bool?,
+  autoSystemWfpBlockLeak: (json['autoSystemWfpBlockLeak'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
 );
 
 Map<String, dynamic> _$XrayInboundTunSettingsToJson(
@@ -274,6 +278,8 @@ Map<String, dynamic> _$XrayInboundTunSettingsToJson(
   'dns': ?instance.dns,
   'autoSystemRoutingTable': ?instance.autoSystemRoutingTable,
   'autoOutboundsInterface': ?instance.autoOutboundsInterface,
+  'autoSystemDnsToGateway': ?instance.autoSystemDnsToGateway,
+  'autoSystemWfpBlockLeak': ?instance.autoSystemWfpBlockLeak,
 };
 
 XrayInboundSocksSettings _$XrayInboundSocksSettingsFromJson(

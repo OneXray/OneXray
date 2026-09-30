@@ -110,6 +110,11 @@ final class SubscriptionRefreshResult {
 
 enum SubscriptionUpdateResult {
   success,
+  nameRequired,
+  urlRequired,
+  urlInvalid,
+  duplicateUrl,
+  incompleteAgeKeys,
   notFound,
   downloadFailed,
   hwidRequired,

@@ -59,6 +59,17 @@ void main() {
         ['ext:network.dat:CN', 'geoip:CN'],
       );
       expect(RegionCatalog.codesFromIndex({}), isEmpty);
+      expect(
+        RegionCatalog.codesFromIndex({
+          'codes': [
+            null,
+            'broken',
+            1,
+            {'code': 'CN', 'ruleCount': 2},
+          ],
+        }),
+        ['CN'],
+      );
       expect(RegionCatalog.suggestions('cn', domain: true, files: {}), isEmpty);
       expect(
         RegionCatalog.suggestions(
