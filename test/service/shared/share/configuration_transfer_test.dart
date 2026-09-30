@@ -9,6 +9,7 @@ import 'package:onexray/service/servers/import.dart';
 import '../../../support/fake_geodata_import.dart';
 
 import 'package:onexray/service/connect/routing/custom/service.dart';
+import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/shared/share/app_link_generator.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
@@ -343,7 +344,16 @@ void main() {
         .save(RoutingProfileDocument.parse(template('Three')).state);
     final next = await service.preview(template('Fourth', assets: true));
     expect(await db.geoDataDao.allRows, isEmpty);
-    await expectLater(service.commit(next), throwsA(isA<StateError>()));
+    await expectLater(
+      service.commit(next),
+      throwsA(
+        isA<CustomRoutingEditorException>().having(
+          (e) => e.reason,
+          'reason',
+          'limit',
+        ),
+      ),
+    );
     expect(lifecycle, ['publish', 'commit', 'rollback']);
     expect(await db.geoDataDao.allRows, isEmpty);
     expect(await db.routingProfileDao.allRows, hasLength(3));

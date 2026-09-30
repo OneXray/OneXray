@@ -442,11 +442,7 @@ class ServerImportService {
       if (draft == null) {
         for (final route in custom) {
           await CustomRoutingService.validate(
-            ConfigurationTransferService.routingDocument(
-              route.text,
-              route.kind,
-              allowMetadata: false,
-            ).state,
+            route.routing!,
             testXray: _validate,
           );
         }
@@ -489,11 +485,7 @@ class ServerImportService {
       if (preview._dependencies != null) {
         for (final route in preview.customRoutes) {
           await CustomRoutingService.validate(
-            ConfigurationTransferService.routingDocument(
-              route.text,
-              route.kind,
-              allowMetadata: false,
-            ).state,
+            route.routing!,
             testXray: _validate,
           );
         }
@@ -516,14 +508,8 @@ class ServerImportService {
           throw StateError('Incomplete asset write');
         }
         for (final custom in preview.customRoutes) {
-          await CustomRoutingService(db).save(
-            ConfigurationTransferService.routingDocument(
-              custom.text,
-              custom.kind,
-              name: custom.name,
-              allowMetadata: false,
-            ).state,
-          );
+          await CustomRoutingService(db)
+              .save(custom.routing!.copyWith(name: custom.name));
         }
         return result;
       }

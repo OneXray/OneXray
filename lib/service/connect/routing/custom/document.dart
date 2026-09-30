@@ -17,8 +17,20 @@ final class RoutingProfileDocument {
     int? id,
     String? name,
     bool allowMetadata = true,
+  }) => RoutingProfileDocument.fromJson(
+    jsonDecode(text),
+    id: id,
+    name: name,
+    allowMetadata: allowMetadata,
+  );
+
+  factory RoutingProfileDocument.fromJson(
+    Object? value, {
+    int? id,
+    String? name,
+    bool allowMetadata = true,
   }) {
-    final document = _object(jsonDecode(text), const []);
+    final document = Map<String, dynamic>.of(_object(value, const []));
     _onlyKeys(
       document,
       allowMetadata
@@ -36,16 +48,13 @@ final class RoutingProfileDocument {
         path: ['name'],
       );
     }
-    if (document.containsKey('geodata')) routingAssets(document['geodata']);
+    final assets = document.containsKey('geodata')
+        ? routingAssets(document.remove('geodata'))
+        : <Map<String, String>>[];
     document.remove('name');
     _checkEditableFields(document);
     try {
       final xrayJson = XrayJson.fromJson(document);
-      final assets = [
-        for (final asset in xrayJson.geodata?.assets ?? const [])
-          {'file': asset.file!, 'url': asset.url!},
-      ];
-      xrayJson.geodata = null;
       return RoutingProfileDocument._(
         RoutingProfileState.fromXrayJson(
           id: id,

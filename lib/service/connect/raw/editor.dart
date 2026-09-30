@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/errors/failure.dart';
-import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -75,7 +74,8 @@ class RawEditorService {
     required Future<bool> Function() confirmReconnect,
     ConfigurationImportDraft? imported,
   }) async {
-    final text = namedText(draft.name, draft.text);
+    final parsed = namedConfiguration(draft.name, draft.text);
+    final text = parsed.normalizedText!;
     final original = draft.original;
     if (original == null &&
         (await db.coreConfigDao.allRawRowsWithData).length >= 3) {
@@ -94,10 +94,10 @@ class RawEditorService {
       try {
         affectsRuntime = !const DeepCollectionEquality().equals(
           ConnectionCompiler.rawSemanticJson(
-            XrayRawDb.readFromDbData(original),
+            ConnectionCompiler.parseRawJson(XrayRawDb.readFromDbData(original)),
             options,
           ),
-          ConnectionCompiler.rawSemanticJson(text, options),
+          ConnectionCompiler.rawSemanticJson(parsed.json!, options),
         );
       } on FormatException {
         // A repaired old configuration cannot be classified as metadata-only.
@@ -110,7 +110,9 @@ class RawEditorService {
       confirmReconnect: confirmReconnect,
       imported: imported,
       validateAssets: () async {
-        if (!await validate(text)) throw const RawEditorException('invalid');
+        if (!await _validateParsed(parsed)) {
+          throw const RawEditorException('invalid');
+        }
       },
       affectsRuntime: affectsRuntime,
       prepare: affectsRuntime
@@ -217,35 +219,25 @@ class RawEditorService {
     return current;
   }
 
-  static String namedText(String name, String text) {
+  static String namedText(String name, String text) =>
+      namedConfiguration(name, text).normalizedText!;
+
+  static XrayRawValidationResult namedConfiguration(String name, String text) {
     name = name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const RawEditorException('name');
     }
-    late final dynamic json;
-    try {
-      json = jsonDecode(text);
-    } on FormatException catch (error) {
-      // Decode before injecting the separate name field so syntax offsets
-      // continue to address the exact text in the editor.
-      throw JsonDiagnostic.fromError(error)!;
+    final parsed = XrayRawValidator.normalize(text, nameOverride: name);
+    if (!parsed.isValid) {
+      throw parsed.diagnostic ??
+          RawEditorException('invalid', cause: parsed.error);
     }
-    if (json is! Map<String, dynamic>) {
-      throw const RawEditorException(
-        'invalid',
-        cause: JsonDiagnostic('Xray config root must be an object', path: []),
-      );
-    }
-    if (json['name'] == name) {
-      return text;
-    }
-    json['name'] = name;
-    return const JsonEncoder.withIndent('  ').convert(json);
+    return parsed;
   }
 
-  Future<bool> validate(String text) async {
-    if (_validate != null) return _validate(text);
-    final result = await XrayRawValidator.validate(text);
+  Future<bool> _validateParsed(XrayRawValidationResult parsed) async {
+    if (_validate != null) return _validate(parsed.normalizedText!);
+    final result = await XrayRawValidator.validateParsed(parsed);
     if (!result.isValid) {
       throw AppFailure(
         FailureCategory.configuration,

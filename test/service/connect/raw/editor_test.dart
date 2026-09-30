@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
@@ -42,7 +41,7 @@ void main() {
     );
   });
 
-  test('validation preserves the structured diagnostic as its cause', () async {
+  test('save preserves the structured source diagnostic', () async {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
@@ -52,9 +51,12 @@ void main() {
     final service = RawEditorService(database: db, coordinator: coordinator);
     const text = '{"name":"original", "outbounds":[#]}';
     await expectLater(
-      service.validate(text),
+      service.save(
+        const RawEditorDraft(name: 'original', text: text),
+        confirmReconnect: () async => false,
+      ),
       throwsA(
-        isA<AppFailure>().having(
+        isA<JsonDiagnostic>().having(
           (e) => JsonDiagnostic.fromError(e)?.offset,
           'original offset',
           text.indexOf('#'),

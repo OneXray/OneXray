@@ -1062,16 +1062,13 @@ void main() {
 
   test('Raw semantic comparison includes fields unknown to the App', () {
     Map<String, dynamic> semantic(String value) =>
-        ConnectionCompiler.rawSemanticJson(
-          jsonEncode({
-            'name': 'Ignored display name',
-            'outbounds': [
-              {'tag': 'direct', 'protocol': 'freedom'},
-            ],
-            'futureRoot': {'value': value},
-          }),
-          options(),
-        );
+        ConnectionCompiler.rawSemanticJson({
+          'name': 'Ignored display name',
+          'outbounds': [
+            {'tag': 'direct', 'protocol': 'freedom'},
+          ],
+          'futureRoot': {'value': value},
+        }, options());
 
     expect(semantic('one').containsKey('name'), false);
     expect(semantic('one')['futureRoot'], {'value': 'one'});

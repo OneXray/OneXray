@@ -120,8 +120,20 @@ final class AdvancedRoutingDocument {
     int? id,
     String? name,
     bool allowMetadata = true,
+  }) => AdvancedRoutingDocument.fromJson(
+    jsonDecode(text),
+    id: id,
+    name: name,
+    allowMetadata: allowMetadata,
+  );
+
+  factory AdvancedRoutingDocument.fromJson(
+    Object? value, {
+    int? id,
+    String? name,
+    bool allowMetadata = true,
   }) {
-    final json = _object(jsonDecode(text), const []);
+    final json = JsonTool.copyMap(_object(value, const []));
     _keys(json, {
       'outbounds',
       'inbounds',

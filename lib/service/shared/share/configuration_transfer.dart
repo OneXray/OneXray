@@ -25,11 +25,13 @@ class ConfigurationContent {
   final String text;
   final String name;
   final List<GeoDataInput> assets;
+  final RoutingConfiguration? routing;
   const ConfigurationContent({
     required this.kind,
     required this.text,
     required this.name,
     this.assets = const [],
+    this.routing,
   });
 }
 
@@ -54,10 +56,23 @@ class ConfigurationTransferService {
     ConfigurationKind kind, {
     String? name,
     bool allowMetadata = true,
+  }) => routingDocumentFromJson(
+    jsonDecode(text),
+    kind,
+    name: name,
+    allowMetadata: allowMetadata,
+  );
+
+  static ({RoutingConfiguration state, List<Map<String, String>> assets})
+  routingDocumentFromJson(
+    Object? json,
+    ConfigurationKind kind, {
+    String? name,
+    bool allowMetadata = true,
   }) {
     if (kind == ConfigurationKind.customAdvanced) {
-      final doc = AdvancedRoutingDocument.parse(
-        text,
+      final doc = AdvancedRoutingDocument.fromJson(
+        json,
         name: name,
         allowMetadata: allowMetadata,
       );
@@ -66,8 +81,8 @@ class ConfigurationTransferService {
     if (kind != ConfigurationKind.custom) {
       throw const FormatException('Expected Custom routing');
     }
-    final doc = RoutingProfileDocument.parse(
-      text,
+    final doc = RoutingProfileDocument.fromJson(
+      json,
       name: name,
       allowMetadata: allowMetadata,
     );
@@ -97,7 +112,11 @@ class ConfigurationTransferService {
   Future<GeoDataImport?> prepareAssets(List<GeoDataInput> inputs) async =>
       inputs.isEmpty ? null : _prepare(inputs);
 
-  static ConfigurationContent read(String input, ConfigurationKind kind) {
+  static ConfigurationContent read(
+    String input,
+    ConfigurationKind kind, {
+    String? nameOverride,
+  }) {
     if (input.trim().isEmpty || utf8.encode(input).length > 16 * 1024 * 1024) {
       throw const FormatException('Invalid configuration size');
     }
@@ -134,14 +153,17 @@ class ConfigurationTransferService {
       throw const FormatException('Configuration must be an object');
     }
     if (name.isEmpty && json['name'] is String) name = json['name'] as String;
+    name = nameOverride ?? name;
     final references = geoDataReferences(json);
     final assets = <GeoDataInput>[];
+    RoutingConfiguration? routing;
     if (kind != ConfigurationKind.raw) {
-      final document = routingDocument(
-        text,
+      final document = routingDocumentFromJson(
+        json,
         kind,
-        name: name.isEmpty ? null : name,
+        name: nameOverride ?? (name.isEmpty ? null : name),
       );
+      routing = document.state;
       text = document.state.encode();
       if (name.isEmpty) name = document.state.name;
       for (final asset in document.assets) {
@@ -152,7 +174,10 @@ class ConfigurationTransferService {
             'Geodata manifest contains an unused file',
           );
         }
-        assets.add(_asset(file, type, asset['url']!));
+        // The routing document already checked the filename, URL and duplicates.
+        assets.add(
+          GeoDataInput(fileName: file, type: type, url: asset['url']!),
+        );
       }
     } else {
       for (final link in linked) {
@@ -168,11 +193,11 @@ class ConfigurationTransferService {
         }
         assets.add(_asset(file, link.type, link.url));
       }
-    }
-    final names = <String>{};
-    for (final asset in assets) {
-      if (!names.add(asset.fileName.toLowerCase())) {
-        throw const FormatException('Duplicate Geodata filename');
+      final names = <String>{};
+      for (final asset in assets) {
+        if (!names.add(asset.fileName.toLowerCase())) {
+          throw const FormatException('Duplicate Geodata filename');
+        }
       }
     }
     return ConfigurationContent(
@@ -180,6 +205,7 @@ class ConfigurationTransferService {
       text: text,
       name: name,
       assets: List.unmodifiable(assets),
+      routing: routing,
     );
   }
 
@@ -197,8 +223,8 @@ class ConfigurationTransferService {
   }) async {
     if (kind == ConfigurationKind.raw) return text;
     final state = routingDocument(text, kind, name: name).state;
-    final dependencies = await _dependencies(state.toJson(), assets);
     final json = state.toJson();
+    final dependencies = await _dependencies(json, assets);
     if (dependencies.isNotEmpty) {
       json['geodata'] = {
         'assets': [

@@ -130,10 +130,10 @@ class ConnectionCompiler {
   /// Compare editor drafts through the same overrides as a real Raw runtime.
   /// The caller supplies identical options for both drafts; no files are written.
   static Map<String, dynamic> rawSemanticJson(
-    String text,
+    Map<String, dynamic> source,
     RuntimeOptions options,
   ) {
-    final value = parseRawJson(text)..remove('name');
+    final value = JsonTool.copyMap(source)..remove('name');
     return _rawRuntimeMap(value, options);
   }
 
