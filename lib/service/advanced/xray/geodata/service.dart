@@ -175,18 +175,12 @@ class GeoDataService {
       change = resetPublication
           ? await _replaceAll(stage)
           : await _applyFiles(await _stageFiles(stage));
-      try {
-        await _db.transaction(() async {
-          if (resetPublication) {
-            await _db.geoDataDao.clearPublished();
-          }
-          await _publishDefaults(_root, timestamp, indexes: indexes);
-        });
-      } catch (_) {
-        await change.rollback();
-        rethrow;
-      }
-      await change.complete();
+      await _commitPublication(change, () async {
+        if (resetPublication) {
+          await _db.geoDataDao.clearPublished();
+        }
+        await _publishDefaults(_root, timestamp, indexes: indexes);
+      });
     } finally {
       if (change == null) await _deleteStage(stage);
     }
@@ -467,15 +461,10 @@ class GeoDataService {
       }
       await withFiles(() async {
         change = await _applyFiles(await _stageFiles(stage));
-        try {
-          await _db.transaction(
-            () => _publishDefaults(_root, DateTime.now(), indexes: indexes),
-          );
-        } catch (_) {
-          await change!.rollback();
-          rethrow;
-        }
-        await change!.complete();
+        await _commitPublication(
+          change!,
+          () => _publishDefaults(_root, DateTime.now(), indexes: indexes),
+        );
       });
     } finally {
       if (change == null) await _deleteStage(stage);
@@ -502,28 +491,22 @@ class GeoDataService {
       );
       await withFiles(() async {
         change = await _applyFiles(await _stageFiles(stage));
-        try {
-          await _db.transaction(() async {
-            final current = await _db.geoDataDao.searchRow(original.id);
-            if (current == null || current != original) {
-              throw StateError('Routing data source changed during update');
-            }
-            if (!await _db.geoDataDao.updateRow(
-              current.copyWith(
-                timestamp: DateTime.now(),
-                categoryCount: index.categoryCount!,
-                ruleCount: index.ruleCount!,
-                installed: true,
-              ),
-            )) {
-              throw StateError('Routing data source is unavailable');
-            }
-          });
-        } catch (_) {
-          await change!.rollback();
-          rethrow;
-        }
-        await change!.complete();
+        await _commitPublication(change!, () async {
+          final current = await _db.geoDataDao.searchRow(original.id);
+          if (current == null || current != original) {
+            throw StateError('Routing data source changed during update');
+          }
+          if (!await _db.geoDataDao.updateRow(
+            current.copyWith(
+              timestamp: DateTime.now(),
+              categoryCount: index.categoryCount!,
+              ruleCount: index.ruleCount!,
+              installed: true,
+            ),
+          )) {
+            throw StateError('Routing data source is unavailable');
+          }
+        });
       });
     } finally {
       if (change == null) await _deleteStage(stage);
@@ -539,22 +522,30 @@ class GeoDataService {
       '${row.name}.dat': null,
       '${row.name}.json': null,
     });
+    await _commitPublication(change, () async {
+      final current = await _db.geoDataDao.searchRow(row.id);
+      if (current == null || current != row) {
+        throw StateError('Routing data source changed before deletion');
+      }
+      if (await _db.geoDataDao.deleteRow(row.id) != 1) {
+        throw StateError('Routing data source is unavailable');
+      }
+    });
+  });
+
+  Future<void> _commitPublication(
+    _FlatFileChange change,
+    Future<void> Function() writeMetadata,
+  ) async {
     try {
-      await _db.transaction(() async {
-        final current = await _db.geoDataDao.searchRow(row.id);
-        if (current == null || current != row) {
-          throw StateError('Routing data source changed before deletion');
-        }
-        if (await _db.geoDataDao.deleteRow(row.id) != 1) {
-          throw StateError('Routing data source is unavailable');
-        }
-      });
+      await _db.transaction(writeMetadata);
     } catch (_) {
       await change.rollback();
       rethrow;
     }
+    // Cleanup cannot roll back files whose metadata already committed.
     await change.complete();
-  });
+  }
 
   /// Prepare private staging files only. A later confirmed save publishes them
   /// while the caller commits metadata with its configuration.
@@ -573,140 +564,13 @@ class GeoDataService {
       await _ensureRoot();
       await _checkConflicts(sources, checkFiles: true);
     });
-    final stage = await _newStage('import-');
-    _activeImportStages.add(p.normalize(stage.path));
-    final indexes = <String, XrayGeoList>{};
-    try {
-      for (final source in sources) {
-        await _download(source.url, File(p.join(stage.path, source.fileName)));
-        indexes[source.name] = await _index(
-          stage.path,
-          source.name,
-          source.type,
-        );
-      }
-      await withFiles(() => _checkConflicts(sources, checkFiles: true));
-    } catch (_) {
-      await _deleteStage(stage);
-      _activeImportStages.remove(p.normalize(stage.path));
-      rethrow;
-    }
-
-    _FlatFileChange? change;
-    var completed = false;
-    var disposed = false;
-    Future<void> publish() async {
-      if (disposed || completed) {
-        throw StateError('Routing data draft is unavailable');
-      }
-      if (change != null) return;
-      await _checkConflicts(sources, checkFiles: true);
-      change = await _applyFiles(await _stageFiles(stage), retainSources: true);
-    }
-
-    Future<void> commit() async {
-      if (disposed || completed || change == null) {
-        throw StateError('Routing data draft is not published');
-      }
-      await _db.transaction(() async {
-        await _checkConflicts(sources, checkFiles: false);
-        final timestamp = DateTime.now();
-        for (final source in sources) {
-          await _regularFile(File(p.join(_root, source.fileName)));
-          await _regularFile(
-            File(p.join(_root, '${source.name}.json')),
-            limit: 32 * 1024 * 1024,
-          );
-          final index = indexes[source.name]!;
-          await _db.geoDataDao.insertRow(
-            GeoDataCompanion.insert(
-              name: source.name,
-              type: source.type.name,
-              url: source.url,
-              timestamp: timestamp,
-              categoryCount: index.categoryCount!,
-              ruleCount: index.ruleCount!,
-            ),
-          );
-        }
-      });
-    }
-
-    Future<Set<String>> publishedNames() async =>
-        (await _db.geoDataDao.publishedRows)
-            .map((row) => row.name.toLowerCase())
-            .toSet();
-
-    Future<void> complete() async {
-      if (completed) return;
-      if (disposed || change == null) {
-        throw StateError('Routing data draft was not committed');
-      }
-      final names = await publishedNames();
-      if (!sources.every(
-        (source) => names.contains(source.name.toLowerCase()),
-      )) {
-        throw StateError('Routing data metadata was not committed');
-      }
-      final current = change!;
-      change = null;
-      completed = true;
-      _activeImportStages.remove(p.normalize(stage.path));
-      try {
-        await current.complete();
-      } catch (_) {
-        // The database publication already committed. Its retained import
-        // journal is enough for the next installation check to finish cleanup.
-      }
-    }
-
-    Future<void> rollback() async {
-      if (disposed || completed || change == null) return;
-      final names = await publishedNames();
-      if (sources.any((source) => names.contains(source.name.toLowerCase()))) {
-        throw StateError('Committed routing data cannot be rolled back');
-      }
-      await change!.rollback(preserveSources: true);
-      change = null;
-    }
-
-    Future<void> dispose() async {
-      if (disposed) return;
-      disposed = true;
-      if (completed) return;
-      final current = change;
-      if (current == null) {
-        await _deleteStage(stage);
-        _activeImportStages.remove(p.normalize(stage.path));
-        return;
-      }
-      final names = await publishedNames();
-      if (sources.every(
-        (source) => names.contains(source.name.toLowerCase()),
-      )) {
-        await current.complete();
-      } else if (sources.every(
-        (source) => !names.contains(source.name.toLowerCase()),
-      )) {
-        await current.rollback();
-      } else {
-        // Keep every file when an externally corrupted transaction exposes a
-        // partial manifest; deleting any of them would create a DB orphan.
-        await current.complete();
-        throw StateError('Routing data metadata is incomplete');
-      }
-      change = null;
-      _activeImportStages.remove(p.normalize(stage.path));
-    }
-
-    return _GeoDataImportDraft(
+    final draft = _GeoDataImportDraft(
       this,
-      publish: publish,
-      writeMetadata: commit,
-      complete: complete,
-      rollback: rollback,
-      dispose: dispose,
+      await _newStage('import-'),
+      sources,
     );
+    await draft._prepare();
+    return draft;
   }
 
   Future<void> _publishDefaults(
@@ -1091,38 +955,169 @@ class GeoDataService {
 
 final class _GeoDataImportDraft implements GeoDataImport {
   final GeoDataService _files;
-  final Future<void> Function() _publish;
-  final Future<void> Function() _writeMetadata;
-  final Future<void> Function() _complete;
-  final Future<void> Function() _rollback;
-  final Future<void> Function() _dispose;
+  final Directory _stage;
+  final List<GeoDataInput> _sources;
+  final _indexes = <String, XrayGeoList>{};
+  _FlatFileChange? _change;
+  bool _completed = false;
+  bool _disposed = false;
 
-  _GeoDataImportDraft(
-    this._files, {
-    required this._publish,
-    required this._writeMetadata,
-    required this._complete,
-    required this._rollback,
-    required this._dispose,
-  });
+  _GeoDataImportDraft(this._files, this._stage, this._sources) {
+    _files._activeImportStages.add(p.normalize(_stage.path));
+  }
+
+  Future<void> _prepare() async {
+    try {
+      for (final source in _sources) {
+        await _files._download(
+          source.url,
+          File(p.join(_stage.path, source.fileName)),
+        );
+        _indexes[source.name] = await _files._index(
+          _stage.path,
+          source.name,
+          source.type,
+        );
+      }
+      await _files.withFiles(
+        () => _files._checkConflicts(_sources, checkFiles: true),
+      );
+    } catch (_) {
+      await _files._deleteStage(_stage);
+      _files._activeImportStages.remove(p.normalize(_stage.path));
+      rethrow;
+    }
+  }
 
   @override
   Future<T> save<T>(
     Future<T> Function(Future<void> Function() writeMetadata) action,
   ) => _files.withFiles(() async {
     await _publish();
+    final T result;
     try {
-      final result = await action(_writeMetadata);
-      await _complete();
-      return result;
+      result = await action(_writeMetadata);
+      await _confirmMetadata();
     } catch (error, stackTrace) {
       await _rollback();
       Error.throwWithStackTrace(error, stackTrace);
     }
+    await _complete();
+    return result;
   });
+
+  Future<void> _publish() async {
+    if (_disposed || _completed) {
+      throw StateError('Routing data draft is unavailable');
+    }
+    if (_change != null) return;
+    await _files._checkConflicts(_sources, checkFiles: true);
+    _change = await _files._applyFiles(
+      await _files._stageFiles(_stage),
+      retainSources: true,
+    );
+  }
+
+  Future<void> _writeMetadata() async {
+    if (_disposed || _completed || _change == null) {
+      throw StateError('Routing data draft is not published');
+    }
+    await _files._db.transaction(() async {
+      await _files._checkConflicts(_sources, checkFiles: false);
+      final timestamp = DateTime.now();
+      for (final source in _sources) {
+        await GeoDataService._regularFile(
+          File(p.join(_files._root, source.fileName)),
+        );
+        await GeoDataService._regularFile(
+          File(p.join(_files._root, '${source.name}.json')),
+          limit: 32 * 1024 * 1024,
+        );
+        final index = _indexes[source.name]!;
+        await _files._db.geoDataDao.insertRow(
+          GeoDataCompanion.insert(
+            name: source.name,
+            type: source.type.name,
+            url: source.url,
+            timestamp: timestamp,
+            categoryCount: index.categoryCount!,
+            ruleCount: index.ruleCount!,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<Set<String>> _publishedNames() async =>
+      (await _files._db.geoDataDao.publishedRows)
+          .map((row) => row.name.toLowerCase())
+          .toSet();
+
+  Future<void> _confirmMetadata() async {
+    if (_completed) return;
+    if (_disposed || _change == null) {
+      throw StateError('Routing data draft was not committed');
+    }
+    final names = await _publishedNames();
+    if (!_sources.every(
+      (source) => names.contains(source.name.toLowerCase()),
+    )) {
+      throw StateError('Routing data metadata was not committed');
+    }
+  }
+
+  Future<void> _complete() async {
+    if (_completed) return;
+    final current = _change!;
+    _change = null;
+    _completed = true;
+    _files._activeImportStages.remove(p.normalize(_stage.path));
+    try {
+      await current.complete();
+    } catch (_) {
+      // Metadata already committed. Cold recovery finishes journal cleanup.
+    }
+  }
+
+  Future<void> _rollback() async {
+    if (_disposed || _completed || _change == null) return;
+    final names = await _publishedNames();
+    if (_sources.any((source) => names.contains(source.name.toLowerCase()))) {
+      throw StateError('Committed routing data cannot be rolled back');
+    }
+    await _change!.rollback(preserveSources: true);
+    _change = null;
+  }
 
   @override
   Future<void> dispose() => _files.withFiles(_dispose);
+
+  Future<void> _dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    if (_completed) return;
+    final current = _change;
+    if (current == null) {
+      await _files._deleteStage(_stage);
+      _files._activeImportStages.remove(p.normalize(_stage.path));
+      return;
+    }
+    final names = await _publishedNames();
+    if (_sources.every((source) => names.contains(source.name.toLowerCase()))) {
+      await current.complete();
+    } else if (_sources.every(
+      (source) => !names.contains(source.name.toLowerCase()),
+    )) {
+      await current.rollback();
+    } else {
+      // Preserve files if an externally corrupted transaction exposes only
+      // part of the manifest; deleting them would create a database orphan.
+      await current.complete();
+      throw StateError('Routing data metadata is incomplete');
+    }
+    _change = null;
+    _files._activeImportStages.remove(p.normalize(_stage.path));
+  }
 }
 
 final class _FlatFileChange {

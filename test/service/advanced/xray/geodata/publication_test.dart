@@ -920,10 +920,48 @@ void main() {
       expect(await updated.data.readAsString(), 'two');
       await expectFlatRoot();
 
+      final beforeDelete = await rootBytes();
+      await db.customStatement('''
+        CREATE TRIGGER fail_geo_delete BEFORE DELETE ON geo_data
+        WHEN OLD.id > 0 BEGIN SELECT RAISE(FAIL, 'fixture'); END
+      ''');
+      await expectLater(service.deleteGeoDat(updated.row), throwsA(anything));
+      expect(await db.geoDataDao.searchRow(updated.row.id), updated.row);
+      expect(await rootBytes(), beforeDelete);
+
+      await db.customStatement('DROP TRIGGER fail_geo_delete');
       await service.deleteGeoDat(updated.row);
       expect(await File(dataPath).exists(), isFalse);
       expect(await File(indexPath).exists(), isFalse);
       expect(await db.geoDataDao.searchRow(updated.row.id), isNull);
+      await expectFlatRoot();
+    },
+  );
+
+  test(
+    'a failed default metadata commit restores the pair and can retry',
+    () async {
+      await service.ensureInstalled();
+      final rows = await db.geoDataDao.publishedRows;
+      final before = await rootBytes();
+      revision = 'two';
+      await db.customStatement('''
+      CREATE TRIGGER fail_geo_defaults BEFORE UPDATE ON geo_data
+      WHEN OLD.name = 'geosite' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+
+      await expectLater(service.updateDefaults(), throwsA(anything));
+      expect(await db.geoDataDao.publishedRows, rows);
+      expect(await rootBytes(), before);
+
+      await db.customStatement('DROP TRIGGER fail_geo_defaults');
+      await service.updateDefaults();
+      for (final name in ['geoip', 'geosite']) {
+        expect(
+          await File(p.join(datRoot.path, '$name.dat')).readAsString(),
+          'two',
+        );
+      }
       await expectFlatRoot();
     },
   );
@@ -1001,6 +1039,87 @@ void main() {
         throwsFormatException,
       );
       expect(downloads, before);
+    },
+  );
+
+  test(
+    'an import without metadata can retry without downloading again',
+    () async {
+      await service.ensureInstalled();
+      final before = await rootBytes();
+      final draft = await service.prepareImports([input()]);
+      addTearDown(draft.dispose);
+      expect(downloads, 1);
+
+      await expectLater(
+        draft.save((_) async => 'not saved'),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'missing metadata',
+            'Routing data metadata was not committed',
+          ),
+        ),
+      );
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await rootBytes(), before);
+
+      final result = await draft.save(
+        (writeMetadata) => db.transaction(() async {
+          await writeMetadata();
+          return 'saved';
+        }),
+      );
+      expect(result, 'saved');
+      expect(downloads, 1);
+      expect((await db.geoDataDao.allRows).single.name, 'custom');
+      expect(
+        await File(p.join(datRoot.path, 'custom.dat')).readAsString(),
+        'one',
+      );
+      await draft.dispose();
+      await expectFlatRoot();
+    },
+  );
+
+  test(
+    'a failed import metadata transaction retries the same staged files',
+    () async {
+      await service.ensureInstalled();
+      final before = await rootBytes();
+      final draft = await service.prepareImports([
+        input(),
+        input('second.dat'),
+      ]);
+      addTearDown(draft.dispose);
+      await db.customStatement('''
+      CREATE TRIGGER fail_geo_import BEFORE INSERT ON geo_data
+      WHEN NEW.name = 'second' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+
+      await expectLater(
+        draft.save((writeMetadata) => db.transaction(writeMetadata)),
+        throwsA(anything),
+      );
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await rootBytes(), before);
+      expect(downloads, 2);
+
+      await db.customStatement('DROP TRIGGER fail_geo_import');
+      await draft.save((writeMetadata) => db.transaction(writeMetadata));
+      expect(
+        (await db.geoDataDao.allRows).map((row) => row.name),
+        unorderedEquals(['custom', 'second']),
+      );
+      expect(downloads, 2);
+      for (final name in ['custom', 'second']) {
+        expect(
+          await File(p.join(datRoot.path, '$name.dat')).readAsString(),
+          'one',
+        );
+      }
+      await draft.dispose();
+      await expectFlatRoot();
     },
   );
 
