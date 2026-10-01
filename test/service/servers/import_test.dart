@@ -17,6 +17,10 @@ import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/connect/raw/db.dart';
+import 'package:onexray/service/connect/raw/editor.dart';
+import 'package:onexray/service/shared/share/configuration_transfer.dart';
+
+import '../../support/fake_geodata_import.dart';
 
 void main() {
   test(
@@ -226,18 +230,15 @@ void main() {
       preview.count,
       2,
     ); // Equal labels never collapse distinct imported assets.
-    final subscription = ServerImportService.singleLink(
-      'https://provider.example/list#Provider',
-    );
-    expect(subscription, isA<OneXraySubscriptionLink>());
-    expect(
-      (subscription as OneXraySubscriptionLink).url,
-      'https://provider.example/list',
-    );
+    final subscription = service
+        .detect('https://provider.example/list#Provider')
+        .subscriptions
+        .single;
+    expect(subscription.url, 'https://provider.example/list');
     expect(subscription.name, 'Provider');
     expect(
-      ServerImportService.singleLink('http://provider.example/list'),
-      isNull,
+      service.detect('http://provider.example/list').subscriptions,
+      isEmpty,
     );
   });
 
@@ -289,7 +290,7 @@ void main() {
     final subscriptions = await service.importSubscriptions(
       detected.subscriptions,
     );
-    final preview = await service.preview(detected.localText);
+    final preview = await service.previewDetected(detected);
     expect(events, ['subscription:good', 'subscription:bad', 'preview']);
     expect(subscriptions.map((item) => item.result.success), [true, false]);
     expect(preview.count, 1);
@@ -383,6 +384,88 @@ void main() {
       writes[1].data.value,
     );
   });
+
+  test('mixed node and Raw import commits referenced Geodata with the original configuration', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    const source = '''
+  {"name":"Expert","outbounds":[{"protocol":"freedom"}],
+   "routing":{"rules":[{"domain":["ext:rules.dat:CN"],"outboundTag":"direct"}]},
+   "customRoot":true}
+''';
+    final lifecycle = <String>[];
+    final queued = <int>[];
+    final validations = <Map<String, dynamic>>[];
+    final service = ServerImportService(
+      database: db,
+      transfer: ConfigurationTransferService(
+        prepare: (inputs) async {
+          expect(inputs.single.fileName, 'rules.dat');
+          return FakeGeoDataImport(events: lifecycle);
+        },
+      ),
+      parse: (_) async =>
+          fail('Known App links must not reach the node parser'),
+      validate: (text) async {
+        validations.add(jsonDecode(text) as Map<String, dynamic>);
+        return '';
+      },
+      schedule: queued.addAll,
+    );
+    final preview = await service.preview(
+      [
+        _geoLink('rules'),
+        _configLink(
+          'outbound',
+          '{"outbounds":[{"tag":"Local","protocol":"freedom"}]}',
+        ),
+        _configLink('raw', source),
+      ].join('\n'),
+    );
+    expect(preview.rows, hasLength(1));
+    expect(preview.raw.single.text, source);
+    expect(preview.raw.single.json, jsonDecode(source));
+    expect(preview.assets.single.fileName, 'rules.dat');
+    expect(preview.geoData, isEmpty);
+    expect(lifecycle, isEmpty);
+    expect(validations, hasLength(1));
+    expect(await db.coreConfigDao.allRawRowsWithData, isEmpty);
+
+    final result = await service.commit(preview);
+    expect(result.count, 1);
+    expect(result.rawCount, 1);
+    expect(lifecycle, ['publish', 'commit', 'complete']);
+    expect(validations.last['customRoot'], true);
+    final saved = (await db.coreConfigDao.allRawRowsWithData).single;
+    expect(XrayRawDb.readFromDbData(saved), source);
+    expect(
+      queued,
+      (await db.coreConfigDao.allOutboundRowsWithDataBySubId(0))
+          .map((row) => row.id),
+    );
+    await preview.dispose();
+  });
+
+  test(
+    'direct Raw import retains the editor name limit before kernel validation',
+    () async {
+      final service = ServerImportService(
+        validate: (_) async => fail('Invalid name must not reach the kernel'),
+      );
+      await expectLater(
+        service.preview(
+          jsonEncode({'name': 'N' * 33, 'inbounds': [], 'outbounds': []}),
+        ),
+        throwsA(
+          isA<RawEditorException>().having(
+            (error) => error.reason,
+            'reason',
+            'name',
+          ),
+        ),
+      );
+    },
+  );
 
   test('unrecognized legacy assets and unsafe data names cannot become Raw or file paths', () async {
     final service = ServerImportService(validateGeoData: (_) async => true);

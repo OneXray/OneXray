@@ -7,6 +7,7 @@ import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/service/connect/raw/validator.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 const source = '''
   {
@@ -119,6 +120,18 @@ void main() {
     expected['name'] = 'Renamed';
     expect(result.name, 'Renamed');
     expect(jsonDecode(result.text), expected);
+  });
+
+  test('renaming parsed input does not change its source text or map', () {
+    final parsed = ConfigurationSource.parse(source);
+    final renamed = XrayRawValidator.normalizeParsed(
+      parsed,
+      nameOverride: 'Renamed',
+    );
+    expect(parsed.text, source);
+    expect(parsed.value, jsonDecode(source));
+    expect(renamed.json['name'], 'Renamed');
+    expect(jsonDecode(renamed.text), renamed.json);
   });
 
   test(

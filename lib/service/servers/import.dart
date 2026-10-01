@@ -21,6 +21,7 @@ import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/shared/share/app_link_parser.dart';
 import 'package:onexray/service/shared/share/service.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 import 'package:onexray/service/connect/routing/custom/service.dart';
 import 'package:onexray/service/shared/in_flight_operations.dart';
 import 'package:onexray/service/shared/share/xray_share_reader.dart';
@@ -54,31 +55,68 @@ class ServerImportResult {
 
 class ServerImportPreview {
   final List<CoreConfigCompanion> rows;
+  final List<ParsedRawConfiguration> raw;
   final List<OneXrayGeoDataLink> geoData;
   final List<ConfigurationContent> customRoutes;
   final List<GeoDataInput> assets;
   final GeoDataImport? _dependencies;
   ServerImportPreview(
     Iterable<CoreConfigCompanion> rows, {
+    Iterable<ParsedRawConfiguration> raw = const [],
     Iterable<OneXrayGeoDataLink> geoData = const [],
     Iterable<ConfigurationContent> customRoutes = const [],
     this._dependencies,
     Iterable<GeoDataInput> assets = const [],
   }) : rows = List.unmodifiable(rows),
+       raw = List.unmodifiable(raw),
        geoData = List.unmodifiable(geoData),
        customRoutes = List.unmodifiable(customRoutes),
        assets = List.unmodifiable(assets);
-  int get count => rows.where((row) => row.type.value == 'outbound').length;
-  int get rawCount => rows.where((row) => row.type.value == 'raw').length;
+  int get count => rows.length;
+  int get rawCount => raw.length;
   bool get hasItems =>
-      rows.isNotEmpty || geoData.isNotEmpty || customRoutes.isNotEmpty;
+      rows.isNotEmpty ||
+      raw.isNotEmpty ||
+      geoData.isNotEmpty ||
+      customRoutes.isNotEmpty;
   Future<void> dispose() async => _dependencies?.dispose();
 }
 
 class ServerImportDetection {
   final List<OneXraySubscriptionLink> subscriptions;
-  final String localText;
-  const ServerImportDetection(this.subscriptions, this.localText);
+  final List<_ImportLine> _local;
+  ServerImportDetection._(
+    Iterable<OneXraySubscriptionLink> subscriptions,
+    Iterable<_ImportLine> local,
+  ) : subscriptions = List.unmodifiable(subscriptions),
+      _local = List.unmodifiable(local);
+  String get localText => _local.map((line) => line.text).join('\n');
+}
+
+final class _ImportLine {
+  final String text;
+  final Uri? uri;
+  final OneXrayAppLink? link;
+  const _ImportLine._(this.text, this.uri, this.link);
+
+  factory _ImportLine.parse(String text) {
+    final uri = Uri.tryParse(text.trim());
+    if (uri == null) {
+      return _ImportLine._(text, uri, null);
+    }
+    final link = OneXrayAppLinkParser.parse(uri);
+    return _ImportLine._(
+      text,
+      uri,
+      link ??
+          (NetClient.isHttpsDownloadUri(uri)
+              ? OneXraySubscriptionLink(
+                  name: uri.fragment,
+                  url: SubscriptionUrl.normalize(uri.toString()),
+                )
+              : null),
+    );
+  }
 }
 
 class ServerSubscriptionImport {
@@ -98,7 +136,6 @@ class ServerImportService {
 
   final AppDatabase? _database;
   final ConfigurationTransferService _transfer;
-  final Future<void> Function(String) _validateRaw;
   final Future<List<CoreConfigCompanion>> Function(String) _parse;
   final Future<String> Function(String) _validate;
   final Future<ConfigWriteResult> Function(List<CoreConfigCompanion>) _write;
@@ -121,9 +158,6 @@ class ServerImportService {
     Future<bool> Function(OneXrayGeoDataLink)? writeGeoData,
   }) : _database = database,
        _transfer = transfer ?? ConfigurationTransferService(),
-       _validateRaw = ((text) async {
-         await XrayRawValidator.validate(text, testXray: validate);
-       }),
        _parse = parse ?? XrayShareReader().parseShareText,
        _validate = validate ?? AppHostApi().testXray,
        _write =
@@ -161,24 +195,23 @@ class ServerImportService {
   /// Classify before any writes. JSON/base64 stay intact for the native parser.
   ServerImportDetection detect(String text) {
     _checkSize(text);
-    if (text.trimLeft().startsWith('{')) {
-      return ServerImportDetection(const [], text);
-    }
     final subscriptions = <OneXraySubscriptionLink>[];
-    final local = <String>[];
-    for (final line in text.split('\n')) {
-      final link = singleLink(line);
+    final local = <_ImportLine>[];
+    for (final line in _inputLines(text)) {
+      final link = line.link;
       if (link is OneXraySubscriptionLink) {
         subscriptions.add(link);
       } else {
         local.add(line);
       }
     }
-    return ServerImportDetection(
-      List.unmodifiable(subscriptions),
-      local.join('\n'),
-    );
+    return ServerImportDetection._(subscriptions, local);
   }
+
+  static List<_ImportLine> _inputLines(String text) =>
+      text.trimLeft().startsWith('{')
+      ? [_ImportLine._(text, null, null)]
+      : text.split('\n').map(_ImportLine.parse).toList();
 
   Future<List<ServerSubscriptionImport>> importSubscriptions(
     List<OneXraySubscriptionLink> links,
@@ -257,9 +290,26 @@ class ServerImportService {
     bool manual = false,
   }) async {
     _checkSize(text);
+    return _preview(
+      ServerImportDetection._([], _inputLines(text)),
+      manual: manual,
+    );
+  }
+
+  Future<ServerImportPreview> previewDetected(
+    ServerImportDetection detection,
+  ) => _preview(detection);
+
+  Future<ServerImportPreview> _preview(
+    ServerImportDetection detection, {
+    bool manual = false,
+  }) async {
+    final text = detection.localText;
+    _checkSize(text);
     if (!manual) {
       if (text.trimLeft().startsWith('{')) {
-        final json = jsonDecode(text);
+        final source = ConfigurationSource.parse(text);
+        final json = source.value;
         if (json is Map<String, dynamic>) {
           final outbounds = json['outbounds'];
           final custom =
@@ -273,8 +323,8 @@ class ServerImportService {
             const {'inbounds', 'routing', 'dns', 'fakedns'}.contains,
           );
           if (custom || raw) {
-            final content = ConfigurationTransferService.read(
-              text,
+            final content = ConfigurationTransferService.readSource(
+              source,
               custom ? ConfigurationKind.custom : ConfigurationKind.raw,
             );
             return _configurationPreview([], [content], []);
@@ -286,20 +336,16 @@ class ServerImportService {
       final geoData = <OneXrayGeoDataLink>[];
       final other = <String>[];
       final configurations = <ConfigurationContent>[];
-      final parsedLinks = [
-        for (final line in text.split('\n'))
-          if (Uri.tryParse(line.trim()) case final uri?)
-            OneXrayAppLinkParser.parse(uri),
-      ];
+      final parsedLines = detection._local;
       final usedGeoData = <OneXrayGeoDataLink>{};
-      for (final line in text.split('\n')) {
-        final uri = Uri.tryParse(line.trim());
-        final link = uri == null ? null : OneXrayAppLinkParser.parse(uri);
+      for (final item in parsedLines) {
+        final uri = item.uri;
+        final link = item.link;
         if (link == null) {
           if (uri?.scheme.toLowerCase() == OneXrayAppLinkParser.scheme) {
             continue;
           }
-          other.add(line);
+          other.add(item.text);
           continue;
         }
         try {
@@ -323,34 +369,29 @@ class ServerImportService {
             final kind = ConfigurationKind.values.singleWhere(
               (kind) => kind.linkType == link.type,
             );
-            final dependencies = <String>[];
+            final source = ConfigurationSource.parse(link.xrayJson);
+            final dependencies = <OneXrayGeoDataLink>[];
             if (kind == ConfigurationKind.raw) {
               final references = geoDataReferences(
-                jsonDecode(link.xrayJson) as Map<String, dynamic>,
+                source.value as Map<String, dynamic>,
               );
-              for (final data in parsedLinks.whereType<OneXrayGeoDataLink>()) {
+              for (final data
+                  in parsedLines
+                      .map((item) => item.link)
+                      .whereType<OneXrayGeoDataLink>()) {
                 if (references.containsKey(data.name) ||
                     references.containsKey('${data.name}.dat')) {
                   usedGeoData.add(data);
-                  dependencies.add(
-                    Uri(
-                      scheme: OneXrayAppLinkParser.scheme,
-                      host: OneXrayAppLinkParser.host,
-                      path: OneXrayAppLinkParser.geoDataPath,
-                      queryParameters: {
-                        'type': data.type.name,
-                        'url': data.url,
-                      },
-                      fragment: data.name,
-                    ).toString(),
-                  );
+                  dependencies.add(data);
                 }
               }
             }
             configurations.add(
-              ConfigurationTransferService.read(
-                [line, ...dependencies].join('\n'),
+              ConfigurationTransferService.readSource(
+                source,
                 kind,
+                nameOverride: link.name.isEmpty ? null : link.name,
+                linked: dependencies,
               ),
             );
           } else if (link is OneXrayGeoDataLink) {
@@ -436,15 +477,24 @@ class ServerImportService {
           );
         }
       }
-      for (final raw in contents.where(
+      final raw = <ParsedRawConfiguration>[];
+      for (final content in contents.where(
         (item) => item.kind == ConfigurationKind.raw,
       )) {
-        final text = RawEditorService.namedText(raw.name, raw.text);
-        if (draft == null) await _validateRaw(text);
-        rows.add(XrayRawDb.configCompanion(raw.name.trim(), text));
+        final name = content.name.trim();
+        if (name.runes.length > 32) throw const RawEditorException('name');
+        final parsed = XrayRawValidator.normalizeParsed(
+          content.source,
+          nameOverride: name,
+        );
+        if (draft == null) {
+          await XrayRawValidator.validateParsed(parsed, testXray: _validate);
+        }
+        raw.add(parsed);
       }
       return ServerImportPreview(
         rows,
+        raw: raw,
         customRoutes: custom,
         dependencies: draft,
         assets: assets,
@@ -476,20 +526,20 @@ class ServerImportService {
             testXray: _validate,
           );
         }
-        for (final row in preview.rows.where(
-          (row) => row.type.value == 'raw',
-        )) {
-          final data = row.data.value;
-          if (data == null) throw const FormatException('Invalid Raw');
-          await _validateRaw(utf8.decode(base64Decode(data)));
+        for (final raw in preview.raw) {
+          await XrayRawValidator.validateParsed(raw, testXray: _validate);
         }
       }
       Future<ConfigWriteResult?> write() async {
         await writeMetadata();
-        final result = preview.rows.isEmpty ? null : await _write(preview.rows);
+        final rows = [
+          ...preview.rows,
+          for (final raw in preview.raw)
+            XrayRawDb.configCompanion(raw.name.trim(), raw.text),
+        ];
+        final result = rows.isEmpty ? null : await _write(rows);
         if (result != null &&
-            (result.count != preview.rows.length ||
-                result.ids.length != preview.rows.length)) {
+            (result.count != rows.length || result.ids.length != rows.length)) {
           throw StateError('Incomplete asset write');
         }
         for (final custom in preview.customRoutes) {
@@ -510,10 +560,7 @@ class ServerImportService {
         ? await GeoDataService().withFiles(() => save(() async {}))
         : await save(() async {});
     if (result != null && !_imports.isPaused) {
-      _schedule([
-        for (var index = 0; index < result.ids.length; index++)
-          if (preview.rows[index].type.value == 'outbound') result.ids[index],
-      ]);
+      _schedule(result.ids.take(preview.rows.length).toList());
     }
     var geoDataCount = 0;
     final failures = <OneXrayGeoDataLink>[];
@@ -550,19 +597,6 @@ class ServerImportService {
         r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)',
         caseSensitive: false,
       ).hasMatch(name);
-
-  /// Recognizes one link without importing it.
-  static OneXrayAppLink? singleLink(String text) {
-    final uri = Uri.tryParse(text.trim());
-    if (uri == null || text.trim().contains('\n')) return null;
-    final link = OneXrayAppLinkParser.parse(uri);
-    if (link != null) return link;
-    if (!NetClient.isHttpsDownloadUri(uri)) return null;
-    return OneXraySubscriptionLink(
-      name: uri.fragment,
-      url: SubscriptionUrl.normalize(uri.toString()),
-    );
-  }
 
   static Future<String?> pickTextFile({bool jsonOnly = false}) async {
     final file = await FilePicker.pickFile(

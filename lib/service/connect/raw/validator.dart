@@ -2,31 +2,35 @@ import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 final class ParsedRawConfiguration {
-  final String text;
+  final ConfigurationSource _source;
   final String name;
-  final Map<String, dynamic> json;
 
-  const ParsedRawConfiguration(this.text, this.name, this.json);
+  const ParsedRawConfiguration._(this._source, this.name);
+  String get text => _source.text;
+  Map<String, dynamic> get json => _source.value as Map<String, dynamic>;
 }
 
 class XrayRawValidator {
   static ParsedRawConfiguration normalize(
     String rawText, {
     String? nameOverride,
+  }) => normalizeParsed(
+    ConfigurationSource.parse(rawText),
+    nameOverride: nameOverride,
+  );
+
+  static ParsedRawConfiguration normalizeParsed(
+    ConfigurationSource source, {
+    String? nameOverride,
   }) {
-    late final Object? decoded;
+    final decoded = source.value;
     final normalizedNameOverride = nameOverride?.trim();
-    try {
-      decoded = JsonTool.decoder.convert(rawText);
-    } on FormatException catch (error) {
-      throw JsonDiagnostic.fromError(error)!;
-    }
     if (decoded is! Map<String, dynamic>) {
       throw const JsonDiagnostic(
         "Xray config root must be an object",
@@ -37,8 +41,10 @@ class XrayRawValidator {
     final overrideName =
         normalizedNameOverride?.isNotEmpty == true &&
         jsonMap['name'] != normalizedNameOverride;
-    if (overrideName) jsonMap['name'] = normalizedNameOverride;
-    final name = jsonMap['name'];
+    final json = overrideName
+        ? <String, dynamic>{...jsonMap, 'name': normalizedNameOverride}
+        : jsonMap;
+    final name = json['name'];
     if (name is! String || !EmptyTool.checkString(name)) {
       throw JsonDiagnostic(
         appLocalizationsNoContext().validationNameRequired,
@@ -48,8 +54,10 @@ class XrayRawValidator {
 
     // Saving is not runtime compilation. Keep the exact source, including all
     // expert fields and formatting, unless the caller explicitly renames it.
-    final text = overrideName ? JsonTool.encoder.convert(jsonMap) : rawText;
-    return ParsedRawConfiguration(text, name, jsonMap);
+    return ParsedRawConfiguration._(
+      overrideName ? ConfigurationSource.encoded(json) : source,
+      name,
+    );
   }
 
   static Future<ParsedRawConfiguration> validate(

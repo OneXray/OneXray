@@ -10,6 +10,7 @@ import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/shared/share/app_link_generator.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/shared/share/app_link_parser.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 enum ConfigurationKind {
   raw(OneXrayConfigLinkType.raw),
@@ -26,13 +27,14 @@ class ConfigurationContent {
   final String name;
   final List<GeoDataInput> assets;
   final RoutingConfiguration? routing;
-  const ConfigurationContent({
+  final ConfigurationSource source;
+  ConfigurationContent({
     required this.kind,
-    required this.text,
+    required this.source,
     required this.name,
     this.assets = const [],
     this.routing,
-  });
+  }) : text = routing?.encode() ?? source.text;
 }
 
 class ConfigurationImportDraft {
@@ -98,16 +100,12 @@ class ConfigurationTransferService {
        _lookup =
            lookup ?? ((name) => AppDatabase().geoDataDao.searchRowByName(name));
 
-  Future<ConfigurationImportDraft> import(
-    String input,
-    ConfigurationKind kind,
-  ) async {
-    final content = read(input, kind);
-    return ConfigurationImportDraft(
-      content,
-      content.assets.isEmpty ? null : await _prepare(content.assets),
-    );
-  }
+  Future<ConfigurationImportDraft> prepare(
+    ConfigurationContent content,
+  ) async => ConfigurationImportDraft(
+    content,
+    content.assets.isEmpty ? null : await _prepare(content.assets),
+  );
 
   Future<GeoDataImport?> prepareAssets(List<GeoDataInput> inputs) async =>
       inputs.isEmpty ? null : _prepare(inputs);
@@ -148,12 +146,26 @@ class ConfigurationTransferService {
       text = configuration.xrayJson;
       name = configuration.name;
     }
-    final json = jsonDecode(text);
+    return readSource(
+      ConfigurationSource.parse(text),
+      kind,
+      nameOverride: nameOverride ?? (name.isEmpty ? null : name),
+      linked: linked,
+    );
+  }
+
+  static ConfigurationContent readSource(
+    ConfigurationSource source,
+    ConfigurationKind kind, {
+    String? nameOverride,
+    List<OneXrayGeoDataLink> linked = const [],
+  }) {
+    final json = source.value;
     if (json is! Map<String, dynamic>) {
       throw const FormatException('Configuration must be an object');
     }
-    if (name.isEmpty && json['name'] is String) name = json['name'] as String;
-    name = nameOverride ?? name;
+    var name =
+        nameOverride ?? (json['name'] is String ? json['name'] as String : '');
     final references = geoDataReferences(json);
     final assets = <GeoDataInput>[];
     RoutingConfiguration? routing;
@@ -164,7 +176,6 @@ class ConfigurationTransferService {
         name: nameOverride ?? (name.isEmpty ? null : name),
       );
       routing = document.state;
-      text = document.state.encode();
       if (name.isEmpty) name = document.state.name;
       for (final asset in document.assets) {
         final file = asset['file']!;
@@ -202,7 +213,7 @@ class ConfigurationTransferService {
     }
     return ConfigurationContent(
       kind: kind,
-      text: text,
+      source: source,
       name: name,
       assets: List.unmodifiable(assets),
       routing: routing,

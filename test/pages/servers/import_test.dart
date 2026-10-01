@@ -22,7 +22,7 @@ import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/outbound/state_db.dart';
-import 'package:onexray/service/connect/raw/db.dart';
+import 'package:onexray/service/connect/raw/validator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
@@ -837,15 +837,16 @@ class _ConfigurationImportService extends ServerImportService {
   _ConfigurationImportService({super.subscribe, super.write});
 
   @override
-  Future<ServerImportPreview> preview(
-    String text, {
-    bool manual = false,
-  }) async => ServerImportPreview([
-    XrayRawDb.configCompanion(
-      'Expert',
-      '{"name":"Expert","outbounds":[{"protocol":"freedom"}]}',
-    ),
-  ]);
+  Future<ServerImportPreview> previewDetected(
+    ServerImportDetection detection,
+  ) async => ServerImportPreview(
+    [],
+    raw: [
+      XrayRawValidator.normalize(
+        '{"name":"Expert","outbounds":[{"protocol":"freedom"}]}',
+      ),
+    ],
+  );
 }
 
 void _mobileViewport(WidgetTester tester) {

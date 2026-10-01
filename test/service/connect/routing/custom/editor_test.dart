@@ -13,6 +13,7 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 import '../../../../support/fake_geodata_import.dart';
 
@@ -327,7 +328,7 @@ void main() {
       final imported = ConfigurationImportDraft(
         ConfigurationContent(
           kind: ConfigurationKind.custom,
-          text: changed.state.encode(),
+          source: ConfigurationSource.parse(changed.state.encode()),
           name: changed.state.name,
         ),
         FakeGeoDataImport(events: importEvents),
@@ -483,7 +484,7 @@ void main() {
     final imported = ConfigurationImportDraft(
       ConfigurationContent(
         kind: ConfigurationKind.custom,
-        text: _state('Work').encode(),
+        source: ConfigurationSource.parse(_state('Work').encode()),
         name: 'Work',
       ),
       FakeGeoDataImport(events: lifecycle),

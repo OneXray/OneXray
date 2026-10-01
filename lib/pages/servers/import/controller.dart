@@ -13,7 +13,6 @@ import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/service/servers/import.dart';
 import 'package:onexray/service/shared/failure.dart';
 import 'package:onexray/service/servers/subscription/failure.dart';
-import 'package:onexray/service/shared/share/app_link_model.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/servers/subscription/validator.dart';
@@ -401,9 +400,10 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
       }
       return null;
     }
-    final link = ServerImportService.singleLink(input);
     emit(state.copyWith(committedResult: null));
-    if (link is OneXraySubscriptionLink) {
+    if (detection.subscriptions.length == 1 &&
+        detection.localText.trim().isEmpty) {
+      final link = detection.subscriptions.single;
       _hwid = null;
       _hwidUrl = null;
       emit(state.copyWith(subscriptionImports: const [], hwidEnabled: false));
@@ -451,7 +451,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     if (!context.mounted) return null;
     ServerImportResult? local;
     if (detection.localText.trim().isNotEmpty) {
-      local = await _preview(context, detection.localText);
+      local = await _preview(context, () => service.previewDetected(detection));
     }
     if (local == null && state.importedSubscriptionCount == 0) return null;
     final result = ServerImportResult(
@@ -568,7 +568,11 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     if (state.busy) return;
     final revision = _jsonRevision;
     final result = action == ServerImportAction.json
-        ? await _preview(context, state.jsonInput, manual: true)
+        ? await _preview(
+            context,
+            () => service.preview(state.jsonInput, manual: true),
+            manual: true,
+          )
         : await _importText(context, state.inputText);
     if (action == ServerImportAction.json && revision != _jsonRevision) return;
     if ((result != null || _closingFlow) && context.mounted) {
@@ -579,7 +583,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
 
   Future<ServerImportResult?> _preview(
     BuildContext context,
-    String input, {
+    Future<ServerImportPreview> Function() prepare, {
     bool manual = false,
   }) async {
     final revision = manual ? _jsonRevision : null;
@@ -593,7 +597,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
     );
     ServerImportPreview? preview;
     try {
-      preview = await service.preview(input, manual: manual);
+      preview = await prepare();
       if (!context.mounted) {
         await preview.dispose();
         return null;
@@ -692,10 +696,7 @@ class ServerImportController extends PageCubit<ServerImportPageState> {
               ? l10n.prototypeUsableNodes(result.count)
               : result.rawCount > 0
               ? l10n.prototypeNameSaved(
-                  preview.rows
-                      .where((row) => row.type.value == 'raw')
-                      .map((row) => row.name.value)
-                      .join(', '),
+                  preview.raw.map((raw) => raw.name).join(', '),
                 )
               : result.customCount > 0
               ? l10n.prototypeNameSaved(

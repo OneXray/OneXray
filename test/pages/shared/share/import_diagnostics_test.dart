@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 import 'test_app.dart';
 
@@ -62,6 +63,50 @@ void main() {
     });
   }
 
+  testWidgets('cancelled replacement does not prepare dependencies', (
+    tester,
+  ) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async => call.method == 'Clipboard.getData'
+          ? {'text': '{"name":"Imported","outbounds":[]}'}
+          : null,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final service = _PendingImport();
+    const text = '{"name":"Current"}';
+    final controller = ConfigurationTransferController(
+      kind: ConfigurationKind.raw,
+      readText: () => text,
+      readName: () => 'Current',
+      onImport: (_) => fail('Cancelled import must not replace the draft'),
+      service: service,
+    );
+    addTearDown(controller.close);
+    await tester.pumpWidget(
+      ShareTestApp(child: ConfigurationTransferTools(controller: controller)),
+    );
+    final importing = controller.import(
+      tester.element(find.byType(ConfigurationTransferTools)),
+      clipboard: true,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Cancel'));
+    await importing;
+    await tester.pumpAndSettle();
+    expect(service.started.isCompleted, isFalse);
+    expect(controller.imported, isNull);
+    expect(controller.state.failed, isFalse);
+    expect(controller.busy, isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('a delayed import cannot replace newer edits', (tester) async {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -95,8 +140,12 @@ void main() {
     expect(service.started.isCompleted, isTrue);
     text = '{"newer":true}';
     service.result.complete(
-      const ConfigurationImportDraft(
-        ConfigurationContent(kind: ConfigurationKind.raw, text: '{}', name: ''),
+      ConfigurationImportDraft(
+        ConfigurationContent(
+          kind: ConfigurationKind.raw,
+          source: ConfigurationSource.parse('{}'),
+          name: '',
+        ),
         null,
       ),
     );
@@ -114,10 +163,7 @@ class _PendingImport extends ConfigurationTransferService {
   final result = Completer<ConfigurationImportDraft>();
 
   @override
-  Future<ConfigurationImportDraft> import(
-    String input,
-    ConfigurationKind kind,
-  ) {
+  Future<ConfigurationImportDraft> prepare(ConfigurationContent content) {
     started.complete();
     return result.future;
   }

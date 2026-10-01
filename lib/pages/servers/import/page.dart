@@ -447,6 +447,7 @@ class ServerImportPreviewPage extends StatelessWidget {
         final committed = state.committedResult;
         final itemCount =
             preview.rows.length +
+            preview.raw.length +
             preview.customRoutes.length +
             preview.geoData.length +
             preview.assets.length;
@@ -517,9 +518,14 @@ class ServerImportPreviewPage extends StatelessWidget {
                             name: row.name.value,
                             description: committed != null
                                 ? l10n.prototypeNameSaved(row.name.value)
-                                : row.type.value == 'raw'
-                                ? l10n.xrayRawPageTitle
                                 : l10n.prototypeLocalServer,
+                          ),
+                        for (final raw in preview.raw)
+                          _PreviewItem(
+                            name: raw.name,
+                            description: committed != null
+                                ? l10n.prototypeNameSaved(raw.name)
+                                : l10n.xrayRawPageTitle,
                           ),
                         for (final route in preview.customRoutes)
                           _PreviewItem(

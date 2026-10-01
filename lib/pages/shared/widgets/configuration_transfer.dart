@@ -100,7 +100,7 @@ class ConfigurationTransferController
           : await ServerImportService.pickTextFile(jsonOnly: true);
       if (input == null || !context.mounted || !isPageActive) return;
       // Parse before asking to replace anything, and download only after consent.
-      ConfigurationTransferService.read(input, kind);
+      final content = ConfigurationTransferService.read(input, kind);
       parsed = true;
       if ((hasContent?.call() ?? readText().trim().isNotEmpty) &&
           !await ContextAlert.showConfirmDialog(
@@ -117,7 +117,7 @@ class ConfigurationTransferController
       if (!context.mounted || !isPageActive) return;
       final previousText = readText();
       final previousName = readName();
-      next = await service.import(input, kind);
+      next = await service.prepare(content);
       if (!context.mounted || !isPageActive) return;
       if (previousText != readText() || previousName != readName()) {
         throw const AppFailure(
