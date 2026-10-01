@@ -10,6 +10,7 @@ import FlutterMacOS
 
 @MainActor
 final class AppHostApi: @preconcurrency BridgeHostApi {
+    // Retain the native status observer for the bridge's lifetime.
     private let flutterApi: AppFlutterApi
     init(flutterApi: AppFlutterApi) {
         self.flutterApi = flutterApi
@@ -28,7 +29,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
         Task {
             let permission = await VPNManager.shared.queryPlatformPermission()
             do {
-                let status = try await flutterApi.readVpnStatus()
+                let status = try await VPNManager.shared.readVpnStatus()
                 if permission.state == .failed {
                     completion(.success(NativeVpnCommandResult(
                         state: .failed,
@@ -55,19 +56,13 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
     
     func startVpn(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
-            let installed = await VPNManager.shared.startVpn()
-            let permission = await VPNManager.shared.queryPlatformPermission()
-            flutterApi.refreshVpn(result: installed)
-            completion(.success(await commandResult(installed, permission: permission)))
+            completion(.success(await VPNManager.shared.startVpn()))
         }
     }
 
     func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, any Error>) -> Void) {
         Task {
-            let installed = await VPNManager.shared.stopVpn()
-            let permission = await VPNManager.shared.queryPlatformPermission()
-            flutterApi.refreshVpn(result: installed)
-            completion(.success(await commandResult(installed, permission: permission)))
+            completion(.success(await VPNManager.shared.stopVpn()))
         }
     }
     
@@ -197,51 +192,5 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
 #elseif os(macOS)
         completion(.success(DockIconService.currentIconName))
 #endif
-    }
-
-    private func commandResult(
-        _ result: RefreshVpnResult,
-        permission: PlatformPermissionResult
-    ) async -> NativeVpnCommandResult {
-        switch result {
-        case .installed:
-            do {
-                return NativeVpnCommandResult(
-                    state: .success,
-                    status: try await flutterApi.readVpnStatus(),
-                    permission: permission,
-                    message: nil
-                )
-            } catch {
-                return NativeVpnCommandResult(state: .failed, permission: permission, message: error.localizedDescription)
-            }
-        case .waitForApproval:
-            return NativeVpnCommandResult(
-                state: .waitingForPlatformPermission,
-                permission: permission,
-                message: nil
-            )
-        case .notInstalled:
-            if permission.state == .awaitingUserApproval || permission.state == .notDetermined {
-                return NativeVpnCommandResult(
-                    state: .waitingForPlatformPermission,
-                    permission: permission,
-                    message: nil
-                )
-            }
-            return NativeVpnCommandResult(
-                state: .failed,
-                permission: permission,
-                message: VPNManager.shared.lastCommandError ?? permission.message
-            )
-        }
-    }
-
-    private func commandSuccess(permission: PlatformPermissionResult) -> NativeVpnCommandResult {
-        NativeVpnCommandResult(
-            state: .success,
-            permission: permission,
-            message: nil
-        )
     }
 }

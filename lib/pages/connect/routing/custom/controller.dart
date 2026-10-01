@@ -10,7 +10,6 @@ import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/shared/widgets/adaptive_dialog.dart';
 import 'package:onexray/pages/shared/widgets/configuration_transfer.dart';
-import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/shared/failure.dart';
@@ -28,7 +27,6 @@ const _unchangedCustomRoutingValue = Object();
 
 class CustomRoutingEditorState {
   final CustomRoutingEditorDraft? original;
-  final ConnectionConfiguration configuration;
   final List<RoutingProfileData> profiles;
   final String name;
   final List<RoutingRuleState> rules;
@@ -46,7 +44,6 @@ class CustomRoutingEditorState {
 
   CustomRoutingEditorState({
     this.original,
-    ConnectionConfiguration? configuration,
     Iterable<RoutingProfileData> profiles = const [],
     this.name = '',
     Iterable<RoutingRuleState> rules = const [],
@@ -61,8 +58,7 @@ class CustomRoutingEditorState {
     this.deleting = false,
     this.inlineEditing = false,
     this.error,
-  }) : configuration = configuration ?? ConnectionConfiguration(),
-       profiles = List.unmodifiable(profiles),
+  }) : profiles = List.unmodifiable(profiles),
        rules = List.unmodifiable(rules),
        ruleKeys = List.unmodifiable(ruleKeys);
 
@@ -72,7 +68,6 @@ class CustomRoutingEditorState {
 
   CustomRoutingEditorState copyWith({
     Object? original = _unchangedCustomRoutingValue,
-    ConnectionConfiguration? configuration,
     Iterable<RoutingProfileData>? profiles,
     String? name,
     Iterable<RoutingRuleState>? rules,
@@ -91,7 +86,6 @@ class CustomRoutingEditorState {
     original: identical(original, _unchangedCustomRoutingValue)
         ? this.original
         : original as CustomRoutingEditorDraft?,
-    configuration: configuration ?? this.configuration,
     profiles: profiles ?? this.profiles,
     name: name ?? this.name,
     rules: rules ?? this.rules,
@@ -116,8 +110,6 @@ class CustomRoutingEditorState {
 class CustomRoutingEditorController
     extends PageCubit<CustomRoutingEditorState> {
   final int? profileId;
-  final String? initialText;
-  final String? initialName;
   final CustomRoutingEditorService service;
   final name = TextEditingController();
   CustomRoutingRuleController? inlineRule;
@@ -130,8 +122,6 @@ class CustomRoutingEditorController
 
   CustomRoutingEditorController({
     this.profileId,
-    this.initialText,
-    this.initialName,
     CustomRoutingEditorService? service,
   }) : service = service ?? CustomRoutingEditorService(),
        super(CustomRoutingEditorState()) {
@@ -168,23 +158,12 @@ class CustomRoutingEditorController
     try {
       final draft = await service.load(profileId);
       final rows = await service.rows;
-      final settings = await service.coordinator.configuration;
+      // Keep connection-read failures before exposing an editable draft.
+      await service.coordinator.configuration;
       if (!isPageActive) return;
-      var value = draft.state as RoutingProfileState;
+      final value = draft.state as RoutingProfileState;
       var valueName = value.name;
-      if (initialText != null) {
-        final document = RoutingProfileDocument.parse(initialText!);
-        if (document.assets.isNotEmpty) {
-          throw const CustomRoutingEditorException('assets');
-        }
-        value = document.state;
-        valueName =
-            initialName ?? (value.name.isEmpty ? valueName : value.name);
-      }
-      if (profileId == null &&
-          initialText == null &&
-          valueName.isEmpty &&
-          context.mounted) {
+      if (profileId == null && valueName.isEmpty && context.mounted) {
         final used = rows
             .map(
               (row) => int.tryParse(
@@ -205,7 +184,6 @@ class CustomRoutingEditorController
       emit(
         CustomRoutingEditorState(
           original: draft,
-          configuration: settings,
           profiles: rows,
           name: valueName,
           rules: value.rules,

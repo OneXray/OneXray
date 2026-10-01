@@ -305,7 +305,7 @@ final class TrayService {
           );
           break;
         case _TrayMenuKey.stopVpn:
-          await ConnectionCoordinator.instance.disconnect();
+          await _coordinator.disconnect();
           break;
         case _TrayMenuKey.showApp:
           await windowManager.show();
@@ -313,14 +313,14 @@ final class TrayService {
           break;
         case _TrayMenuKey.quitApp:
           if (!_canQuitWithoutStoppingVpn) {
-            await ConnectionCoordinator.instance.disconnect();
+            await _coordinator.disconnect();
           }
           await ServicesBinding.instance.exitApplication(
             AppExitType.cancelable,
           );
           break;
         case _TrayMenuKey.quitAndStopVpn:
-          await ConnectionCoordinator.instance.disconnect();
+          await _coordinator.disconnect();
           await ServicesBinding.instance.exitApplication(
             AppExitType.cancelable,
           );

@@ -142,50 +142,51 @@ void main() {
     expect(controller.state.saved!.enabled, isTrue);
   });
 
-  for (final locale in const [
-    Locale('en'),
-    Locale('zh'),
-    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
-    Locale('ru'),
-    Locale('fa'),
+  for (final (locale, brightness) in const [
+    (Locale('en'), Brightness.light),
+    (Locale('zh'), Brightness.dark),
+    (
+      Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      Brightness.light,
+    ),
+    (Locale('ru'), Brightness.light),
+    (Locale('fa'), Brightness.dark),
   ]) {
-    for (final brightness in Brightness.values) {
-      testWidgets('layout $locale $brightness at 320px and enlarged text', (
-        tester,
-      ) async {
-        tester.view.physicalSize = const Size(320, 740);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(tester.view.resetPhysicalSize);
-        addTearDown(tester.view.resetDevicePixelRatio);
-        final host = _Host()
-          ..saved = AndroidAutomationSettings(
-            enabled: true,
-            token: 'private-token',
-          );
-        await tester.pumpWidget(
-          _app(
-            AutomationController(service: AndroidAutomationService(api: host)),
-            locale: locale,
-            brightness: brightness,
-            scale: 1.5,
-          ),
+    testWidgets('layout $locale $brightness at 320px and enlarged text', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 740);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final host = _Host()
+        ..saved = AndroidAutomationSettings(
+          enabled: true,
+          token: 'private-token',
         );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        final parameters = find.byWidgetPredicate(
-          (widget) =>
-              widget is SelectableText &&
-              widget.data == AndroidAutomationService.parameters,
-        );
-        await tester.ensureVisible(parameters);
-        await tester.pumpAndSettle();
-        expect(
-          tester.widget<SelectableText>(parameters).textDirection,
-          TextDirection.ltr,
-        );
-        expect(tester.takeException(), isNull);
-        expect(find.text('private-token'), findsNothing);
-      });
-    }
+      await tester.pumpWidget(
+        _app(
+          AutomationController(service: AndroidAutomationService(api: host)),
+          locale: locale,
+          brightness: brightness,
+          scale: 1.5,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final parameters = find.byWidgetPredicate(
+        (widget) =>
+            widget is SelectableText &&
+            widget.data == AndroidAutomationService.parameters,
+      );
+      await tester.ensureVisible(parameters);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<SelectableText>(parameters).textDirection,
+        TextDirection.ltr,
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('private-token'), findsNothing);
+    });
   }
 }

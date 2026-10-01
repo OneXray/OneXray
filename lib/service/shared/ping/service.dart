@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:onexray/core/errors/failure.dart';
 
@@ -227,17 +226,8 @@ class PingService {
       return null;
     }
     try {
-      final type = CoreConfigType.fromString(row.type);
-      switch (type) {
-        case CoreConfigType.outbound:
-          final outbound = readOutboundFromDbData(row);
-          return PingBatchSource(encodeSingleOutbound(outbound));
-        case CoreConfigType.raw:
-          final bytes = base64Decode(row.data!);
-          return PingBatchSource(utf8.decode(bytes));
-        default:
-          return null;
-      }
+      final outbound = readOutboundFromDbData(row);
+      return PingBatchSource(encodeSingleOutbound(outbound));
     } catch (error) {
       ygLogger("Prepare ping source failed: ${row.id}, ${error.runtimeType}");
       return null;

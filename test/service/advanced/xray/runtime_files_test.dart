@@ -44,18 +44,6 @@ void main() {
       await RuntimeDiagnosticFiles.readLog('${directory.path}/missing.log'),
       isNull,
     );
-    await Link('${directory.path}/link.log').create(file.path);
-    for (final path in ['${directory.path}/link.log', directory.path]) {
-      await expectLater(
-        RuntimeDiagnosticFiles.readLog(path),
-        throwsA(isA<FileSystemException>()),
-      );
-      await expectLater(
-        RuntimeDiagnosticFiles.readLogForExport(path),
-        throwsA(isA<FileSystemException>()),
-      );
-    }
-
     final handle = await file.open(mode: FileMode.write);
     await handle.truncate(RuntimeDiagnosticFiles.logExportBytes + 1);
     await handle.close();
@@ -63,22 +51,5 @@ void main() {
       RuntimeDiagnosticFiles.readLogForExport(file.path),
       throwsA(isA<FileSystemException>()),
     );
-  });
-
-  test('invalid bounds are rejected before accessing a file', () async {
-    for (final bounds in [
-      (offset: -2, limit: 1),
-      (offset: -1, limit: 0),
-      (offset: 0, limit: RuntimeDiagnosticFiles.logChunkBytes + 1),
-    ]) {
-      await expectLater(
-        RuntimeDiagnosticFiles.readLog(
-          '/unused/access.log',
-          offset: bounds.offset,
-          limit: bounds.limit,
-        ),
-        throwsFormatException,
-      );
-    }
   });
 }

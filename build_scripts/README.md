@@ -1,381 +1,203 @@
-# OneXray build scripts
+# Build and release
 
-[English](#english) · [简体中文](#简体中文) · [Русский](#русский)
+This is the authoritative packaging and release guide. For local Flutter Debug,
+start with [FIRST_RUN](../readme/FIRST_RUN.md). Runtime behavior belongs in
+[App](../docs/app.md), verification boundaries in
+[Validation](../docs/validation.md), and bridge/API contracts in
+[External interfaces](../docs/external-interfaces.md).
 
-## Release provenance / 发布溯源
+## Prepare the workspace
 
-- `Build` resolves `LIBXRAY_REF` and `VCORE_REF` once in the metadata job. Every
-  platform checks out those same full commit SHAs; the requested refs are stored
-  separately. A local libXray commit is **not** assumed to exist in `XTLS/libXray`:
-  publish the required dependency changes to the configured repository before
-  selecting them for CI. This change does not push dependencies or start CI.
-- Each successful build writes `../output/provenance-<target>-<architecture>.json`:
-  App/libXray/VCore commits, source and effective App versions, run identity,
-  actual tool versions, dependency-lock hashes, copied native/GeoData hashes, and
-  package SHA-256. Commands that cannot report a version are explicitly marked
-  unavailable, not replaced with `stable` or another requested version.
-  `sourceDirty` records each checkout's initial tracked/untracked changes (ignored
-  files excluded), before script-controlled source changes. It contains only
-  booleans and does not prevent local development builds with uncommitted work.
-- Windows receipts additionally include `windowsMode` and use
-  `provenance-windows-<architecture>-<mode>.json`, keeping EXE and MSIX builds separate.
-- Windows additionally requires VCore integration
-  revision **3**, the expected architecture, file set, and hashes.
-  OneXray does not validate the manifest's `buildIdentity` field.
-- `publish.yml` and `publish-microsoft-store.yml` require release metadata and per-platform receipts, a
-  successful matching `Build` run, clean recorded source checkouts before the
-  build, and matching package hashes. A release tag must
-  resolve to the recorded App commit. Missing metadata is never a manual-build
-  exemption. Microsoft Store bundling additionally requires both architectures.
-  If a failed run is retried, rerun the metadata job together with the platform
-  jobs; receipts from different run attempts are intentionally not mixed.
-- GitHub publishing follows the Build's recorded `target.txt`: a single-platform
-  build publishes only that platform, while `all` requires every GitHub release
-  target. The verifier requires the matching receipts and all expected packages
-  before emitting the exact list used for both asset replacement and upload.
-  Linux requires ZIP and DEB for x64 and arm64. MAS PKG and Play AAB are not GitHub
-  assets. Windows requires EXE and ZIP for x64 and arm64 for GitHub; MSIX continues
-  through the separate Microsoft Store workflow, which accepts only MSIX-mode receipts.
-- These are provenance checks, not platform release acceptance. Tool versions
-  remain recorded rather than all pinned; store deployment still happens inside
-  the existing Apple/Android Fastlane commands. Do not run them as local tests.
-- WinGet updates run separately after a stable GitHub Release, using the
-  published EXE assets rather than Build artifacts. See [Windows builds](../docs/windows-build.md#winget)
-  for triggers, prerequisites, and the manifest PR workflow.
+Keep `OneXray/` and `libXray/` as sibling checkouts; Windows also needs `VCore/`
+alongside them, or an explicit `VCORE_DIR`. Outputs go to sibling `output/`.
+The scripts use the checked-out dependency commits. Xray-core is resolved by
+libXray's Go module, not a separate Xray-core checkout.
 
-中文要点：依赖 ref 仅解析一次，`*-sha.txt` 只写真实提交；每个平台单独记录实际工具链、
-依赖锁、原生库、GeoData 与包摘要。不能把本地未发布的提交写成上游可用版本。
-发布入口拒绝缺失元数据、构建前源树未提交、来源不一致和摘要不一致；
-这些检查不替代各平台实机/渠道验收。保持使用干净构建目录，避免混入之前构建的产物。
+Install Python 3.12+, `uv`, Flutter/Dart and Go on `PATH`. Platform requirements:
 
-允许单平台发布，范围由该次 Build 的 `target.txt` 决定；`all` 必须具备全部 GitHub
-发布目标的凭证和安装包。Linux 的两种架构都需要 ZIP 与 DEB，macOS 只发布 SE ZIP，
-Android 只发布通用 APK；商店 PKG/AAB 不要求出现在 GitHub 产物目录。Windows 在 GitHub
-发布两种架构的 EXE 与 ZIP，MSIX 保留独立的 Microsoft Store 流程。Windows 凭证及其文件名
-包含运行模式，EXE 凭证不能替代 MSIX 凭证。校验成功后输出精确文件清单，删除和上传均只使用该清单，
-单平台发布不删除其他平台已有资产。`verify_release.py` 的标准输出为这份清单，失败时不输出。
+| Target | Host and packaging tools |
+| --- | --- |
+| Apple | macOS, Xcode, Fastlane and signing credentials. Projects use SwiftPM; the current deployment helper still runs legacy `pod repo update`, so this entry point also requires CocoaPods. Local Debug does not need it. |
+| Android | Android SDK/NDK, a JDK compatible with the Gradle wrapper, Fastlane and Play signing/upload credentials. Consult the Gradle files and workflow rather than copying tool versions here. |
+| Windows | Native x64/ARM64 Windows, Visual Studio C++ tools, Windows SDK, Rust, LLVM/libclang and matching Go/C compiler tools. EXE/ZIP require Fastforge; EXE also needs Inno Setup (`INNO_SETUP_PATH` can select its directory). MSIX uses `makeappx`/`signtool`. |
+| Linux | Native Linux toolchain and GTK/plugin dependencies; Fastforge for ZIP/DEB. |
 
-无需构建或安装依赖的脚本验证（Python 3.12+）：
+From the App root, prepare the Python environment; activate Fastforge only for
+Linux or Windows EXE/ZIP:
 
-```bash
-cd build_scripts
-python -m unittest discover -s tests -p 'test_*.py'
-```
-
-`winget_manifest.py` is a standalone release helper. Run it with
-`uv run --script build_scripts/winget_manifest.py` from the repository root;
-its inline dependency metadata installs PyYAML and jsonschema separately from
-the standard-library build environment. The manifest policy tests above do not
-need these dependencies. See [Windows builds](../docs/windows-build.md#winget)
-for the generate/fix/validate/submit boundary.
-
-## English
-
-The scripts in this directory run the standard libXray build, generate the
-Flutter FFI bindings, build the OneXray app, and package the platform-specific
-outputs. libXray resolves Xray-core from its Go module dependencies.
-
-### Workspace layout
-
-OneXray and libXray must be sibling directories. Windows builds also require a VCore checkout; set `VCORE_DIR` when it is not at `workspace/VCore`. Build artifacts are written to the sibling `output` directory.
-
-```text
-workspace/
-├── OneXray/
-├── libXray/
-├── VCore/         # Windows only
-└── output/        # created automatically
-```
-
-The scripts use the currently checked-out libXray and VCore revisions. VCore
-artifacts are copied only after their integration revision, architecture,
-file set, and SHA-256 manifest pass. The Xray-core version is pinned
-by libXray's Go module; a sibling Xray-core checkout is not used.
-
-### Prerequisites
-
-- Python 3.12 or newer and `uv`. The scripts use only the Python standard library.
-- Flutter, Dart, and Go available on `PATH`; Windows also requires Rust and MSVC.
-  EXE / ZIP packaging needs Fastforge, plus Inno Setup for EXE
-  (`INNO_SETUP_PATH` may specify its installation directory);
-  MSIX needs the Windows SDK `makeappx`/`signtool` tools.
-- A toolchain for the target operating system. Apple targets require macOS,
-  Xcode, CocoaPods, and Fastlane; Android requires a JDK, Android SDK/NDK, and
-  Fastlane; Linux packaging requires Fastforge.
-- Signing credentials and platform configuration required by the selected
-  Fastlane lane.
-- A positive integer in the `BUILD_NUMBER` environment variable. It is added to
-  the configured `build_number.base` (currently `400`).
-
-Create the Python environment with `uv`. Fastforge is needed for Linux and
-Windows EXE / ZIP packaging:
-
-```bash
+```shell
 uv sync --project build_scripts
 dart pub global activate fastforge
 ```
 
-`setup_flutter.sh` can install a fresh stable Flutter checkout for CI-like
-builds. It deletes and recreates `ONEXRAY_FLUTTER_ROOT`, or
-`$HOME/flutter/stable` when the variable is not set, so do not point it at a
-Flutter checkout that must be preserved.
+The [Build workflow](../.github/workflows/build.yml), [Gradle configuration](../android/app/build.gradle.kts),
+and [script configuration](app/config.py) are the toolchain/version sources of
+truth. Keep `LIBXRAY_REF` at `main` unless explicitly instructed otherwise.
+Run Flutter/Dart commands serially, including across terminals.
 
-### Run a build
+## Run a build safely
 
-Run the entry point from the OneXray repository root:
+Use a clean or disposable checkout and a separate output directory from prior
+builds. These commands are not general-purpose local validation:
 
-```bash
+- Apple/Android targets call Fastlane deployment lanes and can upload to stores;
+  `macos_se` signs and notarizes externally. Confirm the target and credentials.
+- Builds update `pubspec.yaml`, native libraries, bundled Geodata and platform
+  files. Apple also updates project build numbers.
+- `macos_se` replaces the local `macos/` tree with `macos_se/`; preserve local
+  changes before running it.
+- Android replaces `##version_code##` in `android/fastlane/Fastfile` without
+  restoring it. Start each build from a clean copy.
+- [setup_flutter.sh](setup_flutter.sh) deletes and recreates
+  `ONEXRAY_FLUTTER_ROOT` (default `$HOME/flutter/stable`). Use a disposable SDK
+  location, not a checkout you need to keep.
+
+Set a positive `BUILD_NUMBER`; the script adds the base from `app/config.py`.
+Run from the OneXray root, replacing `<system>` with a target below:
+
+```shell
 export BUILD_NUMBER=1
 uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
-
-Windows PowerShell:
 
 ```powershell
 $env:BUILD_NUMBER = "1"
 uv run --project build_scripts python build_scripts/main.py OneXray <system>
 ```
 
-Use `uv run --project build_scripts python build_scripts/main.py --help` to
-display the CLI syntax.
+| `system` | Result / external action |
+| --- | --- |
+| `ios` | IPA and TestFlight upload. |
+| `macos` | Mac App Store package and App Store Connect upload. |
+| `macos_se` | Developer ID signed, notarized universal ZIP. |
+| `android` | Play internal draft AAB upload and universal APK download. |
+| `windows` | EXE + ZIP; `--windows-mode msix` selects Store MSIX. |
+| `linux` | ZIP + DEB for the host architecture. |
 
-### Supported systems
+The entry point's `--help` documents CLI syntax. Native/Geodata copying and FFI
+generation are part of this build; they do not replace device/channel acceptance.
 
-| `system` | Build host | Behavior |
+## Windows
+
+`--windows-mode exe|msix` sets both packaging and
+`--dart-define=ONEXRAY_WINDOWS_MODE`. The default is `exe`; it is not a saved user
+preference and does not fall back based on package identity.
+
+| Mode | Runtime / startup | Distribution |
 | --- | --- | --- |
-| `ios` | macOS | Fastlane build and TestFlight upload. |
-| `macos` | macOS | Mac App Store build and upload. |
-| `macos_se` | macOS | Signed and notarized Developer ID universal ZIP. |
-| `android` | Android toolchain | Play internal AAB upload and universal APK. |
-| `windows` | Windows x64 or ARM64 | EXE + ZIP by default; `--windows-mode msix` builds Microsoft Store MSIX. |
-| `linux` | Linux x64 or ARM64 | ZIP and DEB for the host architecture. |
+| `exe` | Native TUN/Wintun; UAC only for standalone Core operations; current-user Startup shortcut. | EXE installer + ZIP. |
+| `msix` | VCore system VPN; Session Host supervises ordinary-permission Core over private loopback SOCKS; packaged `VCoreStartup`. | Microsoft Store MSIX. |
 
-For Windows, the architecture is detected from the host. CI can set `ONEXRAY_WINDOWS_ARCH` to `x64` or `arm64` when the matching Flutter, Go, Rust, and MSVC toolchains are configured. See the [Windows build documentation](../docs/windows-build.md#本地签名包) for the local signing requirements.
+Both modes require an Xray outbound interface. EXE/ZIP share a data location;
+MSIX has separate package data and is not an interchangeable upgrade channel.
+MSIX policy controls do not apply to EXE. See [App](../docs/app.md) for runtime
+and data ownership.
 
-`--windows-mode exe|msix` selects both packaging and the Flutter
-`--dart-define=ONEXRAY_WINDOWS_MODE` value. One Fastforge invocation builds and
-packages EXE and ZIP from the same bundle; MSIX is compiled separately without
-Fastforge. CMake always bundles the target MSVC runtime, Wintun, and VCore in a flat
-layout; runtime DLLs must exist and match the target architecture before packages are collected. The verified official Wintun archive is cached under workspace
-`references/windows-build/`; only the architecture-matched DLL is copied.
-Sources and distribution notes are linked on the [documentation site](https://onexray.com/docs/credits/).
+Architecture defaults to the host; `ONEXRAY_WINDOWS_ARCH=x64|arm64` requires
+matching Flutter, Go, Rust and MSVC toolchains. The builder prepares libXray,
+VCore, Wintun and Geodata before packaging. CMake installs the App, Core, Wintun,
+three VCore files and target MSVC runtime DLLs together in a flat layout.
+ZIP users must extract the entire bundle. Do not copy DLLs from System32 or
+assume a global VC++ runtime is installed; Windows supplies the system UCRT.
 
-### Important behavior
+VCore copying verifies its artifact manifest, integration revision, exact file
+set, SHA-256 and PE architecture; it does not require `buildIdentity`.
+Wintun comes from the hash-verified official archive cached under workspace
+`references/windows-build/`. Accepted artifacts and checks are defined in
+[windows.py](app/windows.py) and [app.cmake](../windows/app.cmake).
 
-- **The Apple and Android commands are deployment commands.** They can sign,
-  notarize, or upload builds to external stores. Verify credentials, version,
-  and target before running them.
-- Use a clean or disposable worktree. The build updates `pubspec.yaml`, copies
-  generated core libraries and data into the app tree, and may update
-  platform-specific files.
-- `macos_se` replaces the local `macos/` directory with the `macos_se/`
-  configuration before building. Preserve any uncommitted macOS changes first.
-- Android replaces the `##version_code##` placeholder in
-  `android/fastlane/Fastfile` and does not restore it. Start each Android build
-  from a clean copy so a repeated build cannot reuse an old version code.
-- Outputs are collected in `../output` relative to the OneXray repository.
+### EXE and ZIP
 
-## 简体中文
+One Fastforge invocation builds and packages both formats from the same EXE-mode
+Release bundle. The builder temporarily adjusts installer architecture and
+numeric marketing version, then restores the packaging configuration and
+build-number-bearing pubspec even on failure. It collects only the expected
+current packages; see [installer sources](../windows/packaging/exe/).
 
-本目录中的脚本会执行 libXray 标准构建、生成 Flutter FFI 绑定、构建
-OneXray App，并生成各平台对应的安装包。Xray-core 由 libXray 的 Go module
-依赖解析。
+Preserve the released installer AppId, user-level scope, `OneXray.exe` entry point,
+shortcuts and `onexray:` registration. ZIP does not register shortcuts/protocols.
+Uninstall removes only registrations pointing to this installation; it preserves
+user data and does not stop another installation's Core. Stop VPN and exit before
+installing, upgrading or uninstalling.
 
-### 工作区结构
+### MSIX and development signing
 
-OneXray 和 libXray 必须位于同一级目录。Windows 构建还需要 VCore；不在 `workspace/VCore` 时通过 `VCORE_DIR` 指定。构建产物写入同级 `output` 目录。
+Build MSIX separately; do not reuse EXE-mode binaries. The script augments the
+base `msix:create` package with VCore extensions/activation, required capabilities
+and disabled startup task, then repacks it. Bare `dart run msix:create` is not an
+equivalent package. Run MSIX as an installed App with package identity, not a bare
+EXE; Core must not require UAC. Details live in
+[windows_msix.py](app/windows_msix.py) and [pubspec.yaml](../pubspec.yaml).
 
-```text
-workspace/
-├── OneXray/
-├── libXray/
-├── VCore/         # 仅 Windows
-└── output/        # 自动创建
-```
-
-构建使用 libXray 和 VCore 当前检出的版本。VCore 产物只有在 integration revision、
-架构、文件集合和 SHA-256 manifest 全部通过后才复制。Xray-core 版本由
-libXray 的 Go module 锁定，不使用同级目录下的 Xray-core checkout。
-
-### 前置条件
-
-- Python 3.12 或更高版本，并安装 `uv`。脚本仅使用 Python 标准库。
-- `PATH` 中可以找到 Flutter、Dart 和 Go；Windows 还需要 Rust 与 MSVC。
-  EXE / ZIP 打包需要 Fastforge，EXE 还需要 Inno Setup（可用 `INNO_SETUP_PATH` 指定安装目录）；MSIX 需要 Windows SDK 的 `makeappx`、`signtool`。
-- 安装目标系统所需的工具链。Apple 平台需要 macOS、Xcode、CocoaPods 和
-  Fastlane；Android 需要 JDK、Android SDK/NDK 和 Fastlane；Linux 打包需要
-  Fastforge。
-- 准备所选 Fastlane lane 需要的签名证书、凭据和平台配置。
-- 设置正整数环境变量 `BUILD_NUMBER`。脚本会将它加到配置中的
-  `build_number.base`（当前为 `400`）上。
-
-使用 `uv` 创建 Python 环境。Linux 和 Windows EXE / ZIP 打包需要 Fastforge：
-
-```bash
-uv sync --project build_scripts
-dart pub global activate fastforge
-```
-
-`setup_flutter.sh` 可以安装一份全新的 Flutter stable，用于模拟 CI
-环境。该脚本会删除并重新创建 `ONEXRAY_FLUTTER_ROOT` 指向的目录；未设置时
-使用 `$HOME/flutter/stable`。不要将它指向需要保留的 Flutter 工作目录。
-
-### 执行构建
-
-在 OneXray 仓库根目录运行入口脚本：
-
-```bash
-export BUILD_NUMBER=1
-uv run --project build_scripts python build_scripts/main.py OneXray <system>
-```
-
-Windows PowerShell：
+For a local development package, use a Code Signing certificate with its private
+key and a matching publisher. Import a PFX into the current user's `My` store:
 
 ```powershell
-$env:BUILD_NUMBER = "1"
-uv run --project build_scripts python build_scripts/main.py OneXray <system>
+$password = Read-Host "PFX password" -AsSecureString
+$certificate = Import-PfxCertificate -FilePath "C:\path\development.pfx" `
+    -Password $password -CertStoreLocation "Cert:\CurrentUser\My"
+$env:ONEXRAY_DEV_SIGN = "1"
+$env:ONEXRAY_DEV_CERT_THUMBPRINT = $certificate.Thumbprint
+$env:ONEXRAY_DEV_PUBLISHER = $certificate.Subject
+uv run --project build_scripts python build_scripts/main.py OneXray windows --windows-mode msix
 ```
 
-可以运行 `uv run --project build_scripts python build_scripts/main.py --help`
-查看命令格式。
+Set `BUILD_NUMBER` as above. Trust a self-signed public CER only on the test machine
+in `Cert:\CurrentUser\Root` and `Cert:\LocalMachine\TrustedPeople` (the latter
+requires administrator PowerShell). The builder uses identity `OneXray.Dev`,
+signs and verifies the package; it does not create/import/delete certificates.
+CI may instead provide `ONEXRAY_DEV_CERT_PATH` and `ONEXRAY_DEV_CERT_PASSWORD`.
+Incompatible development packages require a clean test install; released-package
+upgrade/data-preservation acceptance remains a separate check.
 
-### 支持的系统
+## Provenance and publishing
 
-| `system` | 构建主机 | 行为 |
-| --- | --- | --- |
-| `ios` | macOS | Fastlane 构建并上传到 TestFlight。 |
-| `macos` | macOS | 构建并上传 Mac App Store 版本。 |
-| `macos_se` | macOS | 签名、公证并生成 Developer ID 通用 ZIP。 |
-| `android` | Android 工具链 | 上传 Play internal AAB 并获取 universal APK。 |
-| `windows` | Windows x64 或 ARM64 | 默认生成 EXE + ZIP；`--windows-mode msix` 生成 Microsoft Store MSIX。 |
-| `linux` | Linux x64 或 ARM64 | 为主机架构生成 ZIP 和 DEB。 |
+`Build` resolves dependency refs once and checks out those full SHAs in every
+platform job. A local dependency commit is not available to CI until published
+to its configured repository. Receipts record App/dependency commits, source and
+effective versions, initial source dirtiness, run/attempt, actual tool versions,
+lock/native/Geodata hashes and package SHA-256. Windows receipts additionally
+record mode so EXE cannot satisfy MSIX requirements.
 
-Windows 默认根据主机识别架构。CI 可以在对应 Flutter、Go、Rust 和 MSVC 工具链就绪时设置 `ONEXRAY_WINDOWS_ARCH`。本地签名要求以 [Windows 构建文档](../docs/windows-build.md#本地签名包) 为准。
+[verify_release.py](verify_release.py) requires matching successful Build
+metadata, clean recorded sources, receipts and package hashes; the release tag
+must resolve to the built App commit. Manual builds have no metadata exemption.
+On retry, rerun metadata and platform jobs together, not across run attempts.
 
-`--windows-mode exe|msix` 同时控制打包格式和 Flutter 的
-`--dart-define=ONEXRAY_WINDOWS_MODE`。一次 Fastforge 调用完成 EXE / ZIP 的共同编译与打包，
-MSIX 单独编译，不使用 Fastforge；
-CMake 在两种模式下都平铺安装目标 MSVC runtime、Wintun 与 VCore；运行库 DLL 必须存在且架构匹配，才归集产物。官方 Wintun 压缩包校验摘要后缓存在
-工作区 `references/windows-build/`，仅复制匹配架构的 DLL。来源与分发说明放在
-[文档站](https://onexray.com/zh/docs/credits/)。
+- [Publish](../.github/workflows/publish.yml) creates/updates a GitHub pre-release
+  and replaces only the verified asset list. `target.txt` scopes single-platform
+  publishing; `all` requires every GitHub target. Windows needs both architectures'
+  EXE/ZIP, Linux both architectures' ZIP/DEB. MAS PKG and Play AAB are not GitHub
+  assets; macOS publishes the SE ZIP. Promote to stable separately.
+- [Microsoft Store](../.github/workflows/publish-microsoft-store.yml) accepts a
+  successful Build run's two MSIX-mode receipts/packages and emits an MSIX Bundle
+  artifact. It does not upload to the Store; submit manually in Partner Center.
+- Tool versions and provenance are evidence, not installed-package/VPN acceptance.
+  Windows changes need x64/ARM64 × EXE/MSIX builds, a loadable Core, correct
+  manifest/payload, and clean-machine install/upgrade/UAC/lifecycle checks. Record
+  untested platforms; see [Validation](../docs/validation.md).
 
-### 重要行为
+### WinGet
 
-- **Apple 和 Android 命令属于部署命令。** 它们可能执行签名、公证或上传到
-  外部商店。运行前请确认凭据、版本和目标环境。
-- 建议使用干净或可丢弃的 worktree。构建会更新 `pubspec.yaml`，将生成的
-  Core 库和数据复制到 App 目录，并可能修改平台文件。
-- `macos_se` 会在构建前用 `macos_se/` 配置替换本地 `macos/` 目录。请先
-  保存所有尚未提交的 macOS 改动。
-- Android 构建会替换 `android/fastlane/Fastfile` 中的
-  `##version_code##` 占位符，并且不会自动恢复。每次 Android 构建都应从
-  干净副本开始，避免重复构建沿用旧的 version code。
-- 所有产物集中在 OneXray 仓库同级的 `../output` 目录。
+[Update winget](../.github/workflows/update-winget.yml) runs after a stable Release
+or manual selection of an existing tag. It skips pre-releases, rejects drafts,
+and requires published x64/ARM64 EXE assets, not ZIP/MSIX or Build artifacts.
+The identifier is `YuanDevLLC.OneXray`.
 
-## Русский
+The workflow generates with Komac `update --dry-run --output`, fixes user scope,
+install directory and display name through [winget_manifest.py](winget_manifest.py),
+then validates schema, effective installer fields, release URLs and hashes.
+The helper uses `uv run --script build_scripts/winget_manifest.py` from the App
+root; its inline dependencies are separate from the standard-library build scripts.
+Generation/validation use read-only credentials. Only the final `komac submit`
+opens an external PR; it needs `PACKAGE_MANAGER_GITHUB_TOKEN` with `public_repo`
+and write access to the repository owner's `winget-pkgs` fork. Existing open PRs
+for that version block duplicate submission; nothing auto-merges or deletes
+historical versions.
 
-Скрипты из этого каталога запускают стандартную сборку libXray, генерируют
-FFI-привязки Flutter, собирают приложение OneXray и создают пакеты для выбранной
-платформы. Версия Xray-core определяется зависимостями Go-модуля libXray.
-
-### Структура рабочего каталога
-
-OneXray и libXray должны находиться в соседних каталогах. Для Windows также нужен VCore; если он находится не в `workspace/VCore`, задайте `VCORE_DIR`. Результаты записываются в соседний каталог `output`.
-
-```text
-workspace/
-├── OneXray/
-├── libXray/
-├── VCore/         # только Windows
-└── output/        # создаётся автоматически
-```
-
-Сборка использует текущие версии libXray и VCore. Артефакты VCore копируются
-только после проверки integration revision, архитектуры, набора файлов
-и SHA-256 manifest. Версия Xray-core закреплена Go-модулем libXray; соседний
-checkout Xray-core не используется.
-
-### Требования
-
-- Python 3.12 или новее и `uv`. Скрипты используют только стандартную библиотеку Python.
-- Flutter, Dart и Go через `PATH`; для Windows также нужны Rust и MSVC.
-  Для EXE / ZIP нужен Fastforge, а для EXE дополнительно Inno Setup
-  (каталог установки можно задать через `INNO_SETUP_PATH`);
-  для MSIX — инструменты Windows SDK `makeappx`/`signtool`.
-- Инструменты для целевой системы. Для Apple требуются macOS, Xcode, CocoaPods
-  и Fastlane; для Android — JDK, Android SDK/NDK и Fastlane; для упаковки под
-  Linux требуется Fastforge.
-- Сертификаты, учётные данные и настройки платформы, необходимые выбранному
-  lane Fastlane.
-- Положительное целое число в переменной окружения `BUILD_NUMBER`. Оно
-  прибавляется к параметру `build_number.base` (сейчас `400`).
-
-Создайте среду Python с помощью `uv`. Fastforge требуется для упаковки Linux
-и Windows EXE / ZIP:
-
-```bash
-uv sync --project build_scripts
-dart pub global activate fastforge
-```
-
-Скрипт `setup_flutter.sh` устанавливает свежую стабильную версию Flutter для
-сборки в окружении, похожем на CI. Он удаляет и заново создаёт каталог,
-указанный в `ONEXRAY_FLUTTER_ROOT`, либо `$HOME/flutter/stable`, если переменная
-не задана. Не указывайте каталог Flutter, который необходимо сохранить.
-
-### Запуск сборки
-
-Запускайте основной скрипт из корня репозитория OneXray:
-
-```bash
-export BUILD_NUMBER=1
-uv run --project build_scripts python build_scripts/main.py OneXray <system>
-```
-
-Windows PowerShell:
-
-```powershell
-$env:BUILD_NUMBER = "1"
-uv run --project build_scripts python build_scripts/main.py OneXray <system>
-```
-
-Команда `uv run --project build_scripts python build_scripts/main.py --help`
-выводит синтаксис CLI.
-
-### Поддерживаемые системы
-
-| `system` | Среда сборки | Действие |
-| --- | --- | --- |
-| `ios` | macOS | Сборка Fastlane и загрузка в TestFlight. |
-| `macos` | macOS | Сборка и загрузка версии Mac App Store. |
-| `macos_se` | macOS | Подписанный и нотариализированный универсальный ZIP. |
-| `android` | Android toolchain | Загрузка AAB в Play internal; universal APK. |
-| `windows` | Windows x64 или ARM64 | По умолчанию EXE + ZIP; `--windows-mode msix` создаёт MSIX для Microsoft Store. |
-| `linux` | Linux x64 или ARM64 | ZIP и DEB для архитектуры хоста. |
-
-В Windows архитектура определяется по системе. CI может задать `ONEXRAY_WINDOWS_ARCH`, когда настроены Flutter, Go, Rust и MSVC. Требования к локальной подписи см. в [документации по сборке Windows](../docs/windows-build.md#本地签名包).
-
-`--windows-mode exe|msix` задаёт формат пакета и значение Flutter
-`--dart-define=ONEXRAY_WINDOWS_MODE`. Один вызов Fastforge собирает приложение
-и упаковывает EXE и ZIP; MSIX компилируется отдельно без Fastforge.
-CMake включает целевую среду выполнения MSVC, Wintun и VCore в обеих конфигурациях; перед сбором пакетов проверяются наличие и архитектура DLL.
-Проверенный официальный архив Wintun сохраняется в `references/windows-build/`
-рабочего каталога; копируется только DLL нужной архитектуры. Сведения об источнике
-и распространении размещены на [сайте документации](https://onexray.com/ru/docs/credits/).
-
-### Важные особенности
-
-- **Команды Apple и Android выполняют развёртывание.** Они могут подписывать,
-  нотариализировать или загружать сборки во внешние магазины. Перед запуском
-  проверьте учётные данные, версию и целевое окружение.
-- Используйте чистый или одноразовый worktree. Сборка изменяет `pubspec.yaml`,
-  копирует сгенерированные библиотеки Core и данные в дерево приложения, а
-  также может изменять платформенные файлы.
-- Перед сборкой `macos_se` локальный каталог `macos/` заменяется конфигурацией
-  из `macos_se/`. Сначала сохраните все незакоммиченные изменения macOS.
-- При сборке Android заменяется маркер `##version_code##` в файле
-  `android/fastlane/Fastfile`, и исходное значение не восстанавливается. Каждую
-  сборку Android запускайте из чистой копии, чтобы повторный запуск не
-  использовал старый version code.
-- Все результаты помещаются в соседний с репозиторием OneXray каталог
-  `../output`.
+For local validation use `komac submit <manifest-directory> --dry-run`, never an
+actual submission. Keep installer fields aligned with the released EXE. Old
+packages without bundled CRT need architecture-specific VC++ dependencies;
+verified new packages with bundled CRT should not inherit them. Binary fixes use
+a new release, not replacement of published installers/digests. Manifest checks
+do not substitute for Windows installation acceptance.

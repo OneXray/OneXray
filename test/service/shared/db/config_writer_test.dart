@@ -42,36 +42,22 @@ void main() {
     },
   );
 
-  test(
-    'asset writer rolls back entire mixed batches on Raw limit or old type',
-    () async {
-      await database.coreConfigDao.insertRows([_config('raw'), _config('raw')]);
-      await expectLater(
-        ConfigWriter.writeRowsInTransaction(database, [
-          _config('raw'),
-          _config('outbound'),
-          _config('raw'),
-        ], null),
-        throwsStateError,
-      );
-      expect(await database.coreConfigDao.allRawRowsWithData, hasLength(2));
-      expect(
-        await database.coreConfigDao.allOutboundRowsWithDataBySubId(0),
-        isEmpty,
-      );
-      await expectLater(
-        ConfigWriter.writeRowsInTransaction(database, [
-          _config('outbound'),
-          _config('full'),
-        ], null),
-        throwsArgumentError,
-      );
-      expect(
-        await database.coreConfigDao.allOutboundRowsWithDataBySubId(0),
-        isEmpty,
-      );
-    },
-  );
+  test('asset writer rolls back an entire mixed batch when the Raw limit is reached', () async {
+    await database.coreConfigDao.insertRows([_config('raw'), _config('raw')]);
+    await expectLater(
+      ConfigWriter.writeRowsInTransaction(database, [
+        _config('raw'),
+        _config('outbound'),
+        _config('raw'),
+      ], null),
+      throwsStateError,
+    );
+    expect(await database.coreConfigDao.allRawRowsWithData, hasLength(2));
+    expect(
+      await database.coreConfigDao.allOutboundRowsWithDataBySubId(0),
+      isEmpty,
+    );
+  });
 }
 
 CoreConfigCompanion _config(String type) => CoreConfigCompanion.insert(

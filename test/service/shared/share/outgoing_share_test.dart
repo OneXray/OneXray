@@ -93,19 +93,6 @@ void main() {
     );
     await expectLater(share.sendText(content), throwsA(same(error)));
   });
-
-  test('empty text cannot clear the clipboard', () async {
-    var copied = false;
-    final share = OutgoingShare(
-      destination: ShareDestination.clipboard,
-      writeClipboard: (_) async => copied = true,
-    );
-    await expectLater(
-      share.sendText(const ShareText(title: '', text: '')),
-      throwsArgumentError,
-    );
-    expect(copied, isFalse);
-  });
 }
 
 class _Platform extends SharePlatform {

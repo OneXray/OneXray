@@ -1,11 +1,36 @@
 import Foundation
 import SystemExtensions
 
+enum SystemExtensionState {
+    case installed
+    case notInstalled
+    case waitForApproval
+}
+
+@MainActor
+final class SystemExtensionActivation {
+    private var task: Task<SystemExtensionState, Never>?
+
+    func request(_ activate: @escaping @MainActor () async -> SystemExtensionState) async -> SystemExtensionState {
+        if let existing = task {
+            return await existing.value
+        }
+        let pending = Task {
+            // Only the activation clears its slot, before waiters can start
+            // another request. Completed results are never permission caches.
+            defer { self.task = nil }
+            return await activate()
+        }
+        task = pending
+        return await pending.value
+    }
+}
+
 /// Public entry points for managing the bundled packet tunnel system extension.
 /// Each call constructs a one-shot driver around a single OSSystemExtensionRequest;
 /// no state is retained between calls.
 enum SystemExtensionManager {
-    static func isInstalled() async -> RefreshVpnResult {
+    static func isInstalled() async -> SystemExtensionState {
         guard let properties = try? await ExtensionRequestDriver().runProperties(timeout: .seconds(5), { queue in
             OSSystemExtensionRequest.propertiesRequest(forExtensionWithIdentifier: packetTunnelId(), queue: queue)
         }) else { return .notInstalled }

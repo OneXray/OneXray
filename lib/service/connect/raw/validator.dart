@@ -2,107 +2,85 @@ import 'package:onexray/core/errors/failure.dart';
 import 'package:onexray/core/errors/json_diagnostic.dart';
 import 'package:onexray/core/pigeon/host_api.dart';
 import 'package:onexray/core/tools/empty.dart';
-import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/settings/language/service.dart';
 import 'package:onexray/service/advanced/xray/geodata/service.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
-class XrayRawValidationResult {
-  final bool isValid;
-  final String error;
-  final String? normalizedText;
-  final String? name;
-  final JsonDiagnostic? diagnostic;
-  final Map<String, dynamic>? json;
+final class ParsedRawConfiguration {
+  final ConfigurationSource _source;
+  final String name;
 
-  const XrayRawValidationResult._(
-    this.isValid,
-    this.error,
-    this.normalizedText,
-    this.name,
-    this.diagnostic,
-    this.json,
-  );
-
-  const XrayRawValidationResult._valid(
-    String normalizedText,
-    String name,
-    Map<String, dynamic> json,
-  ) : this._(true, "", normalizedText, name, null, json);
-
-  const XrayRawValidationResult.invalid(
-    String error, {
-    JsonDiagnostic? diagnostic,
-  }) : this._(false, error, null, null, diagnostic, null);
+  const ParsedRawConfiguration._(this._source, this.name);
+  String get text => _source.text;
+  Map<String, dynamic> get json => _source.value as Map<String, dynamic>;
 }
 
 class XrayRawValidator {
-  static XrayRawValidationResult normalize(
+  static ParsedRawConfiguration normalize(
     String rawText, {
     String? nameOverride,
+  }) => normalizeParsed(
+    ConfigurationSource.parse(rawText),
+    nameOverride: nameOverride,
+  );
+
+  static ParsedRawConfiguration normalizeParsed(
+    ConfigurationSource source, {
+    String? nameOverride,
   }) {
-    late final Map<String, dynamic> jsonMap;
+    final decoded = source.value;
     final normalizedNameOverride = nameOverride?.trim();
-    var overrideName = false;
-    try {
-      final decoded = JsonTool.decoder.convert(rawText);
-      if (decoded is! Map<String, dynamic>) {
-        throw const JsonDiagnostic(
-          "Xray config root must be an object",
-          path: [],
-        );
-      }
-      jsonMap = decoded;
-      overrideName =
-          normalizedNameOverride?.isNotEmpty == true &&
-          jsonMap['name'] != normalizedNameOverride;
-      if (overrideName) {
-        jsonMap['name'] = normalizedNameOverride;
-      }
-    } catch (error) {
-      return XrayRawValidationResult.invalid(
-        failureDetails(error),
-        diagnostic: JsonDiagnostic.fromError(error),
+    if (decoded is! Map<String, dynamic>) {
+      throw const JsonDiagnostic(
+        "Xray config root must be an object",
+        path: [],
       );
     }
-    final name = jsonMap['name'];
+    final jsonMap = decoded;
+    final overrideName =
+        normalizedNameOverride?.isNotEmpty == true &&
+        jsonMap['name'] != normalizedNameOverride;
+    final json = overrideName
+        ? <String, dynamic>{...jsonMap, 'name': normalizedNameOverride}
+        : jsonMap;
+    final name = json['name'];
     if (name is! String || !EmptyTool.checkString(name)) {
-      final message = appLocalizationsNoContext().validationNameRequired;
-      return XrayRawValidationResult.invalid(
-        message,
-        diagnostic: JsonDiagnostic(message, path: const ['name']),
+      throw JsonDiagnostic(
+        appLocalizationsNoContext().validationNameRequired,
+        path: const ['name'],
       );
     }
 
     // Saving is not runtime compilation. Keep the exact source, including all
     // expert fields and formatting, unless the caller explicitly renames it.
-    final normalizedText = overrideName
-        ? JsonTool.encoder.convert(jsonMap)
-        : rawText;
-    return XrayRawValidationResult._valid(normalizedText, name, jsonMap);
+    return ParsedRawConfiguration._(
+      overrideName ? ConfigurationSource.encoded(json) : source,
+      name,
+    );
   }
 
-  static Future<XrayRawValidationResult> validate(
+  static Future<ParsedRawConfiguration> validate(
     String rawText, {
     Future<String> Function(String)? testXray,
-  }) => validateParsed(normalize(rawText), testXray: testXray);
+  }) async => validateParsed(normalize(rawText), testXray: testXray);
 
   /// The parsed draft belongs to this operation, not a reusable validation cache.
-  static Future<XrayRawValidationResult> validateParsed(
-    XrayRawValidationResult normalized, {
+  static Future<ParsedRawConfiguration> validateParsed(
+    ParsedRawConfiguration parsed, {
     Future<String> Function(String)? testXray,
   }) => GeoDataService().withFiles(() async {
-    if (!normalized.isValid) {
-      return normalized;
-    }
-
     final res = await (testXray ?? AppHostApi().testXray)(
-      XrayValidation.raw(normalized.json!),
+      XrayValidation.raw(parsed.json),
     );
     if (res.isNotEmpty) {
-      return XrayRawValidationResult.invalid(res);
+      throw AppFailure(
+        FailureCategory.configuration,
+        'xrayValidation',
+        cause: res,
+      );
     }
 
-    return normalized;
+    return parsed;
   });
 }

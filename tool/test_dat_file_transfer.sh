@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 platform=$(xcrun --sdk macosx --show-sdk-platform-path)
-evidence=../references/validation-simplification
+evidence=../references/onexray-tests/native
 mkdir -p "$evidence"
 xcrun swiftc \
   -F "$platform/Developer/Library/Frameworks" \

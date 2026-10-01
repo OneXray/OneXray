@@ -13,6 +13,8 @@ Widget _app({
   bool mobile = true,
   double bottomInset = 0,
   String saveLabel = 'Save',
+  VoidCallback? onCancel,
+  VoidCallback? onSave,
 }) => MaterialApp(
   theme: AppTheme.material(Brightness.light, mobile: mobile),
   builder: (context, child) => MediaQuery(
@@ -33,20 +35,24 @@ Widget _app({
           ? [
               ShadButton.outline(
                 key: _cancel,
-                onPressed: () {},
+                onPressed: onCancel ?? () {},
                 child: const Text('Cancel'),
               ),
-              ShadButton(key: _save, onPressed: () {}, child: Text(saveLabel)),
+              ShadButton(
+                key: _save,
+                onPressed: onSave ?? () {},
+                child: Text(saveLabel),
+              ),
             ]
           : [
               OutlinedButton(
                 key: _cancel,
-                onPressed: () {},
+                onPressed: onCancel ?? () {},
                 child: const Text('Cancel'),
               ),
               FilledButton(
                 key: _save,
-                onPressed: () {},
+                onPressed: onSave ?? () {},
                 child: Text(saveLabel),
               ),
             ],
@@ -65,7 +71,15 @@ void main() {
       tester.view.physicalSize = const Size(427, 900);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
-      await tester.pumpWidget(_app(shad: shad, bottomInset: 24));
+      final actions = <String>[];
+      await tester.pumpWidget(
+        _app(
+          shad: shad,
+          bottomInset: 24,
+          onCancel: () => actions.add('cancel'),
+          onSave: () => actions.add('save'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(
@@ -88,6 +102,10 @@ void main() {
         );
         expect(label.text.style!.fontSize, 12);
       }
+      await tester.tap(find.byKey(_cancel));
+      await tester.tap(find.byKey(_save));
+      await tester.pump();
+      expect(actions, ['cancel', 'save']);
       expect(tester.takeException(), isNull);
     });
 

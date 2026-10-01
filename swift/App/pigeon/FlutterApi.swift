@@ -1,6 +1,4 @@
 import Foundation
-import NetworkExtension
-
 #if os(iOS)
 import Flutter
 #elseif os(macOS)
@@ -23,35 +21,8 @@ class AppFlutterApi {
         }
     }
 
-    func readVpnStatus() async throws -> VpnStatus {
-        if let status = try await VPNManager.shared.readStatus() {
-            YGLog("readRunningVpn \(status.rawValue)")
-            var vpnStatus: VpnStatus = .disconnected
-            switch status {
-            case .disconnecting:
-                vpnStatus = .disconnecting
-            case .disconnected, .invalid:
-                vpnStatus = .disconnected
-            case .connecting, .reasserting:
-                vpnStatus = .connecting
-            case .connected:
-                vpnStatus = .connected
-            default:
-                break
-            }
-            return vpnStatus
-        } else {
-            return .disconnected
-        }
-    }
-
     func vpnStatusChanged() async throws {
-        let status = try await readVpnStatus()
+        let status = try await VPNManager.shared.readVpnStatus()
         flutterApi.vpnStatusChanged(status: status) { _ in }
-    }
-
-    func refreshVpn(result: RefreshVpnResult) {
-        flutterApi.refreshVpn(result: result) { _ in
-        }
     }
 }

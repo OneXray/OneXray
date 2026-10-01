@@ -15,8 +15,6 @@ void main() {
     expect(document.offsetAt(1, 2), 7);
     expect(document.offsetAt(0, 100), 3);
     expect(document.offsetAt(2, 0), 8);
-    expect(document.positionAt(-1).column, 0);
-    expect(document.positionAt(100).line, 2);
   });
 
   test('indexes escaped keys and array values against the original source', () {

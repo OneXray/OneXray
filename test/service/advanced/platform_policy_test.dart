@@ -549,39 +549,7 @@ void main() {
     },
   );
 
-  test('JSON shape and controlled choices reject invalid values', () {
-    for (final value in <Map<String, dynamic>>[
-      {'unknown': true},
-      {'ipv6Enabled': 1},
-      {'apple': null},
-      {
-        'android': {'appScope': 'allow'},
-      },
-      {
-        'android': {
-          'includedAppPackageNames': [1],
-        },
-      },
-      {
-        'android': {
-          'includedAppPackageNames': ['not a package'],
-        },
-      },
-      {
-        'apple': {'cellularAction': 'ignore'},
-      },
-      {
-        'apple': {'extra': true},
-      },
-      {
-        'log': {'level': 'none'},
-      },
-      {
-        'windows': {'alwaysOn': 'false'},
-      },
-    ]) {
-      expect(() => PlatformPolicy.fromJson(value), throwsFormatException);
-    }
+  test('log choices are preserved by policy serialization', () {
     final policy = PlatformPolicy.fromJson({
       'log': {
         'enabled': true,

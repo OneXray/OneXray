@@ -13,6 +13,7 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 import '../../../support/fake_geodata_import.dart';
 
@@ -45,7 +46,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = RawEditorService(database: db, coordinator: coordinator);
@@ -77,7 +79,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),
@@ -85,7 +88,7 @@ void main() {
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
     );
     final id = await service.save(
       const RawEditorDraft(name: 'original', text: _text),
@@ -130,7 +133,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         start: (runtime) async {
           calls.add('start:${runtime.identity}');
           throw const ConnectionHostException('startFailed');
@@ -144,7 +147,7 @@ void main() {
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
       prepare: (configuration, _, text) async =>
           _runtime('b', configuration, text),
     );
@@ -170,7 +173,7 @@ void main() {
     final imported = ConfigurationImportDraft(
       ConfigurationContent(
         kind: ConfigurationKind.raw,
-        text: changed.text,
+        source: ConfigurationSource.parse(changed.text),
         name: changed.name,
       ),
       FakeGeoDataImport(events: importEvents),
@@ -247,7 +250,7 @@ void main() {
             database: db,
             readRuntime: () async => null,
             observeStatus: () async {},
-            inspect: (_) async => host,
+            inspect: (_, {observedStatus}) async => host,
             prepare: (next, _) async => _runtime('b', next, _text),
             start: (runtime) async {
               calls.add('start');
@@ -326,7 +329,7 @@ void main() {
           database: db,
           readRuntime: () async => null,
           observeStatus: () async {},
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           prepare: (configuration, _) async =>
               _runtime('b', configuration, _text),
           start: (runtime) async =>
@@ -378,13 +381,14 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
     );
     await db.customStatement('''
       CREATE TRIGGER fail_raw_save BEFORE INSERT ON core_config
@@ -392,9 +396,9 @@ void main() {
     ''');
     final lifecycle = <String>[];
     final imported = ConfigurationImportDraft(
-      const ConfigurationContent(
+      ConfigurationContent(
         kind: ConfigurationKind.raw,
-        text: _text,
+        source: ConfigurationSource.parse(_text),
         name: 'original',
       ),
       FakeGeoDataImport(events: lifecycle),

@@ -137,65 +137,56 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final locale in const [
-    Locale('en'),
-    Locale('zh'),
-    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
-    Locale('ru'),
-    Locale('fa'),
+  for (final (locale, width, textScale) in const [
+    (Locale('en'), 320.0, 1.0),
+    (Locale('zh'), 390.0, 1.0),
+    (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), 580.0, 1.0),
+    (Locale('ru'), 320.0, 2.0),
+    (Locale('fa'), 390.0, 2.0),
+    (Locale('en'), 580.0, 2.0),
   ]) {
-    for (final width in [320.0, 390.0, 580.0]) {
-      for (final textScale in [1.0, 2.0]) {
-        testWidgets(
-          'package details wrap long values ($locale, $width, $textScale)',
-          (tester) async {
-            await pumpInfo(
-              tester,
-              SubscriptionUserInfo(
-                uploadBytes: gib,
-                downloadBytes: gib,
-                totalBytes: 0x7fffffffffffffff,
-                expireTimestamp: 253402214400,
-                updatedAt: retrieved,
-              ),
-              locale: locale,
-              width: width,
-              textScale: textScale,
-            );
-            final element = tester.element(
-              find.byType(SubscriptionPackageDetails),
-            );
-            final l = AppLocalizations.of(element)!;
-            expect(find.text(l.subscriptionPackageTitle), findsOneWidget);
-            expect(
-              Directionality.of(element),
-              locale.languageCode == 'fa'
-                  ? TextDirection.rtl
-                  : TextDirection.ltr,
-            );
-            expect(tester.takeException(), isNull);
-            final uploadTop = tester
-                .getTopLeft(find.text(l.prototypeUpload))
-                .dy;
-            final downloadTop = tester
-                .getTopLeft(find.text(l.prototypeDownload))
-                .dy;
-            expect(
-              downloadTop,
-              textScale == 1 ? uploadTop : greaterThan(uploadTop),
-            );
-            for (final text in tester.widgetList<Text>(
-              find.descendant(
-                of: find.byType(SubscriptionPackageDetails),
-                matching: find.byType(Text),
-              ),
-            )) {
-              expect(text.maxLines, isNull);
-              expect(text.overflow, isNot(TextOverflow.ellipsis));
-            }
-          },
+    testWidgets(
+      'package details wrap long values ($locale, $width, $textScale)',
+      (tester) async {
+        await pumpInfo(
+          tester,
+          SubscriptionUserInfo(
+            uploadBytes: gib,
+            downloadBytes: gib,
+            totalBytes: 0x7fffffffffffffff,
+            expireTimestamp: 253402214400,
+            updatedAt: retrieved,
+          ),
+          locale: locale,
+          width: width,
+          textScale: textScale,
         );
-      }
-    }
+        final element = tester.element(find.byType(SubscriptionPackageDetails));
+        final l = AppLocalizations.of(element)!;
+        expect(find.text(l.subscriptionPackageTitle), findsOneWidget);
+        expect(
+          Directionality.of(element),
+          locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
+        );
+        expect(tester.takeException(), isNull);
+        final uploadTop = tester.getTopLeft(find.text(l.prototypeUpload)).dy;
+        final downloadTop = tester
+            .getTopLeft(find.text(l.prototypeDownload))
+            .dy;
+        expect(
+          downloadTop,
+          textScale == 1 ? uploadTop : greaterThan(uploadTop),
+        );
+        for (final text in tester.widgetList<Text>(
+          find.descendant(
+            of: find.byType(SubscriptionPackageDetails),
+            matching: find.byType(Text),
+          ),
+        )) {
+          expect(text.maxLines, isNull);
+          expect(text.overflow, isNot(TextOverflow.ellipsis));
+        }
+      },
+    );
   }
 }

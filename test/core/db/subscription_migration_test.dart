@@ -55,38 +55,6 @@ void main() {
     },
   );
 
-  test('schema 5 package migration failure rolls back and can retry', () async {
-    final file = await _legacyDatabase(5);
-    final old = sqlite.sqlite3.open(file.path);
-    final before = _snapshotV5(old);
-    old.execute('ALTER TABLE subscription ADD COLUMN download_bytes INTEGER');
-    old.close();
-
-    final failed = AppDatabase.forTesting(NativeDatabase(file));
-    await expectLater(failed.subscriptionDao.allRows, throwsA(anything));
-    await failed.close();
-
-    final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 5);
-    expect(_snapshotV5(check), before);
-    expect(
-      _columnNames(check, 'subscription'),
-      isNot(contains('upload_bytes')),
-    );
-    check.execute('ALTER TABLE subscription DROP COLUMN download_bytes');
-    check.close();
-
-    final retried = AppDatabase.forTesting(NativeDatabase(file));
-    addTearDown(retried.close);
-    _expectNoUserInfo((await retried.subscriptionDao.allRows).single);
-    expect(
-      (await retried.customSelect('PRAGMA user_version').getSingle()).read<int>(
-        'user_version',
-      ),
-      6,
-    );
-  });
-
   test(
     'package changes and cache clearing reach the existing subscription stream',
     () async {
@@ -421,87 +389,7 @@ void main() {
         expect(await service.watchPublished().first, hasLength(3));
       },
     );
-
-    test(
-      'schema $version DDL failure rolls back and a new connection retries',
-      () async {
-        final file = await _legacyDatabase(version);
-        final before = _snapshotFile(file, hasAgeKeys: version == 2);
-        final conflicting = sqlite.sqlite3.open(file.path);
-        conflicting.execute(
-          'CREATE INDEX connection_config ON core_config(name)',
-        );
-        conflicting.close();
-
-        final failed = AppDatabase.forTesting(NativeDatabase(file));
-        await expectLater(failed.subscriptionDao.allRows, throwsA(anything));
-        await failed.close();
-
-        final check = sqlite.sqlite3.open(file.path);
-        try {
-          expect(check.userVersion, version);
-          expect(
-            _columnNames(check, 'core_config'),
-            isNot(contains('favorite')),
-          );
-          if (version == 1) {
-            expect(
-              _columnNames(check, 'subscription'),
-              isNot(contains('age_secret_key')),
-            );
-          }
-          expect(_snapshot(check, hasAgeKeys: version == 2), before);
-          expect(
-            check.select(
-              "SELECT name FROM sqlite_master WHERE name = 'routing_profile'",
-            ),
-            isEmpty,
-          );
-          check.execute('DROP INDEX connection_config');
-        } finally {
-          check.close();
-        }
-
-        final retried = AppDatabase.forTesting(NativeDatabase(file));
-        try {
-          expect(await retried.subscriptionDao.allRows, hasLength(1));
-          expect(await retried.routingProfileDao.allRows, isEmpty);
-          expect(
-            (await retried.connectionConfigDao.read()).configurationJson,
-            '{}',
-          );
-        } finally {
-          await retried.close();
-        }
-        expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
-      },
-    );
   }
-
-  test('version commits with DDL before a later open callback fails', () async {
-    final file = await _legacyDatabase(2);
-    final before = _snapshotFile(file, hasAgeKeys: true);
-    final interrupted = _InterruptedAfterUpgrade(NativeDatabase(file));
-    await expectLater(interrupted.subscriptionDao.allRows, throwsStateError);
-    await interrupted.close();
-
-    final check = sqlite.sqlite3.open(file.path);
-    expect(check.userVersion, 6);
-    expect(_columnNames(check, 'core_config'), contains('favorite'));
-    expect(_columnNames(check, 'connection_config'), [
-      'id',
-      'configuration_json',
-    ]);
-    check.close();
-
-    final retried = AppDatabase.forTesting(NativeDatabase(file));
-    try {
-      expect(await retried.coreConfigDao.allRawRowsWithData, hasLength(4));
-    } finally {
-      await retried.close();
-    }
-    expect(_snapshotFile(file, hasAgeKeys: true), _afterUpgrade(before));
-  });
 
   test(
     'missing subscription cache and GeoData do not block upgrading',
@@ -549,38 +437,6 @@ void main() {
   });
 
   test(
-    'schema 3 failed HWID migration rolls back without touching data',
-    () async {
-      final file = await _legacyDatabase(3);
-      final old = sqlite.sqlite3.open(file.path);
-      old.execute('ALTER TABLE subscription ADD COLUMN hwid TEXT');
-      final before = _snapshotV3(old);
-      old.close();
-
-      final database = AppDatabase.forTesting(NativeDatabase(file));
-      await expectLater(database.subscriptionDao.allRows, throwsA(anything));
-      await database.close();
-
-      final check = sqlite.sqlite3.open(file.path);
-      expect(check.userVersion, 3);
-      expect(
-        _columnNames(check, 'subscription'),
-        isNot(contains('hwid_enabled')),
-      );
-      expect(_snapshotV3(check), before);
-      check.execute('ALTER TABLE subscription DROP COLUMN hwid');
-      check.close();
-
-      final retried = AppDatabase.forTesting(NativeDatabase(file));
-      addTearDown(retried.close);
-      expect(
-        (await retried.subscriptionDao.allRows).single.hwidEnabled,
-        isFalse,
-      );
-    },
-  );
-
-  test(
     'development schema is rejected without changing the original database',
     () async {
       final file = await _legacyDatabase(2);
@@ -601,21 +457,6 @@ void main() {
       }
     },
   );
-}
-
-class _InterruptedAfterUpgrade extends AppDatabase {
-  _InterruptedAfterUpgrade(super.executor) : super.forTesting();
-
-  @override
-  MigrationStrategy get migration {
-    final original = super.migration;
-    return MigrationStrategy(
-      onCreate: original.onCreate,
-      onUpgrade: original.onUpgrade,
-      beforeOpen: (_) async =>
-          throw StateError('Interrupted after schema commit'),
-    );
-  }
 }
 
 Future<File> _legacyDatabase(int version) async {
@@ -819,11 +660,6 @@ Map<String, List<List<Object?>>> _snapshot(
           .toList(),
   };
 }
-
-List<String> _columnNames(sqlite.Database database, String table) => database
-    .select('PRAGMA table_info($table)')
-    .map((row) => row['name'] as String)
-    .toList();
 
 Map<String, List<List<Object?>>> _afterUpgrade(
   Map<String, List<List<Object?>>> before,

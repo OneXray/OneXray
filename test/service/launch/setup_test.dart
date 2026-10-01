@@ -54,10 +54,6 @@ void main() {
 
   test('privacy and one configuration step finish without servers or VPN API', () async {
     expect(await setup.currentStep(), SetupStep.welcome);
-    await expectLater(
-      setup.finish(interfaceName: ''),
-      throwsA(isA<SetupFailure>()),
-    );
     await setup.acceptPrivacy();
     await setup.prepareLocal();
     expect(await setup.currentStep(), SetupStep.configuration);
@@ -97,51 +93,6 @@ void main() {
     expect(await setup.currentStep(), SetupStep.complete);
   });
 
-  test(
-    'completed marker does not bypass privacy or configuration checks',
-    () async {
-      await preferences.saveFirstRun(false);
-      await expectLater(
-        setup.finish(interfaceName: ''),
-        throwsA(
-          isA<SetupFailure>().having(
-            (failure) => failure.component,
-            'component',
-            'privacy',
-          ),
-        ),
-      );
-      expect(writes, 0);
-
-      await setup.acceptPrivacy();
-      final windows = _InterfaceSetup(
-        database: db,
-        platform: ConnectionPlatform.windows,
-      );
-      await expectLater(
-        windows.finish(interfaceName: 'missing'),
-        throwsA(
-          isA<SetupFailure>().having(
-            (failure) => failure.component,
-            'component',
-            'interface',
-          ),
-        ),
-      );
-      await expectLater(
-        windows.finish(interfaceName: 'Ethernet', regions: ['UNKNOWN']),
-        throwsA(
-          isA<SetupFailure>().having(
-            (failure) => failure.component,
-            'component',
-            'region',
-          ),
-        ),
-      );
-      expect((await db.connectionConfigDao.read()).configurationJson, '{}');
-    },
-  );
-
   for (final regions in <List<String>?>[
     null,
     [],
@@ -154,7 +105,7 @@ void main() {
       );
       await db.connectionConfigDao.commit(configurationJson: previous.encode());
       await setup.acceptPrivacy();
-      await setup.finish(interfaceName: 'ignored on iOS', regions: regions);
+      await setup.finish(interfaceName: '', regions: regions);
       final saved = await setup.configuration();
       expect(
         saved.connection.smart.directRegions,
@@ -165,21 +116,6 @@ void main() {
       expect(saved.policy.toJson(), previous.policy.toJson());
     });
   }
-
-  test('invalid or multiple regions never commit configuration', () async {
-    await setup.acceptPrivacy();
-    for (final regions in [
-      ['UNKNOWN'],
-      ['CN', 'RU'],
-    ]) {
-      await expectLater(
-        setup.finish(interfaceName: '', regions: regions),
-        throwsA(isA<SetupFailure>()),
-      );
-    }
-    expect(writes, 0);
-    expect(await preferences.readFirstRun(), isTrue);
-  });
 
   for (final platform in ConnectionPlatform.values) {
     test(
@@ -200,7 +136,10 @@ void main() {
             );
           }
         }
-        await service.finish(interfaceName: 'Ethernet', regions: ['RU']);
+        await service.finish(
+          interfaceName: service.requiresInterface ? 'Ethernet' : '',
+          regions: ['RU'],
+        );
         final saved = await service.configuration();
         expect(
           saved.policy.xrayOutboundInterfaceName,

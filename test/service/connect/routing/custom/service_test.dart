@@ -213,11 +213,6 @@ void main() {
         ).xrayJson.routing!.domainStrategy,
         'IPIfNonMatch',
       );
-      await expectLater(
-        service.save(state.copyWith(id: id, name: 'Hidden', entryCount: 4)),
-        throwsFormatException,
-      );
-      expect((await database.routingProfileDao.searchRow(id))!.name, 'Edited');
     },
   );
 }

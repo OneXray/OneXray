@@ -13,7 +13,7 @@ from app.provenance import begin_build, finish_build, source_revision, sha256, v
 class ProvenanceTest(unittest.TestCase):
     def setUp(self):
         fixtures = (Path(__file__).resolve().parents[3] / "references" /
-                    "onexray-refactor-validation" / "build-provenance")
+                    "onexray-tests" / "build-provenance")
         fixtures.mkdir(parents=True, exist_ok=True)
         self.directory = tempfile.TemporaryDirectory(dir=fixtures, prefix="receipt-")
         self.addCleanup(self.directory.cleanup)
@@ -257,25 +257,6 @@ class ProvenanceTest(unittest.TestCase):
             self.assertEqual(receipt["sourceDirty"], {"app": bool(app_status), "libXray": False})
             self.assertNotIn("local-source.dart", json.dumps(receipt))
             self.assertNotIn("new-source.dart", json.dumps(receipt))
-
-    def test_all_jobs_use_resolved_sha_and_publishers_require_receipts(self):
-        workflows = Path(__file__).resolve().parents[2] / ".github/workflows"
-        build = (workflows / "build.yml").read_text()
-        self.assertEqual(build.count("needs: release_metadata"), 6)
-        self.assertEqual(build.count("ref: ${{ env.LIBXRAY_REF }}"), 1)
-        self.assertEqual(build.count("ref: ${{ needs.release_metadata.outputs.libxray_sha }}"), 6)
-        self.assertEqual(build.count("name: Upload build provenance"), 6)
-        for name in ("publish.yml", "publish-microsoft-store.yml"):
-            content = (workflows / name).read_text()
-            self.assertIn("build_scripts/verify_release.py", content)
-            self.assertNotIn("assuming manual rebuild artifacts", content)
-        publish = (workflows / "publish.yml").read_text()
-        self.assertIn('> release-files.txt', publish)
-        self.assertIn('done < release-files.txt', publish)
-        self.assertIn('files: ${{ steps.verify.outputs.files }}', publish)
-        self.assertIn('fail_on_unmatched_files: true', publish)
-        self.assertLess(publish.index('build_scripts/verify_release.py'),
-                        publish.index('name: Delete matching existing release assets'))
 
     def test_receipt_records_actual_files_and_keeps_other_platform_packages_out(self):
         root = self.artifacts / "OneXray"

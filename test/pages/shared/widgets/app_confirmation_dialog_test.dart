@@ -8,36 +8,44 @@ import 'package:onexray/pages/shared/widgets/settings_page.dart';
 
 const _open = Key('open-confirmation');
 const _filename =
-    'OneXray-2026-09-03-user-servers-subscriptions-Age-keys-custom-routing-'
-    'Raw-JSON-and-custom-Geodata.json';
+    'OneXray-connection-configurations-servers-subscriptions-Age-private-keys-'
+    'custom-routing-and-Raw-JSON.json';
 
-enum _Action { delete, restore, export, clear }
+enum _Action { backup, restore, exportConfiguration, clear }
 
+// The same arguments as the backup, configuration viewer and data-clear pages.
 AppConfirmationDialog _dialog(AppLocalizations l, _Action action) =>
     AppConfirmationDialog(
       title: switch (action) {
-        _Action.delete => l.prototypeDeleteRawQuestion,
-        _Action.restore => l.prototypeRestoreDefaults,
-        _Action.export => l.prototypeExportJson,
+        _Action.backup => l.backupConfirmTitle,
+        _Action.restore => l.backupRestoreTitle,
+        _Action.exportConfiguration =>
+          l.prototypeExportOriginalConfigurationQuestion,
         _Action.clear => l.prototypeClearAllDataQuestion,
       },
-      subject: action == _Action.clear ? null : _filename,
+      subject: action == _Action.backup ? _filename : null,
       content: switch (action) {
-        _Action.delete => l.prototypeCannotUndo,
-        _Action.restore => l.prototypeCannotUndo,
-        _Action.export => l.prototypeCannotUndo,
+        _Action.backup =>
+          '${l.backupSensitiveWarning}\n\n${l.backupOverwriteWarning}',
+        _Action.restore => [
+          l.backupCreatedAt('2026-09-03 09:00'),
+          l.backupSummary(3, 1, 1, 1),
+          l.backupPendingCount(2),
+          l.backupRestoreWarning,
+        ].join('\n\n'),
+        _Action.exportConfiguration =>
+          l.prototypeExportOriginalConfigurationWarning,
         _Action.clear => l.prototypeClearAllDataWarning,
       },
       cancelLabel: l.prototypeCancel,
       confirmLabel: switch (action) {
-        _Action.delete => l.prototypeDelete,
-        _Action.restore => l.prototypeConfirmRestore,
-        _Action.export => l.prototypeContinue,
+        _Action.backup => l.backupNow,
+        _Action.restore => l.backupRestore,
+        _Action.exportConfiguration => l.prototypeExport,
         _Action.clear => l.prototypeConfirmClearData,
       },
-      destructive: action == _Action.delete || action == _Action.clear,
-      expandConfirm: action == _Action.restore || action == _Action.export,
-      barrierDismissible: false,
+      destructive: action == _Action.restore || action == _Action.clear,
+      barrierDismissible: action != _Action.clear,
     );
 
 Future<void> _pumpDialog(
@@ -53,7 +61,10 @@ Future<void> _pumpDialog(
   addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(
     MaterialApp(
-      theme: AppTheme.material(Brightness.light, mobile: true),
+      theme: AppTheme.material(
+        Brightness.light,
+        mobile: width <= AppLayout.mobileBreakpoint,
+      ),
       locale: locale,
       localizationsDelegates: AppLocalePolicy.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -87,84 +98,102 @@ Finder get _surface => find
     .first;
 
 void main() {
-  for (final action in _Action.values) {
-    testWidgets('mobile $action uses its correct footer width', (tester) async {
-      await _pumpDialog(tester, action: action, locale: const Locale('zh'));
-
-      expect(
-        MediaQuery.sizeOf(tester.element(find.byType(AppConfirmationDialog)))
-            .width,
-        427,
+  for (final (width, action) in [
+    (427.0, _Action.clear),
+    (1200.0, _Action.exportConfiguration),
+  ]) {
+    testWidgets('$action footer matches the $width px layout', (tester) async {
+      await _pumpDialog(
+        tester,
+        action: action,
+        locale: const Locale('zh'),
+        width: width,
       );
+      final mobile = width <= AppLayout.mobileBreakpoint;
       final surface = tester.getRect(_surface);
       final cancel = tester.getRect(find.byType(OutlinedButton));
       final confirm = tester.getRect(find.byType(FilledButton));
-      expect(surface.width, closeTo(427 - 38, 0.01));
-      expect(surface.center.dx, closeTo(427 / 2, 0.01));
-      expect(confirm.right, closeTo(surface.right - 16, 1));
+      expect(surface.width, closeTo(mobile ? width - 38 : 540, 0.01));
+      expect(surface.center.dx, closeTo(width / 2, 0.01));
+      expect(confirm.right, closeTo(surface.right - (mobile ? 16 : 20), 1));
       expect(confirm.left - cancel.right, closeTo(10, 0.01));
-      expect(cancel.height, 42);
-      expect(confirm.height, 42);
-      if (action == _Action.delete || action == _Action.clear) {
-        final label = tester.getRect(
-          find.descendant(
-            of: find.byType(FilledButton),
-            matching: find.byType(Text),
-          ),
-        );
-        expect(
-          confirm.width,
-          closeTo(label.width + AppSpacing.buttonHorizontal * 2, 0.01),
-        );
-        expect(cancel.left, greaterThan(surface.left + 16));
-      } else {
-        expect(cancel.left, closeTo(surface.left + 16, 1));
-        expect(confirm.width, greaterThan(cancel.width * 2));
-      }
+      expect(cancel.height, mobile ? 42 : 40);
+      expect(confirm.height, mobile ? 42 : 40);
+      final label = tester.getRect(
+        find.descendant(
+          of: find.byType(FilledButton),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(
+        confirm.width,
+        closeTo(label.width + AppSpacing.buttonHorizontal * 2, 0.01),
+      );
+      expect(cancel.left, greaterThan(surface.left + (mobile ? 16 : 20)));
       expect(tester.takeException(), isNull);
     });
   }
 
-  for (final locale in AppLocalizations.supportedLocales) {
-    for (final action in _Action.values) {
-      testWidgets('$locale $action contains long filenames and warnings', (
+  // One representative per App action, plus the RTL long-filename layout.
+  for (final (action, locale, width) in [
+    (
+      _Action.backup,
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+      390.0,
+    ),
+    (_Action.restore, const Locale('ru'), 390.0),
+    (_Action.exportConfiguration, const Locale('en'), 1200.0),
+    (_Action.clear, const Locale('zh'), 427.0),
+    (_Action.backup, const Locale('fa'), 390.0),
+  ]) {
+    testWidgets('$locale $action stays readable and confirms the action', (
+      tester,
+    ) async {
+      bool? result;
+      await _pumpDialog(
         tester,
-      ) async {
-        await _pumpDialog(tester, action: action, locale: locale, width: 390);
-
-        final dialog = tester.widget<AppConfirmationDialog>(
-          find.byType(AppConfirmationDialog),
+        action: action,
+        locale: locale,
+        width: width,
+        onResult: (confirmed) => result = confirmed,
+      );
+      final dialog = tester.widget<AppConfirmationDialog>(
+        find.byType(AppConfirmationDialog),
+      );
+      final surface = tester.getRect(_surface);
+      expect(
+        Directionality.of(tester.element(find.byType(AppConfirmationDialog))),
+        locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
+      );
+      for (final text in [
+        dialog.title,
+        if (dialog.subject != null) dialog.subject!,
+        dialog.content,
+      ]) {
+        final bounds = tester.getRect(find.text(text));
+        expect(bounds.left, greaterThanOrEqualTo(surface.left));
+        expect(bounds.right, lessThanOrEqualTo(surface.right));
+        expect(bounds.top, greaterThanOrEqualTo(surface.top));
+        expect(bounds.bottom, lessThanOrEqualTo(surface.bottom));
+      }
+      for (final type in [OutlinedButton, FilledButton]) {
+        final button = find.byType(type);
+        final bounds = tester.getRect(button);
+        final label = tester.getRect(
+          find.descendant(of: button, matching: find.byType(Text)),
         );
-        final surface = tester.getRect(_surface);
-        expect(
-          Directionality.of(tester.element(find.byType(AppConfirmationDialog))),
-          locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
-        );
-        for (final text in [
-          dialog.title,
-          if (dialog.subject != null) dialog.subject!,
-          dialog.content,
-        ]) {
-          final bounds = tester.getRect(find.text(text));
-          expect(bounds.left, greaterThanOrEqualTo(surface.left));
-          expect(bounds.right, lessThanOrEqualTo(surface.right));
-          expect(bounds.top, greaterThanOrEqualTo(surface.top));
-          expect(bounds.bottom, lessThanOrEqualTo(surface.bottom));
-        }
-        for (final type in [OutlinedButton, FilledButton]) {
-          final button = find.byType(type);
-          final bounds = tester.getRect(button);
-          final label = tester.getRect(
-            find.descendant(of: button, matching: find.byType(Text)),
-          );
-          expect(label.left, greaterThanOrEqualTo(bounds.left));
-          expect(label.right, lessThanOrEqualTo(bounds.right));
-          expect(label.top, greaterThanOrEqualTo(bounds.top));
-          expect(label.bottom, lessThanOrEqualTo(bounds.bottom));
-        }
-        expect(tester.takeException(), isNull);
-      });
-    }
+        expect(label.left, greaterThanOrEqualTo(bounds.left));
+        expect(label.right, lessThanOrEqualTo(bounds.right));
+        expect(label.top, greaterThanOrEqualTo(bounds.top));
+        expect(label.bottom, lessThanOrEqualTo(bounds.bottom));
+      }
+      await tester.tap(find.byType(FilledButton));
+      await tester.pumpAndSettle();
+      expect(result, isTrue);
+      expect(find.byType(AppConfirmationDialog), findsNothing);
+      expect(find.byKey(_open), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets(

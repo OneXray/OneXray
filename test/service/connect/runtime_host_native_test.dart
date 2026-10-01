@@ -23,7 +23,7 @@ void main() {
     );
     addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
     await expectLater(
-      ConnectionRuntimeHost().inspect([]),
+      ConnectionRuntimeHost().inspect(null),
       throwsA(
         isA<ConnectionHostException>().having(
           (error) => error.reason,
@@ -62,7 +62,7 @@ void main() {
       addTearDown(() => messenger.setMockDecodedMessageHandler(channel, null));
 
       // A disconnected result never reads a runtime file or database.
-      final current = await ConnectionRuntimeHost().inspect([]);
+      final current = await ConnectionRuntimeHost().inspect(null);
       expect(current.status, VpnStatus.disconnected);
       expect(current.permission?.state, PlatformPermissionState.notRequired);
       expect(AppFlutterApi().vpnStatusController.hasListener, false);

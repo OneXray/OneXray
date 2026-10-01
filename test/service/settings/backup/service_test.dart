@@ -78,7 +78,8 @@ void main() {
     final coordinator = ConnectionCoordinator(
       database: db,
       readRuntime: () async => null,
-      inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      inspect: (_, {observedStatus}) async =>
+          const HostConnection(VpnStatus.disconnected),
       prepare: (_, _) async => throw StateError('No preparation'),
       start: (_) async => throw StateError('No VPN start'),
       stop: () async {

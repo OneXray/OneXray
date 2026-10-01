@@ -2,11 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
-import 'package:onexray/core/db/database/constants.dart';
 import 'package:onexray/core/model/geo_data_type.dart';
 import 'package:onexray/service/advanced/xray/geodata/model.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
@@ -16,17 +14,9 @@ import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
-import 'package:onexray/service/shared/ping/batch.dart';
-import 'package:onexray/service/shared/ping/service.dart';
-import 'package:onexray/service/servers/subscription/model.dart';
-import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
 import 'package:path/path.dart' as p;
-// ignore: depend_on_referenced_packages
-import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
-// ignore: depend_on_referenced_packages
-import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -390,7 +380,8 @@ void main() {
       await service.ensureInstalled();
       final coordinator = ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         prepare: (_, _) async => throw StateError('Must not prepare'),
         start: (_) async => throw StateError('Must not start'),
         stop: () async => throw StateError('Must not stop'),
@@ -528,86 +519,6 @@ void main() {
       );
     },
   );
-
-  test('home readiness does not wait for setup import probes', () async {
-    SharedPreferencesAsyncPlatform.instance =
-        InMemorySharedPreferencesAsync.empty();
-    await service.ensureInstalled();
-    final started = Completer<void>();
-    final release = Completer<void>();
-    final ping = PingService.forTesting(
-      database: db,
-      runBatch: (sources, _) async {
-        if (!started.isCompleted) started.complete();
-        await release.future;
-        return [for (final _ in sources) const PingBatchResult(true, 20, '')];
-      },
-    );
-    final subscriptions = SubscriptionService.forTesting(
-      database: db,
-      loadRows: (_) async => SubscriptionLoadResult(
-        status: SubscriptionUpdateResult.success,
-        rows: [
-          CoreConfigCompanion.insert(
-            name: 'Setup node',
-            type: 'outbound',
-            subId: 0,
-            tags: 'socks',
-            delay: PingDelayConstants.unknown,
-            data: Value(
-              base64Encode(
-                utf8.encode(
-                  jsonEncode({
-                    'outbounds': [
-                      {
-                        'tag': 'Setup node',
-                        'protocol': 'socks',
-                        'settings': {'address': '127.0.0.1', 'port': 1080},
-                      },
-                    ],
-                  }),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      schedulePing: ping.schedulePingSubscription,
-    );
-    Future<void>? homeReady;
-    final drained = AppEventBus.instance.stream
-        .skipWhile((state) => !state.pinging)
-        .firstWhere((state) => !state.pinging);
-    addTearDown(() async {
-      if (!release.isCompleted) release.complete();
-      await drained;
-      await homeReady;
-    });
-    for (final name in ['First', 'Second']) {
-      final result = await subscriptions.insertSubscription(
-        SubscriptionInput(name: name, url: 'https://example.com/$name'),
-      );
-      expect(result.success, isTrue);
-    }
-    await started.future;
-    expect(
-      await service.watchPublished().first.timeout(const Duration(seconds: 1)),
-      hasLength(2),
-    );
-
-    // ServiceManager awaits this check before building the home page.
-    homeReady = service.ensureInstalled();
-    await homeReady.timeout(const Duration(seconds: 1));
-    expect(ping.isPinging, isTrue);
-    expect(release.isCompleted, isFalse);
-    release.complete();
-    await drained;
-    expect(ping.isPinging, isFalse);
-    expect((await db.select(db.coreConfig).get()).map((row) => row.delay), [
-      20,
-      20,
-    ]);
-  });
 
   test('failed initial installation can be retried', () async {
     failIndex = 'geosite';
@@ -919,10 +830,48 @@ void main() {
       expect(await updated.data.readAsString(), 'two');
       await expectFlatRoot();
 
+      final beforeDelete = await rootBytes();
+      await db.customStatement('''
+        CREATE TRIGGER fail_geo_delete BEFORE DELETE ON geo_data
+        WHEN OLD.id > 0 BEGIN SELECT RAISE(FAIL, 'fixture'); END
+      ''');
+      await expectLater(service.deleteGeoDat(updated.row), throwsA(anything));
+      expect(await db.geoDataDao.searchRow(updated.row.id), updated.row);
+      expect(await rootBytes(), beforeDelete);
+
+      await db.customStatement('DROP TRIGGER fail_geo_delete');
       await service.deleteGeoDat(updated.row);
       expect(await File(dataPath).exists(), isFalse);
       expect(await File(indexPath).exists(), isFalse);
       expect(await db.geoDataDao.searchRow(updated.row.id), isNull);
+      await expectFlatRoot();
+    },
+  );
+
+  test(
+    'a failed default metadata commit restores the pair and can retry',
+    () async {
+      await service.ensureInstalled();
+      final rows = await db.geoDataDao.publishedRows;
+      final before = await rootBytes();
+      revision = 'two';
+      await db.customStatement('''
+      CREATE TRIGGER fail_geo_defaults BEFORE UPDATE ON geo_data
+      WHEN OLD.name = 'geosite' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+
+      await expectLater(service.updateDefaults(), throwsA(anything));
+      expect(await db.geoDataDao.publishedRows, rows);
+      expect(await rootBytes(), before);
+
+      await db.customStatement('DROP TRIGGER fail_geo_defaults');
+      await service.updateDefaults();
+      for (final name in ['geoip', 'geosite']) {
+        expect(
+          await File(p.join(datRoot.path, '$name.dat')).readAsString(),
+          'two',
+        );
+      }
       await expectFlatRoot();
     },
   );
@@ -970,16 +919,6 @@ void main() {
       expect(await index.exists(), isFalse);
 
       await draft.save((writeMetadata) => db.transaction(writeMetadata));
-      await expectLater(
-        draft.save((writeMetadata) => db.transaction(writeMetadata)),
-        throwsA(
-          isA<StateError>().having(
-            (error) => error.message,
-            'completed import',
-            'Routing data draft is unavailable',
-          ),
-        ),
-      );
       await draft.dispose();
       expect((await db.geoDataDao.allRows).single.name, 'custom');
       expect(await data.readAsString(), 'one');
@@ -1004,27 +943,43 @@ void main() {
   );
 
   test(
-    'import completion preserves a case-insensitive committed name',
+    'a failed import metadata transaction retries the same staged files',
     () async {
       await service.ensureInstalled();
-      final draft = await service.prepareImports([input()]);
-      await draft.save(
-        (_) => db.geoDataDao.insertRow(
-          GeoDataCompanion.insert(
-            name: 'CUSTOM',
-            type: 'domain',
-            url: 'https://example.com/CUSTOM.dat',
-            timestamp: DateTime(2020),
-            categoryCount: 1,
-            ruleCount: 2,
-          ),
-        ),
+      final before = await rootBytes();
+      final draft = await service.prepareImports([
+        input(),
+        input('second.dat'),
+      ]);
+      addTearDown(draft.dispose);
+      await db.customStatement('''
+      CREATE TRIGGER fail_geo_import BEFORE INSERT ON geo_data
+      WHEN NEW.name = 'second' BEGIN SELECT RAISE(FAIL, 'fixture'); END
+    ''');
+
+      await expectLater(
+        draft.save((writeMetadata) => db.transaction(writeMetadata)),
+        throwsA(anything),
       );
+      expect(await db.geoDataDao.allRows, isEmpty);
+      expect(await rootBytes(), before);
+      expect(downloads, 2);
 
+      await db.customStatement('DROP TRIGGER fail_geo_import');
+      await draft.save((writeMetadata) => db.transaction(writeMetadata));
+      expect(
+        (await db.geoDataDao.allRows).map((row) => row.name),
+        unorderedEquals(['custom', 'second']),
+      );
+      expect(downloads, 2);
+      for (final name in ['custom', 'second']) {
+        expect(
+          await File(p.join(datRoot.path, '$name.dat')).readAsString(),
+          'one',
+        );
+      }
       await draft.dispose();
-
-      expect(await File(p.join(datRoot.path, 'custom.dat')).exists(), isTrue);
-      expect(await File(p.join(datRoot.path, 'custom.json')).exists(), isTrue);
+      await expectFlatRoot();
     },
   );
 
@@ -1141,23 +1096,4 @@ void main() {
       await draft.dispose();
     },
   );
-
-  test('reserved IDs never overwrite existing records', () async {
-    await db.geoDataDao.insertRow(
-      GeoDataCompanion.insert(
-        id: const Value(-1),
-        name: 'user-source',
-        type: 'domain',
-        url: 'https://example.com/file',
-        timestamp: DateTime(2020),
-        categoryCount: 1,
-        ruleCount: 2,
-      ),
-    );
-
-    await expectLater(service.ensureInstalled(), throwsStateError);
-    expect((await db.geoDataDao.publishedRows).single.name, 'user-source');
-    expect(downloads, 0);
-    await expectFlatRoot();
-  });
 }

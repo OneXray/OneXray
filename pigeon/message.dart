@@ -121,9 +121,6 @@ class AppleVpnCapabilities {
   final bool deviceCommunication;
 }
 
-// Apple VPN profile and System Extension readiness.
-enum RefreshVpnResult { installed, notInstalled, waitForApproval }
-
 enum PlatformPermissionKind {
   none,
   androidVpn,
@@ -179,7 +176,8 @@ class NativeVpnCommandResult {
   });
 
   final NativeVpnCommandState state;
-  // A successful readVpnStatus supplies status directly; commands may omit it.
+  // Successful status reads and commands supply the confirmed native status.
+  // Failures and permission-waiting results may omit it.
   final VpnStatus? status;
   final PlatformPermissionResult? permission;
   final String? message;
@@ -196,7 +194,4 @@ class AndroidAppInfo {
 abstract class BridgeFlutterApi {
   @asyncCallback
   void vpnStatusChanged(VpnStatus status);
-
-  @asyncCallback
-  void refreshVpn(RefreshVpnResult result);
 }

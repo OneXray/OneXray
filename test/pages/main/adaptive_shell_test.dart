@@ -80,13 +80,6 @@ void main() {
     );
   });
 
-  test('donation is not registered on mobile or desktop', () {
-    for (final desktop in [false, true]) {
-      final routes = buildScopedPageRoutes(desktop: desktop, android: !desktop);
-      expect(routes.map((route) => route.path), isNot(contains('donation')));
-    }
-  });
-
   testWidgets('shared navigation breakpoints preserve the update flow', (
     tester,
   ) async {

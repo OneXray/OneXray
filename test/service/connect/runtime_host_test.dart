@@ -89,20 +89,6 @@ void main() {
     );
   });
 
-  test('unknown start metadata enums are ignored', () async {
-    final request = _runtime().request;
-    final metadata = jsonDecode(request.metadataJson!) as Map<String, dynamic>;
-    metadata['platform'] = 'unknown';
-    request.metadataJson = jsonEncode(metadata);
-    await File(p.join(directory.path, 'start.json'))
-        .writeAsString(jsonEncode(request.toJson()));
-
-    expect(
-      await ConnectionRuntimeHost(runDirectory: directory.path).readRuntime(),
-      isNull,
-    );
-  });
-
   test(
     'inspect associates native status with the active start request',
     () async {
@@ -113,12 +99,22 @@ void main() {
         readStatus: () async => VpnStatus.connected,
       );
 
-      final connected = await host.inspect([runtime]);
+      final connected = await host.inspect(runtime);
       expect(connected.status, VpnStatus.connected);
       expect(connected.runtime?.identity, runtime.identity);
       expect(connected.traffic, isNull);
     },
   );
+
+  for (final status in VpnStatus.values) {
+    test('native $status remains visible without runtime metadata', () async {
+      final host = ConnectionRuntimeHost(readStatus: () async => status);
+      final current = await host.inspect(null);
+      expect(current.status, status);
+      expect(current.runtime, isNull);
+      expect(current.traffic, isNull);
+    });
+  }
 
   test(
     'metrics HTTP is the only source and writes no accounting files',

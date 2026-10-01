@@ -9,7 +9,6 @@ void main() {
     () async {
       final api = AppFlutterApi();
       await api.vpnStatusChanged(VpnStatus.disconnected);
-      await api.refreshVpn(RefreshVpnResult.notInstalled);
       final messages = <String?>[];
       final previousDebugPrint = debugPrint;
       debugPrint = (String? message, {int? wrapWidth}) => messages.add(message);
@@ -24,8 +23,6 @@ void main() {
       await api.vpnStatusChanged(VpnStatus.connected);
       await api.vpnStatusChanged(VpnStatus.disconnected);
       await api.vpnStatusChanged(VpnStatus.disconnected);
-      await api.refreshVpn(RefreshVpnResult.installed);
-      await api.refreshVpn(RefreshVpnResult.installed);
       await Future<void>.delayed(Duration.zero);
 
       expect(statuses, [
@@ -37,7 +34,6 @@ void main() {
       expect(messages, [
         'vpnStatusChanged connected',
         'vpnStatusChanged disconnected',
-        'refreshVpn installed',
       ]);
     },
   );

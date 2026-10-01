@@ -27,34 +27,6 @@ void main() {
     state: PlatformPermissionState.granted,
   );
 
-  test('Android startup queries include the API 37 local network grant', () {
-    final native = File(
-      'android/app/src/main/kotlin/net/yuandev/onexray/pigeon/HostApi.kt',
-    ).readAsStringSync();
-    final controller = File(
-      'android/app/src/main/kotlin/net/yuandev/onexray/vpn/VpnController.kt',
-    ).readAsStringSync();
-    final manifest = File('android/app/src/main/AndroidManifest.xml')
-        .readAsStringSync();
-    expect(manifest, contains('android.permission.ACCESS_LOCAL_NETWORK'));
-    expect(
-      controller,
-      contains('Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN'),
-    );
-    expect(
-      controller,
-      contains(
-        'context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK)',
-      ),
-    );
-    expect(
-      controller,
-      contains('PlatformPermissionKind.ANDROID_LOCAL_NETWORK'),
-    );
-    expect(native, contains('VpnController.queryPermission(context)'));
-    expect(native, contains('callback?.invoke(queryPermissionNow())'));
-  });
-
   group('Android permission bridge', () {
     late List<String> calls;
     late PlatformPermissionResult current;

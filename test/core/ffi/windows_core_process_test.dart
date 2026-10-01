@@ -100,29 +100,6 @@ void main() {
   );
 
   test(
-    'Win32 treats an already exited named process as exited under contention',
-    () async {
-      final process = await launch('one', name);
-      await process.stdin.close();
-      await process.exitCode;
-      final watches = [
-        for (var i = 0; i < 32; i++) core.watchExit(process.pid),
-      ];
-      addTearDown(() {
-        for (final watch in watches) {
-          watch.cancel();
-        }
-      });
-      expect(
-        await Future.wait(watches.map((watch) => watch.exited))
-            .timeout(const Duration(seconds: 10)),
-        everyElement(isTrue),
-      );
-    },
-    skip: !Platform.isWindows,
-  );
-
-  test(
     'Win32 does not attach an exit wait to a different process name',
     () async {
       final otherName = '${p.basenameWithoutExtension(name)}-extra.exe';

@@ -21,7 +21,8 @@ void main() {
     addTearDown(db.close);
     coordinator = ConnectionCoordinator(
       database: db,
-      inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+      inspect: (_, {observedStatus}) async =>
+          const HostConnection(VpnStatus.disconnected),
       start: (_) async => throw StateError('Unexpected VPN start'),
       stop: () async => throw StateError('Unexpected VPN stop'),
     );

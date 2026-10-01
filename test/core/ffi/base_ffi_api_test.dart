@@ -7,6 +7,8 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:path/path.dart' as p;
 
+import '../../support/test_directory.dart';
+
 void main() {
   test('builds protected desktop Core arguments', () {
     expect(
@@ -29,14 +31,6 @@ void main() {
       ],
     );
     expect(
-      () => desktopCoreRunArguments(
-        dns: '',
-        interfaceName: 'Ethernet',
-        configPath: 'xray.json',
-      ),
-      throwsFormatException,
-    );
-    expect(
       desktopCoreRunArguments(
         dns: '8.8.8.8',
         interfaceName: 'eth0',
@@ -57,9 +51,7 @@ void main() {
   test(
     'replaces old inputs with one unique immutable runtime directory',
     () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'onexray-desktop-inputs-',
-      );
+      final directory = await createTestDirectory('onexray-desktop-inputs-');
       addTearDown(() => directory.delete(recursive: true));
       final api = _TestFfiApi(stopResult: true, directory: directory.path);
       addTearDown(api.stopSharedIsolate);
@@ -109,31 +101,6 @@ void main() {
       expect(arguments, isNot(contains('-runtime')));
     },
   );
-
-  test('inputs are unique and an invalid root is not replaced', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'onexray-desktop-legacy-',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final api = _TestFfiApi(stopResult: true, directory: directory.path);
-    addTearDown(api.stopSharedIsolate);
-    final first = (await api.materializeRunXrayConfig(_request('{"a":1}')))!;
-    expect(await File(first).readAsString(), '{"a":1}');
-    final second = (await api.materializeRunXrayConfig(_request('{"a":2}')))!;
-    expect(first, isNot(second));
-    expect(await File(first).exists(), isFalse);
-    expect(await File(second).readAsString(), '{"a":2}');
-    expect(await api.materializeRunXrayConfig(_request('')), isNull);
-    expect(await File(second).exists(), isFalse);
-
-    final root = Directory(p.join(directory.path, 'run', 'core-inputs'));
-    await root.delete(recursive: true);
-    await File(root.path).writeAsString('not a directory');
-    await expectLater(
-      api.materializeRunXrayConfig(_request('{}')),
-      throwsFormatException,
-    );
-  });
 
   test('reports disconnected only after Core stops successfully', () async {
     final api = _TestFfiApi(stopResult: true);

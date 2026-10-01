@@ -1212,103 +1212,100 @@ void main() {
   test(
     'normal runtime models retain platform, DNS, logging and statistics policy',
     () {
-      for (final platform in ConnectionPlatform.values) {
-        for (final ipv6 in [false, true]) {
-          for (final (enabled, supported, dnsLog) in [
-            (false, true, true),
-            (true, false, true),
-            (true, true, false),
-            (true, true, true),
-          ]) {
-            final desktop =
-                platform == ConnectionPlatform.windows ||
-                platform == ConnectionPlatform.linux;
-            final config = ConnectionCompiler.compile(
-              settings: ConnectionSettings(trafficMode: TrafficMode.allVpn),
-              entries: [node(1, address: '192.0.2.1')],
-              regions: catalog,
-              options: RuntimeOptions(
-                platform: platform,
-                sessionDirectory: '/unused-session',
-                metricsPort: 18186,
-                socksPort: 18187,
-                ipv6: ipv6,
-                interfaceName: 'selected-interface',
-                logEnabled: enabled,
-                logFilesSupported: supported,
-                logLevel: 'debug',
-                dnsLog: dnsLog,
-                maskAddress: 'half',
-              ),
-            ).config;
-            final logging = enabled && supported;
-            expect(config['log'], {
-              'access': logging ? '/unused-session/access.log' : 'none',
-              'error': logging ? '/unused-session/error.log' : 'none',
-              'loglevel': logging ? 'debug' : 'none',
-              'dnsLog': logging && dnsLog,
-              'maskAddress': 'half',
-            });
-            expect(config['env'], {
-              'xray.location.asset': VpnConstants.datDir,
-              'xray.location.cert': VpnConstants.datDir,
-            });
-            expect(config['stats'], isEmpty);
-            expect(config['metrics'], {'listen': '127.0.0.1:18186'});
-            expect(config['policy'], {
-              'system': {
-                'statsInboundUplink': true,
-                'statsInboundDownlink': true,
-                'statsOutboundUplink': false,
-                'statsOutboundDownlink': false,
-              },
-            });
-            expect(config['dns']['servers'], [
-              {
-                'address': '8.8.8.8',
-                'tag': ConnectionCompiler.dnsProxy,
-                'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
-              },
-            ]);
-            final rules = (config['routing']['rules'] as List).cast<Map>();
-            expect(
-              rules.singleWhere((rule) => rule['ruleTag'] == 'app-default'),
-              {
-                'ruleTag': 'app-default',
-                'inboundTag': [ConnectionCompiler.dnsProxy],
-                'balancerTag': 'proxy',
-              },
-            );
-            expect(rules.any((rule) => rule['outboundTag'] == 'direct'), false);
-            final dnsOutbound = (config['outbounds'] as List).singleWhere(
-              (outbound) => outbound['tag'] == ConnectionCompiler.dnsOutbound,
-            );
-            expect(
-              dnsOutbound['streamSettings']['sockopt']['dialerProxy'],
-              'app-entry-0',
-            );
-            final direct = (config['outbounds'] as List).singleWhere(
-              (outbound) => outbound['tag'] == 'direct',
-            );
-            expect(direct, {
-              'tag': 'direct',
-              'protocol': 'freedom',
-              if (desktop)
-                'streamSettings': {
-                  'sockopt': {'interface': 'selected-interface'},
-                },
-            });
-            if (platform == ConnectionPlatform.linux) {
-              expect(config['inbounds'].single['settings'], {
-                'name': 'OneXrayTun',
-                'mtu': VpnConstants.tunMtu,
-                'gateway': ['198.18.0.1/15', if (ipv6) 'fc00::1/64'],
-                'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
-                'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
-                'autoOutboundsInterface': 'selected-interface',
-              });
-            }
-          }
+      // Representative runtime choices include each platform and macOS SE,
+      // without crossing every log option with every platform and IP setting.
+      for (final (platform, ipv6, enabled, supported, dnsLog) in [
+        (ConnectionPlatform.ios, true, false, true, true),
+        (ConnectionPlatform.android, false, true, true, false),
+        (ConnectionPlatform.windows, true, true, true, true),
+        (ConnectionPlatform.linux, false, true, true, true),
+        (ConnectionPlatform.macos, true, true, true, true),
+        (ConnectionPlatform.macos, false, true, false, true),
+      ]) {
+        final desktop =
+            platform == ConnectionPlatform.windows ||
+            platform == ConnectionPlatform.linux;
+        final config = ConnectionCompiler.compile(
+          settings: ConnectionSettings(trafficMode: TrafficMode.allVpn),
+          entries: [node(1, address: '192.0.2.1')],
+          regions: catalog,
+          options: RuntimeOptions(
+            platform: platform,
+            sessionDirectory: '/unused-session',
+            metricsPort: 18186,
+            socksPort: 18187,
+            ipv6: ipv6,
+            interfaceName: 'selected-interface',
+            logEnabled: enabled,
+            logFilesSupported: supported,
+            logLevel: 'debug',
+            dnsLog: dnsLog,
+            maskAddress: 'half',
+          ),
+        ).config;
+        final logging = enabled && supported;
+        expect(config['log'], {
+          'access': logging ? '/unused-session/access.log' : 'none',
+          'error': logging ? '/unused-session/error.log' : 'none',
+          'loglevel': logging ? 'debug' : 'none',
+          'dnsLog': logging && dnsLog,
+          'maskAddress': 'half',
+        });
+        expect(config['env'], {
+          'xray.location.asset': VpnConstants.datDir,
+          'xray.location.cert': VpnConstants.datDir,
+        });
+        expect(config['stats'], isEmpty);
+        expect(config['metrics'], {'listen': '127.0.0.1:18186'});
+        expect(config['policy'], {
+          'system': {
+            'statsInboundUplink': true,
+            'statsInboundDownlink': true,
+            'statsOutboundUplink': false,
+            'statsOutboundDownlink': false,
+          },
+        });
+        expect(config['dns']['servers'], [
+          {
+            'address': '8.8.8.8',
+            'tag': ConnectionCompiler.dnsProxy,
+            'queryStrategy': ipv6 ? 'UseIP' : 'UseIPv4',
+          },
+        ]);
+        final rules = (config['routing']['rules'] as List).cast<Map>();
+        expect(rules.singleWhere((rule) => rule['ruleTag'] == 'app-default'), {
+          'ruleTag': 'app-default',
+          'inboundTag': [ConnectionCompiler.dnsProxy],
+          'balancerTag': 'proxy',
+        });
+        expect(rules.any((rule) => rule['outboundTag'] == 'direct'), false);
+        final dnsOutbound = (config['outbounds'] as List).singleWhere(
+          (outbound) => outbound['tag'] == ConnectionCompiler.dnsOutbound,
+        );
+        expect(
+          dnsOutbound['streamSettings']['sockopt']['dialerProxy'],
+          'app-entry-0',
+        );
+        final direct = (config['outbounds'] as List).singleWhere(
+          (outbound) => outbound['tag'] == 'direct',
+        );
+        expect(direct, {
+          'tag': 'direct',
+          'protocol': 'freedom',
+          if (desktop)
+            'streamSettings': {
+              'sockopt': {'interface': 'selected-interface'},
+            },
+        });
+        if (platform == ConnectionPlatform.linux) {
+          expect(config['inbounds'].single['settings'], {
+            'name': 'OneXrayTun',
+            'mtu': VpnConstants.tunMtu,
+            'gateway': ['198.18.0.1/15', if (ipv6) 'fc00::1/64'],
+            'dns': ['8.8.8.8', if (ipv6) '2001:4860:4860::8888'],
+            'autoSystemRoutingTable': ['0.0.0.0/0', if (ipv6) '::/0'],
+            'autoOutboundsInterface': 'selected-interface',
+          });
         }
       }
     },

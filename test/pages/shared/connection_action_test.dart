@@ -35,7 +35,8 @@ void main() {
           final coordinator = ConnectionCoordinator(
             database: db,
             readRuntime: () async => null,
-            inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+            inspect: (_, {observedStatus}) async =>
+                const HostConnection(VpnStatus.disconnected),
             start: (_) async =>
                 throw StateError('A disconnected selection must not start VPN'),
           );

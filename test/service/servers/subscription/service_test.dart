@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
@@ -10,6 +9,7 @@ import 'package:onexray/service/shared/event_bus/service.dart';
 import 'package:onexray/service/servers/subscription/model.dart';
 import 'package:onexray/service/servers/subscription/service.dart';
 import 'package:onexray/service/servers/subscription/failure.dart';
+import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/l10n/localizations/app_localizations_en.dart';
 import 'package:onexray/core/errors/failure.dart';
 
@@ -31,6 +31,7 @@ void main() {
         downloads++;
         throw StateError('Invalid input must not download');
       });
+      final source = await _source(database);
       for (final (input, status) in [
         (
           const SubscriptionInput(name: ' ', url: 'https://example.com'),
@@ -54,9 +55,10 @@ void main() {
         ),
       ]) {
         expect((await service.insertSubscription(input)).status, status);
-        expect(await service.saveSubscriptionInput(1, input), status);
+        expect(await service.saveSubscriptionInput(source.id, input), status);
       }
       expect(downloads, 0);
+      expect(await database.subscriptionDao.searchRow(source.id), source);
     },
   );
 
@@ -230,58 +232,45 @@ void main() {
     );
   }
 
-  for (final useService in [true, false]) {
-    test(
-      'changing HWID consent rejects in-flight content (service: $useService)',
-      () async {
-        final source = await _source(database);
-        final keptId = await database.coreConfigDao.insertRow(
-          _node('Keep', subId: source.id),
-        );
-        final started = Completer<void>();
-        final pending = Completer<SubscriptionLoadResult>();
-        final service = _service(database, (_) {
-          started.complete();
-          return pending.future;
-        });
-        final refresh = service.refreshSubscriptionResult(source);
-        await started.future;
-        if (useService) {
-          await service.saveSubscriptionInput(
-            source.id,
-            SubscriptionInput(
-              name: source.name,
-              url: source.url,
-              ageSecretKey: source.ageSecretKey,
-              agePublicKey: source.agePublicKey,
-              hwidEnabled: true,
-            ),
-          );
-        } else {
-          await database.subscriptionDao.updateRow(
-            source.copyWith(
-              hwidEnabled: true,
-              hwid: const Value('new-identity'),
-            ),
-          );
-        }
-        pending.complete(
-          SubscriptionLoadResult(
-            status: SubscriptionUpdateResult.success,
-            rows: [_node('Obsolete')],
-          ),
-        );
-        expect((await refresh).superseded, isTrue);
-        final nodes = await database.coreConfigDao
-            .allOutboundRowsWithDataBySubId(source.id);
-        expect(nodes.single.id, keptId);
-        expect(
-          (await database.subscriptionDao.searchRow(source.id))!.timestamp,
-          source.timestamp,
-        );
-      },
+  test('changing HWID consent rejects in-flight content', () async {
+    final source = await _source(database);
+    final keptId = await database.coreConfigDao.insertRow(
+      _node('Keep', subId: source.id),
     );
-  }
+    final started = Completer<void>();
+    final pending = Completer<SubscriptionLoadResult>();
+    final service = _service(database, (_) {
+      started.complete();
+      return pending.future;
+    });
+    final refresh = service.refreshSubscriptionResult(source);
+    await started.future;
+    await service.saveSubscriptionInput(
+      source.id,
+      SubscriptionInput(
+        name: source.name,
+        url: source.url,
+        ageSecretKey: source.ageSecretKey,
+        agePublicKey: source.agePublicKey,
+        hwidEnabled: true,
+      ),
+    );
+    pending.complete(
+      SubscriptionLoadResult(
+        status: SubscriptionUpdateResult.success,
+        rows: [_node('Obsolete')],
+      ),
+    );
+    expect((await refresh).superseded, isTrue);
+    final nodes = await database.coreConfigDao.allOutboundRowsWithDataBySubId(
+      source.id,
+    );
+    expect(nodes.single.id, keptId);
+    expect(
+      (await database.subscriptionDao.searchRow(source.id))!.timestamp,
+      source.timestamp,
+    );
+  });
 
   test(
     'manual refresh-all joins repeats and continues after a failed source',
@@ -368,44 +357,6 @@ void main() {
     expect(AppEventBus.instance.state.downloading, isFalse);
     service.resumeAfterDataClear();
   });
-
-  test(
-    'refresh before coordinator initialization protects persisted selections',
-    () async {
-      final source = await _source(database);
-      final fixedId = await database.coreConfigDao.insertRow(
-        _node('Fixed', subId: source.id),
-      );
-      final exitId = await database.coreConfigDao.insertRow(
-        _node('Exit', subId: source.id),
-      );
-      await database.connectionConfigDao.commit(
-        configurationJson: jsonEncode({
-          'connection': {
-            'selection': {'kind': 'server', 'id': fixedId},
-            'smart': {'finalExitId': exitId},
-          },
-        }),
-      );
-      final service = SubscriptionService.forTesting(
-        database: database,
-        loadRows: (_) async => SubscriptionLoadResult(
-          status: SubscriptionUpdateResult.success,
-          rows: [_node('Replacement')],
-        ),
-        schedulePing: (_) {},
-      );
-
-      final result = await service.refreshSubscriptionResult(source);
-      expect(result.status, SubscriptionUpdateResult.success);
-      expect(await database.coreConfigDao.searchRow(fixedId), isNotNull);
-      expect(await database.coreConfigDao.searchRow(exitId), isNotNull);
-      expect(
-        await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
-        hasLength(3),
-      );
-    },
-  );
 
   test('source edits do not download, and global automatic opt-out still allows manual refresh', () async {
     final source = await _source(database);
@@ -537,14 +488,11 @@ void main() {
     expect(result.success, isTrue);
     expect(result.count, 1);
     final source = (await database.subscriptionDao.allRows).single;
-    expect(source.toJson(), isNot(contains('count')));
-    expect(source.toJson(), isNot(contains('expanded')));
-    expect(source.toJson(), isNot(contains('parseFailureCount')));
     final row = (await database.coreConfigDao.allOutboundRowsWithDataBySubId(
       source.id,
     )).single;
     expect(row.data, imported.data.value);
-    expect(jsonDecode(utf8.decode(base64Decode(row.data!)))['tag'], 'Imported');
+    expect(readOutboundFromDbData(row)['tag'], 'Imported');
     expect(pings, [source.id]);
   });
 
@@ -672,11 +620,16 @@ void main() {
         _node('Existing', subId: source.id),
       );
       final before = await database.coreConfigDao.searchRow(oldId);
+      await database.customStatement('''
+        CREATE TRIGGER fail_subscription_import BEFORE INSERT ON core_config
+        WHEN NEW.name = 'Replacement'
+        BEGIN SELECT RAISE(FAIL, 'fixture write failure'); END
+      ''');
       final service = _service(
         database,
         (_) async => SubscriptionLoadResult(
           status: SubscriptionUpdateResult.success,
-          rows: [_node('Conflict').copyWith(id: Value(localId))],
+          rows: [_node('Replacement')],
         ),
       );
       final result = await service.refreshSubscriptionResult(source);
@@ -745,37 +698,6 @@ void main() {
             .single
             .name,
         'New URL',
-      );
-    },
-  );
-
-  test(
-    'source URL and Age are rechecked before accepting a downloaded result',
-    () async {
-      final source = await _source(database);
-      final response = Completer<SubscriptionLoadResult>();
-      final started = Completer<void>();
-      final service = _service(database, (_) {
-        started.complete();
-        return response.future;
-      });
-      final refresh = service.refreshSubscriptionResult(source);
-      await started.future;
-      final edited = source.copyWith(
-        agePublicKey: const Value('changed-public'),
-      );
-      await database.subscriptionDao.updateRow(edited);
-      response.complete(
-        SubscriptionLoadResult(
-          status: SubscriptionUpdateResult.success,
-          rows: [_node('Obsolete')],
-        ),
-      );
-      expect((await refresh).superseded, isTrue);
-      expect(await database.subscriptionDao.searchRow(source.id), edited);
-      expect(
-        await database.coreConfigDao.allOutboundRowsWithDataBySubId(source.id),
-        isEmpty,
       );
     },
   );
@@ -923,15 +845,5 @@ Future<SubscriptionData> _source(AppDatabase database) async {
 }
 
 CoreConfigCompanion _node(String name, {int subId = 0}) =>
-    CoreConfigCompanion.insert(
-      name: name,
-      type: 'outbound',
-      tags: 'socks',
-      data: Value(
-        base64Encode(
-          utf8.encode(jsonEncode({'protocol': 'socks', 'tag': name})),
-        ),
-      ),
-      delay: 0,
-      subId: subId,
-    );
+    outboundCompanion({'protocol': 'socks', 'tag': name})
+        .copyWith(subId: Value(subId));

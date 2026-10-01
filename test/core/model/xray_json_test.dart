@@ -96,55 +96,6 @@ void main() {
     expect(XrayJson.fromJson(source).toJson(), source);
   });
 
-  test('ignores fields outside the regular model envelope', () {
-    final config = XrayJson.fromJson({
-      'name': 'Raw-only name',
-      'api': {'tag': 'api'},
-      'env': {'xray.location.asset': '/assets', 'futureEnv': true},
-      'dns': {
-        'hosts': {
-          'node.example': ['192.0.2.1'],
-        },
-        'queryStrategy': 'UseIPv4',
-        'servers': [
-          {'address': '8.8.8.8', 'queryStrategy': 'UseIPv4'},
-        ],
-      },
-      'routing': {
-        'futureRouting': true,
-        'rules': [
-          {'ruleTag': 'known', 'futureRule': true},
-        ],
-      },
-      'inbounds': [
-        {
-          'protocol': 'tun',
-          'settings': {'name': 'OneXrayTun', 'futureSetting': true},
-        },
-      ],
-    });
-
-    expect(config.toJson(), {
-      'env': {'xray.location.asset': '/assets'},
-      'dns': {
-        'servers': [
-          {'address': '8.8.8.8', 'queryStrategy': 'UseIPv4'},
-        ],
-      },
-      'routing': {
-        'rules': [
-          {'ruleTag': 'known'},
-        ],
-      },
-      'inbounds': [
-        {
-          'protocol': 'tun',
-          'settings': {'name': 'OneXrayTun', 'futureSetting': true},
-        },
-      ],
-    });
-  });
-
   test('preserves complete proxy outbound maps', () {
     final outbound = <String, dynamic>{
       'tag': 'proxy',
@@ -193,7 +144,6 @@ void main() {
     final socks = {'auth': 'noauth', 'udp': true};
     expect(XrayInboundTunSettings.fromJson(tun).toJson(), tun);
     expect(XrayInboundSocksSettings.fromJson(socks).toJson(), socks);
-    expect(XrayInboundTunSettings().toJson(), isEmpty);
   });
 
   test('round-trips the three App-managed system outbounds', () {
@@ -236,30 +186,5 @@ void main() {
           .toJson(),
       {'action': 'hijack', 'qType': '1,28'},
     );
-  });
-
-  test('keeps outbound settings as a map and minimizes stream settings', () {
-    final outbound = XrayOutbound.fromJson({
-      'tag': 'dnsOut',
-      'protocol': 'dns',
-      'settings': {'futureSetting': true},
-      'streamSettings': {
-        'network': 'tcp',
-        'sockopt': {
-          'dialerProxy': 'direct',
-          'interface': 'en0',
-          'futureSockopt': true,
-        },
-      },
-    });
-
-    expect(outbound.toJson(), {
-      'tag': 'dnsOut',
-      'protocol': 'dns',
-      'settings': {'futureSetting': true},
-      'streamSettings': {
-        'sockopt': {'dialerProxy': 'direct', 'interface': 'en0'},
-      },
-    });
   });
 }

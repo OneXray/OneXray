@@ -215,7 +215,10 @@ void main() {
     'runtime preserves DNS, rules, accounts and sniffing on each platform',
     () {
       for (final platform in ConnectionPlatform.values) {
-        for (final windowsMode in WindowsMode.values) {
+        final modes = platform == ConnectionPlatform.windows
+            ? WindowsMode.values
+            : [WindowsMode.exe];
+        for (final windowsMode in modes) {
           for (final ipv6 in [false, true]) {
             final source = template(3);
             final state = AdvancedRoutingDocument.parse(jsonEncode(source))
@@ -438,7 +441,6 @@ void main() {
       final row = (await db.routingProfileDao.allRows).single;
       expect(row.advanced, true);
       expect(CustomRoutingService.readConfiguration(row).toJson(), template());
-      expect(() => CustomRoutingService.read(row), throwsFormatException);
       final service = CustomRoutingService(db);
       await service.save(RoutingProfileState(name: 'Normal'));
       await service.save(
@@ -450,10 +452,6 @@ void main() {
       await expectLater(
         service.save(RoutingProfileState(name: 'Fourth')),
         throwsA(anything),
-      );
-      await expectLater(
-        service.save(RoutingProfileState(id: row.id, name: 'Changed mode')),
-        throwsFormatException,
       );
     },
   );

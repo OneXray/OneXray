@@ -76,18 +76,16 @@ void main() {
       expect(jsonDecode(link.xrayJson), source);
     });
 
-    test('rejects unsupported types and invalid data', () {
-      expect(
-        OneXrayAppLinkGenerator.config(_config(type: 'unsupported')),
-        isNull,
-      );
-      expect(
-        OneXrayAppLinkGenerator.config(
-          _config(type: CoreConfigType.raw.name, data: 'not-base64'),
-        ),
-        isNull,
-      );
-    });
+    test(
+      'preserved legacy outbound data cannot generate an invalid share link',
+      () {
+        final legacy = _config(
+          type: CoreConfigType.outbound.name,
+          data: 'not base64!',
+        ).copyWith(id: 12, name: 'Config 12', subId: 7);
+        expect(OneXrayAppLinkGenerator.config(legacy), isNull);
+      },
+    );
 
     test('finds custom GeoData references in routing and DNS', () {
       final data = base64Encode(

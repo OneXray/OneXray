@@ -13,6 +13,7 @@ import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/share/configuration_source.dart';
 
 import '../../../../support/fake_geodata_import.dart';
 
@@ -87,7 +88,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         start: (_) async {
           actions.add('start');
           throw const ConnectionHostException('startFailed');
@@ -161,7 +162,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -206,7 +208,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),
@@ -289,7 +292,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           start: (runtime) async {
             calls.add(
               runtime.identity == old.identity ? 'start:old' : 'start:new',
@@ -327,7 +330,7 @@ void main() {
       final imported = ConfigurationImportDraft(
         ConfigurationContent(
           kind: ConfigurationKind.custom,
-          text: changed.state.encode(),
+          source: ConfigurationSource.parse(changed.state.encode()),
           name: changed.state.name,
         ),
         FakeGeoDataImport(events: importEvents),
@@ -382,7 +385,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         prepare: (next, _) async => _runtime('b', next),
         start: (runtime) async {
           calls.add(
@@ -432,7 +435,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -467,7 +471,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = CustomRoutingEditorService(
@@ -483,7 +488,7 @@ void main() {
     final imported = ConfigurationImportDraft(
       ConfigurationContent(
         kind: ConfigurationKind.custom,
-        text: _state('Work').encode(),
+        source: ConfigurationSource.parse(_state('Work').encode()),
         name: 'Work',
       ),
       FakeGeoDataImport(events: lifecycle),

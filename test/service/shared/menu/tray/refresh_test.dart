@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
+import 'package:onexray/core/ffi/windows/mode.dart';
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/event_bus/service.dart';
@@ -147,6 +148,13 @@ void main() {
   });
 
   test('tray stays icon-only and ignores traffic-only updates', () async {
+    final keys = _items(menus.last).map((item) => item.key).toSet();
+    expect(keys, contains('quitApp'));
+    expect(
+      keys.contains('quitAndStopVpn'),
+      AppPlatform.isMacOS ||
+          (AppPlatform.isWindows && windowsBuildMode == WindowsMode.msix),
+    );
     expect(calls.where((call) => call.method == 'setIcon'), hasLength(1));
     int visualCalls() => calls
         .where(
@@ -191,59 +199,56 @@ void main() {
     expect(calls, hasLength(published));
   });
 
-  for (final rightClick in [false, true]) {
-    test(
-      'open menu survives background refresh (right click: $rightClick)',
-      () async {
-        final sourceId = await db.subscriptionDao.insertRow(
-          SubscriptionCompanion.insert(
-            name: 'Provider',
-            url: 'https://example.com/sub',
-            timestamp: DateTime(2026),
-          ),
-        );
-        await pumpEventQueue();
-        final oldMenu = menus.last;
-        final published = menus.length;
-        final start = _items(oldMenu)
-            .singleWhere((item) => item.key == 'startVpn');
-        final automatic = _items(oldMenu)
-            .singleWhere((item) => item.key == 'automatic');
-        platform.click();
-        await pumpEventQueue();
-        expect(popups, 1);
+  test(
+    'open menu keeps its actions while background updates queue a new menu',
+    () async {
+      final sourceId = await db.subscriptionDao.insertRow(
+        SubscriptionCompanion.insert(
+          name: 'Provider',
+          url: 'https://example.com/sub',
+          timestamp: DateTime(2026),
+        ),
+      );
+      await pumpEventQueue();
+      final oldMenu = menus.last;
+      final published = menus.length;
+      final start = _items(oldMenu)
+          .singleWhere((item) => item.key == 'startVpn');
+      final automatic = _items(oldMenu)
+          .singleWhere((item) => item.key == 'automatic');
+      platform.click();
+      await pumpEventQueue();
+      expect(popups, 1);
 
-        final source = (await db.subscriptionDao.searchRow(sourceId))!;
-        await db.subscriptionDao.updateRow(
-          source.copyWith(name: 'Renamed provider'),
-        );
-        await pumpEventQueue();
-        await tray.refreshTrayManager();
-        await tray.refreshTrayManager();
-        expect(menus.length, published);
-        await click(start);
-        await click(automatic);
-        expect(connections, 1);
-        expect(choices, hasLength(1));
-        expect(menus.length, published);
+      final source = (await db.subscriptionDao.searchRow(sourceId))!;
+      await db.subscriptionDao.updateRow(
+        source.copyWith(name: 'Renamed provider'),
+      );
+      await pumpEventQueue();
+      await tray.refreshTrayManager();
+      await tray.refreshTrayManager();
+      expect(menus.length, published);
+      await click(start);
+      await click(automatic);
+      expect(connections, 1);
+      expect(choices, hasLength(1));
+      expect(menus.length, published);
 
-        popupClosed.complete();
-        await pumpEventQueue();
-        expect(menus.length, published + 1);
-        expect(
-          _items(menus.last)
-              .singleWhere((item) => item.key == 'source:$sourceId')
-              .label,
-          'Renamed provider',
-        );
-        final newStart = _items(menus.last)
-            .singleWhere((item) => item.key == 'startVpn');
-        await click(newStart);
-        expect(connections, 2);
-      },
-    );
-  }
-
+      popupClosed.complete();
+      await pumpEventQueue();
+      expect(menus.length, published + 1);
+      expect(
+        _items(menus.last)
+            .singleWhere((item) => item.key == 'source:$sourceId')
+            .label,
+        'Renamed provider',
+      );
+      final newStart = _items(menus.last)
+          .singleWhere((item) => item.key == 'startVpn');
+      await click(newStart);
+      expect(connections, 2);
+    },
+  );
   test('data prefix refresh waits for an open menu to close', () async {
     final ids = <int>[];
     for (var i = 0; i < 12; i++) {

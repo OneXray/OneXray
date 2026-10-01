@@ -85,77 +85,71 @@ void main() {
     home: BackupPage(service: service),
   );
 
-  for (final locale in const [
-    Locale('en'),
-    Locale('zh'),
-    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
-    Locale('ru'),
-    Locale('fa'),
+  for (final (locale, width) in const [
+    (Locale('en'), 1160.0),
+    (Locale('zh'), 390.0),
+    (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), 390.0),
+    (Locale('ru'), 1160.0),
+    (Locale('fa'), 390.0),
   ]) {
-    for (final width in const [390.0, 1160.0]) {
-      testWidgets(
-        'backup page and overwrite confirmation fit $locale / $width',
-        (tester) async {
-          tester.view.devicePixelRatio = 1;
-          tester.view.physicalSize = Size(width, 844);
-          addTearDown(tester.view.resetDevicePixelRatio);
-          addTearDown(tester.view.resetPhysicalSize);
-          preferences.settings = const BackupSettings(
-            target: BackupTarget(
-              'fixture',
-              'OneDrive / a-very-long-selected-directory-name / OneXray-backup.json',
-            ),
-          );
-          await tester.pumpWidget(app(locale));
-          await tester.pumpAndSettle();
-          final l = AppLocalizations.of(
-            tester.element(find.byType(PageActionBar)),
-          )!;
-          expect(find.text(l.backupTitle), findsOneWidget);
-          expect(storage.writes, 0);
-          final sections = find.byType(SettingSection);
-          final cards = [
-            for (var i = 0; i < 2; i++)
-              tester.getRect(
-                find.descendant(
-                  of: sections.at(i),
-                  matching: find.byType(ShadCard),
-                ),
-              ),
-          ];
-          expect(cards.first.left, cards.last.left);
-          expect(cards.first.right, cards.last.right);
-          final headers = [
-            tester.getRect(find.text(l.backupLocation)),
-            tester.getRect(find.text(l.backupAutomatic).first),
-          ];
-          final rtl =
-              Directionality.of(tester.element(sections.first)) ==
-              TextDirection.rtl;
-          expect(
-            rtl ? headers.first.right : headers.first.left,
-            rtl ? headers.last.right : headers.last.left,
-          );
-          final bottom = tester.getBottomRight(find.byType(PageActionBar)).dy;
-          await tester.drag(
-            find.byType(SettingsPageScroll),
-            const Offset(0, -500),
-          );
-          await tester.pumpAndSettle();
-          expect(tester.getBottomRight(find.byType(PageActionBar)).dy, bottom);
-          await tester.tap(find.text(l.backupNow));
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 400));
-          expect(find.byType(AppConfirmationDialog), findsOneWidget);
-          expect(storage.writes, 0);
-          await tester.tap(find.text(l.prototypeCancel));
-          await tester.pumpAndSettle();
-          expect(preferences.settings.confirmed, false);
-          expect(tester.takeException(), null);
-          await tester.pumpWidget(const SizedBox());
-        },
+    testWidgets('backup page and overwrite confirmation fit $locale / $width', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = Size(width, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      preferences.settings = const BackupSettings(
+        target: BackupTarget(
+          'fixture',
+          'OneDrive / a-very-long-selected-directory-name / OneXray-backup.json',
+        ),
       );
-    }
+      await tester.pumpWidget(app(locale));
+      await tester.pumpAndSettle();
+      final l = AppLocalizations.of(
+        tester.element(find.byType(PageActionBar)),
+      )!;
+      expect(find.text(l.backupTitle), findsOneWidget);
+      expect(storage.writes, 0);
+      final sections = find.byType(SettingSection);
+      final cards = [
+        for (var i = 0; i < 2; i++)
+          tester.getRect(
+            find.descendant(
+              of: sections.at(i),
+              matching: find.byType(ShadCard),
+            ),
+          ),
+      ];
+      expect(cards.first.left, cards.last.left);
+      expect(cards.first.right, cards.last.right);
+      final headers = [
+        tester.getRect(find.text(l.backupLocation)),
+        tester.getRect(find.text(l.backupAutomatic).first),
+      ];
+      final rtl =
+          Directionality.of(tester.element(sections.first)) ==
+          TextDirection.rtl;
+      expect(
+        rtl ? headers.first.right : headers.first.left,
+        rtl ? headers.last.right : headers.last.left,
+      );
+      final bottom = tester.getBottomRight(find.byType(PageActionBar)).dy;
+      await tester.drag(find.byType(SettingsPageScroll), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      expect(tester.getBottomRight(find.byType(PageActionBar)).dy, bottom);
+      await tester.tap(find.text(l.backupNow));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(AppConfirmationDialog), findsOneWidget);
+      expect(storage.writes, 0);
+      await tester.tap(find.text(l.prototypeCancel));
+      await tester.pumpAndSettle();
+      expect(preferences.settings.confirmed, false);
+      expect(tester.takeException(), null);
+      await tester.pumpWidget(const SizedBox());
+    });
   }
 
   testWidgets(

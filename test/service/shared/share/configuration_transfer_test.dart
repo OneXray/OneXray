@@ -44,6 +44,23 @@ String template(String name, {bool assets = false}) => jsonEncode({
 
 void main() {
   test(
+    'nameless Raw can enter the editor without rewriting its source',
+    () async {
+      const text = '  {"outbounds":[],"customRoot":true}\n';
+      final content = ConfigurationTransferService.read(
+        text,
+        ConfigurationKind.raw,
+      );
+      final draft = await ConfigurationTransferService().prepare(content);
+      expect(draft.name, '');
+      expect(draft.text, text);
+      expect(draft.content, same(content));
+      expect(content.source.value, {'outbounds': [], 'customRoot': true});
+      await draft.dispose();
+    },
+  );
+
+  test(
     'IP geodata and extended conditions survive Custom JSON and link sharing',
     () async {
       final rule = {
@@ -282,9 +299,11 @@ void main() {
           },
         ),
       );
-      final draft = await service.import(
-        template('Route', assets: true),
-        ConfigurationKind.custom,
+      final draft = await service.prepare(
+        ConfigurationTransferService.read(
+          template('Route', assets: true),
+          ConfigurationKind.custom,
+        ),
       );
       expect(writes, 0);
       final exported = jsonDecode(
