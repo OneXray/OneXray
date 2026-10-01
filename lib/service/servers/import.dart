@@ -98,7 +98,7 @@ class ServerImportService {
 
   final AppDatabase? _database;
   final ConfigurationTransferService _transfer;
-  final Future<bool> Function(String) _validateRaw;
+  final Future<void> Function(String) _validateRaw;
   final Future<List<CoreConfigCompanion>> Function(String) _parse;
   final Future<String> Function(String) _validate;
   final Future<ConfigWriteResult> Function(List<CoreConfigCompanion>) _write;
@@ -122,18 +122,7 @@ class ServerImportService {
   }) : _database = database,
        _transfer = transfer ?? ConfigurationTransferService(),
        _validateRaw = ((text) async {
-         final result = await XrayRawValidator.validate(
-           text,
-           testXray: validate,
-         );
-         if (!result.isValid) {
-           throw AppFailure(
-             FailureCategory.configuration,
-             'xrayValidation',
-             cause: result.diagnostic ?? result.error,
-           );
-         }
-         return true;
+         await XrayRawValidator.validate(text, testXray: validate);
        }),
        _parse = parse ?? XrayShareReader().parseShareText,
        _validate = validate ?? AppHostApi().testXray,
@@ -451,9 +440,7 @@ class ServerImportService {
         (item) => item.kind == ConfigurationKind.raw,
       )) {
         final text = RawEditorService.namedText(raw.name, raw.text);
-        if (draft == null && !await _validateRaw(text)) {
-          throw const FormatException('Invalid Raw');
-        }
+        if (draft == null) await _validateRaw(text);
         rows.add(XrayRawDb.configCompanion(raw.name.trim(), text));
       }
       return ServerImportPreview(
@@ -493,10 +480,8 @@ class ServerImportService {
           (row) => row.type.value == 'raw',
         )) {
           final data = row.data.value;
-          if (data == null ||
-              !await _validateRaw(utf8.decode(base64Decode(data)))) {
-            throw const FormatException('Invalid Raw');
-          }
+          if (data == null) throw const FormatException('Invalid Raw');
+          await _validateRaw(utf8.decode(base64Decode(data)));
         }
       }
       Future<ConfigWriteResult?> write() async {

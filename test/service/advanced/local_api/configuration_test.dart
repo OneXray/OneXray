@@ -279,12 +279,14 @@ void main() {
         withResources: resources,
         testXray: (_) async => error,
       );
-      final result = await api.validate({'kind': 'routing', 'text': ordinary});
-      expect(result['status'], 'failed');
-      expect(result['stage'], 'kernel');
-      expect(result['diagnostics'], [
-        {'code': 'kernelRejected', 'message': error},
-      ]);
+      for (final (kind, text) in [('routing', ordinary), ('raw', raw)]) {
+        final result = await api.validate({'kind': kind, 'text': text});
+        expect(result['status'], 'failed');
+        expect(result['stage'], 'kernel');
+        expect(result['diagnostics'], [
+          {'code': 'kernelRejected', 'message': error},
+        ]);
+      }
     },
   );
 
@@ -296,16 +298,18 @@ void main() {
         message: 'Core not loaded',
       ),
     );
-    final result = await api.validate({
-      'kind': 'outbound',
-      'text': '{"protocol":"freedom"}',
-    });
-    expect(result['status'], 'notRun');
-    expect(result['stage'], 'kernel');
-    expect(
-      (result['diagnostics'] as List).single['code'],
-      'validationUnavailable',
-    );
+    for (final (kind, text) in [
+      ('outbound', '{"protocol":"freedom"}'),
+      ('raw', raw),
+    ]) {
+      final result = await api.validate({'kind': kind, 'text': text});
+      expect(result['status'], 'notRun');
+      expect(result['stage'], 'kernel');
+      expect(
+        (result['diagnostics'] as List).single['code'],
+        'validationUnavailable',
+      );
+    }
   });
 
   test(
@@ -337,10 +341,7 @@ void main() {
           config,
           XrayValidation.raw(
             jsonDecode(
-              XrayRawValidator.normalize(
-                text,
-                nameOverride: 'API raw',
-              ).normalizedText!,
+              XrayRawValidator.normalize(text, nameOverride: 'API raw').text,
             ),
           ),
         );

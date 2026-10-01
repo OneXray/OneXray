@@ -85,7 +85,7 @@ void main() {
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
     );
     final id = await service.save(
       const RawEditorDraft(name: 'original', text: _text),
@@ -144,7 +144,7 @@ void main() {
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
       prepare: (configuration, _, text) async =>
           _runtime('b', configuration, text),
     );
@@ -384,7 +384,7 @@ void main() {
     final service = RawEditorService(
       database: db,
       coordinator: coordinator,
-      validate: (_) async => true,
+      validate: (_) async {},
     );
     await db.customStatement('''
       CREATE TRIGGER fail_raw_save BEFORE INSERT ON core_config

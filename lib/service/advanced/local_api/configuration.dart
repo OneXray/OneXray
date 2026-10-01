@@ -221,11 +221,9 @@ final class _Configuration {
           ).routing!,
         );
       case 'raw':
-        final normalized = XrayRawValidator.normalize(text, nameOverride: name);
-        if (!normalized.isValid) {
-          throw normalized.diagnostic ?? FormatException(normalized.error);
-        }
-        return _Configuration(raw: normalized.json!);
+        return _Configuration(
+          raw: XrayRawValidator.normalize(text, nameOverride: name).json,
+        );
       default:
         throw const FormatException(
           'kind must be outbound, routing, advanced-routing or raw',

@@ -37,7 +37,7 @@ class RawEditorDraft {
 class RawEditorService {
   final AppDatabase db;
   final ConnectionCoordinator coordinator;
-  final Future<bool> Function(String)? _validate;
+  final Future<void> Function(String)? _validate;
   final Future<ConnectionRuntime> Function(
     ConnectionConfiguration,
     Future<void>,
@@ -75,7 +75,7 @@ class RawEditorService {
     ConfigurationImportDraft? imported,
   }) async {
     final parsed = namedConfiguration(draft.name, draft.text);
-    final text = parsed.normalizedText!;
+    final text = parsed.text;
     final original = draft.original;
     if (original == null &&
         (await db.coreConfigDao.allRawRowsWithData).length >= 3) {
@@ -97,7 +97,7 @@ class RawEditorService {
             ConnectionCompiler.parseRawJson(XrayRawDb.readFromDbData(original)),
             options,
           ),
-          ConnectionCompiler.rawSemanticJson(parsed.json!, options),
+          ConnectionCompiler.rawSemanticJson(parsed.json, options),
         );
       } on FormatException {
         // A repaired old configuration cannot be classified as metadata-only.
@@ -109,11 +109,7 @@ class RawEditorService {
       configuration,
       confirmReconnect: confirmReconnect,
       imported: imported,
-      validateAssets: () async {
-        if (!await _validateParsed(parsed)) {
-          throw const RawEditorException('invalid');
-        }
-      },
+      validateAssets: () => _validateParsed(parsed),
       affectsRuntime: affectsRuntime,
       prepare: affectsRuntime
           ? (next, cancelled) =>
@@ -220,32 +216,19 @@ class RawEditorService {
   }
 
   static String namedText(String name, String text) =>
-      namedConfiguration(name, text).normalizedText!;
+      namedConfiguration(name, text).text;
 
-  static XrayRawValidationResult namedConfiguration(String name, String text) {
+  static ParsedRawConfiguration namedConfiguration(String name, String text) {
     name = name.trim();
     if (name.isEmpty || name.runes.length > 32) {
       throw const RawEditorException('name');
     }
-    final parsed = XrayRawValidator.normalize(text, nameOverride: name);
-    if (!parsed.isValid) {
-      throw parsed.diagnostic ??
-          RawEditorException('invalid', cause: parsed.error);
-    }
-    return parsed;
+    return XrayRawValidator.normalize(text, nameOverride: name);
   }
 
-  Future<bool> _validateParsed(XrayRawValidationResult parsed) async {
-    if (_validate != null) return _validate(parsed.normalizedText!);
-    final result = await XrayRawValidator.validateParsed(parsed);
-    if (!result.isValid) {
-      throw AppFailure(
-        FailureCategory.configuration,
-        'xrayValidation',
-        cause: result.diagnostic ?? result.error,
-      );
-    }
-    return true;
+  Future<void> _validateParsed(ParsedRawConfiguration parsed) async {
+    if (_validate != null) return _validate(parsed.text);
+    await XrayRawValidator.validateParsed(parsed);
   }
 
   RuntimeOptions _comparisonOptions(

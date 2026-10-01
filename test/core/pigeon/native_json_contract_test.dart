@@ -88,7 +88,7 @@ void main() {
           return '';
         },
       );
-      expect(result.isValid, isTrue);
+      expect(result.name, 'Test');
     },
   );
 
