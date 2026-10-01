@@ -62,14 +62,37 @@ final class DatFileTransferTests: XCTestCase {
         XCTAssertEqual(try DatFileTransfer.manifest(in: source), [:])
     }
 
-    func testIncompleteTransferKeepsPublishedDirectory() throws {
+    func testIncompleteOrMismatchedTransferKeepsPublishedDirectory() throws {
         try DatFileTransfer.clearStaging(published)
         try DatFileTransfer.put(name: "old.dat", content: Data("old".utf8), mtimeMs: time, in: published)
         try DatFileTransfer.clearStaging(staging)
         try DatFileTransfer.put(name: "new.dat", content: Data("new".utf8), mtimeMs: time, in: staging)
-        XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published,
-            expected: ["new.dat": time, "missing.dat": time]))
+        for expected in [["new.dat": time, "missing.dat": time], [:], ["new.dat": time + 2000]] {
+            XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published, expected: expected))
+            XCTAssertEqual(try DatFileTransfer.manifest(in: published), ["old.dat": time])
+            XCTAssertEqual(try DatFileTransfer.read(name: "old.dat", in: published), Data("old".utf8))
+            XCTAssertEqual(try DatFileTransfer.read(name: "new.dat", in: staging), Data("new".utf8))
+        }
+    }
+
+    func testStagedFileLinkNeverReplacesPublishedDirectory() throws {
+        try DatFileTransfer.clearStaging(published)
+        try DatFileTransfer.put(name: "old.dat", content: Data("old".utf8), mtimeMs: time, in: published)
+        try DatFileTransfer.clearStaging(staging)
+        try DatFileTransfer.put(name: "new.dat", content: Data("new".utf8), mtimeMs: time, in: staging)
+        try DatFileTransfer.put(name: "cert.pem", content: Data("certificate".utf8), mtimeMs: time, in: source)
+        try fm.createSymbolicLink(at: staging.appendingPathComponent("linked.pem"),
+            withDestinationURL: source.appendingPathComponent("cert.pem"))
+        XCTAssertThrowsError(try DatFileTransfer.commit(staging: staging, to: published, expected: ["new.dat": time])) { error in
+            guard let failure = error as? DatFileTransfer.Failure,
+                  case let .invalidFile(name) = failure else {
+                return XCTFail("Expected strict file rejection, got \(error)")
+            }
+            XCTAssertEqual(name, "linked.pem")
+        }
+        XCTAssertEqual(try DatFileTransfer.manifest(in: published), ["old.dat": time])
         XCTAssertEqual(try DatFileTransfer.read(name: "old.dat", in: published), Data("old".utf8))
+        XCTAssertEqual(try DatFileTransfer.read(name: "new.dat", in: staging), Data("new".utf8))
     }
 
     func testFailedPublicationRollsBackAndCanRetry() throws {
