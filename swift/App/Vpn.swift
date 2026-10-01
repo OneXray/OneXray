@@ -30,7 +30,9 @@ class VPNManager {
     private var observedConnecting = false
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
-    private var systemExtensionActivationTask: Task<RefreshVpnResult, Never>?
+    #if os(macOS)
+    private var systemExtensionActivationTask: Task<SystemExtensionState, Never>?
+    #endif
     private struct StatusWait {
         let session: NETunnelProviderSession
         let accepted: [NEVPNStatus]
@@ -157,22 +159,6 @@ class VPNManager {
         return vpn
     }
 
-    func refreshVpn() async -> RefreshVpnResult {
-        let permission = await queryPlatformPermission()
-        return refreshVpnResult(from: permission)
-    }
-
-    func refreshVpnResult(from permission: PlatformPermissionResult) -> RefreshVpnResult {
-        switch permission.state {
-        case .granted, .notRequired:
-            return .installed
-        case .awaitingUserApproval:
-            return .waitForApproval
-        default:
-            return .notInstalled
-        }
-    }
-
     func queryPlatformPermission() async -> PlatformPermissionResult {
         #if targetEnvironment(simulator)
         // The simulator cannot query NetworkExtension VPN preferences.
@@ -250,7 +236,7 @@ class VPNManager {
 
     #if os(macOS)
     private func platformPermissionResult(
-        from state: RefreshVpnResult,
+        from state: SystemExtensionState,
         requested: Bool = false
     ) -> PlatformPermissionResult {
         switch state {
@@ -275,11 +261,11 @@ class VPNManager {
         }
     }
 
-    private func querySystemExtensionIfNeeded() async -> RefreshVpnResult {
+    private func querySystemExtensionIfNeeded() async -> SystemExtensionState {
         await SystemExtensionManager.isInstalled()
     }
 
-    private func requestSystemExtensionIfNeeded() async -> RefreshVpnResult {
+    private func requestSystemExtensionIfNeeded() async -> SystemExtensionState {
         if let existing = systemExtensionActivationTask {
             let result = await existing.value
             if result != .installed {
@@ -296,7 +282,7 @@ class VPNManager {
         return result
     }
 
-    private func runSystemExtensionSetup() async -> RefreshVpnResult {
+    private func runSystemExtensionSetup() async -> SystemExtensionState {
         #if DEBUG
         let force = true
         #else
@@ -322,7 +308,7 @@ class VPNManager {
     }
     #endif
 
-    func readStatus() async throws -> NEVPNStatus? {
+    private func readStatus() async throws -> NEVPNStatus? {
         #if targetEnvironment(simulator)
         return try await SimulatorProxy.isRunning() ? .connected : .disconnected
         #else
@@ -346,33 +332,92 @@ class VPNManager {
         #endif
     }
 
-    func startVpn() async -> RefreshVpnResult {
+    func readVpnStatus() async throws -> VpnStatus {
+        guard let status = try await readStatus() else { return .disconnected }
+        YGLog("readRunningVpn \(status.rawValue)")
+        switch status {
+        case .disconnecting: return .disconnecting
+        case .connecting, .reasserting: return .connecting
+        case .connected: return .connected
+        default: return .disconnected
+        }
+    }
+
+    private func commandResult(_ state: NativeVpnCommandState) async -> NativeVpnCommandResult {
+        let permission = await queryPlatformPermission()
+        switch state {
+        case .success:
+            do {
+                return NativeVpnCommandResult(
+                    state: .success,
+                    status: try await readVpnStatus(),
+                    permission: permission,
+                    message: nil
+                )
+            } catch {
+                return NativeVpnCommandResult(
+                    state: .failed,
+                    permission: permission,
+                    message: error.localizedDescription
+                )
+            }
+        case .waitingForPlatformPermission:
+            return NativeVpnCommandResult(
+                state: .waitingForPlatformPermission,
+                permission: permission,
+                message: nil
+            )
+        case .failed:
+            if permission.state == .awaitingUserApproval || permission.state == .notDetermined {
+                return NativeVpnCommandResult(
+                    state: .waitingForPlatformPermission,
+                    permission: permission,
+                    message: nil
+                )
+            }
+            return NativeVpnCommandResult(
+                state: .failed,
+                permission: permission,
+                message: lastCommandError ?? permission.message
+            )
+        }
+    }
+
+    func startVpn() async -> NativeVpnCommandResult {
         lastCommandError = nil
         awaitingStart = true
         observedConnecting = false
         guard let request = StartVpnRequest.startModel else {
             lastCommandError = "Unable to read run/start.json."
-            return .notInstalled
+            return await commandResult(.failed)
         }
         #if targetEnvironment(simulator)
-        defer { runStatusObserver() }
         guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
             lastCommandError = VPNError.noGroupContainer.localizedDescription
-            return .notInstalled
+            runStatusObserver()
+            return await commandResult(.failed)
         }
+        let state: NativeVpnCommandState
         do {
             try await SimulatorProxy.start(request, at: groupURL.adaptedAppendPath(path: StartModelFile))
-            return .installed
+            state = .success
         } catch {
             YGLog("Simulator proxy start failed: \(error)")
             lastCommandError = error.localizedDescription
-            return .notInstalled
+            state = .failed
         }
+        runStatusObserver()
+        return await commandResult(state)
         #else
         do {
-            let installed = await refreshVpn()
-            if installed != .installed {
-                return installed
+            let permission = await queryPlatformPermission()
+            switch permission.state {
+            case .granted, .notRequired:
+                break
+            case .awaitingUserApproval:
+                return await commandResult(.waitingForPlatformPermission)
+            default:
+                return await commandResult(.failed)
             }
             if let vpn = vpn {
                 if let tun = request.tun {
@@ -394,44 +439,48 @@ class VPNManager {
                             try session.startTunnel()
                         }
                     }
-                    return .installed
+                    return await commandResult(.success)
                 } else {
                     lastCommandError = VPNError.sessionNotReady.localizedDescription
-                    return .notInstalled
+                    return await commandResult(.failed)
                 }
             } else {
                 lastCommandError = VPNError.sessionNotReady.localizedDescription
-                return .notInstalled
+                return await commandResult(.failed)
             }
         } catch {
             YGLog(error.localizedDescription)
             _ = try? await readStatus()
             if lastCommandError == nil { lastCommandError = error.localizedDescription }
-            return .notInstalled
+            return await commandResult(.failed)
         }
         #endif
     }
 
-    func stopVpn() async -> RefreshVpnResult {
+    func stopVpn() async -> NativeVpnCommandResult {
         lastCommandError = nil
         awaitingStart = false
         #if targetEnvironment(simulator)
-        defer { runStatusObserver() }
+        let state: NativeVpnCommandState
         do {
             try await SimulatorProxy.stop()
-            return .installed
+            state = .success
         } catch {
             YGLog("Simulator proxy stop failed: \(error)")
             lastCommandError = error.localizedDescription
-            return .notInstalled
+            state = .failed
         }
+        runStatusObserver()
+        return await commandResult(state)
         #else
         #if os(macOS)
         if Constants.useSystemExtension {
             let installed = await querySystemExtensionIfNeeded()
             YGLog("querySystemExtensionIfNeeded \(installed)")
             if installed != .installed {
-                return installed
+                return await commandResult(
+                    installed == .waitForApproval ? .waitingForPlatformPermission : .failed
+                )
             }
         }
         #endif
@@ -441,19 +490,19 @@ class VPNManager {
             } catch {
                 YGLog(error.localizedDescription)
                 lastCommandError = error.localizedDescription
-                return .notInstalled
+                return await commandResult(.failed)
             }
         }
         guard let vpn = vpn else {
             lastCommandError = VPNError.sessionNotReady.localizedDescription
-            return .notInstalled
+            return await commandResult(.failed)
         }
         do {
             try await saveVpn(vpn: vpn, tun: TunJson())
         } catch {
             YGLog(error.localizedDescription)
             lastCommandError = error.localizedDescription
-            return .notInstalled
+            return await commandResult(.failed)
         }
         do {
             guard let session = vpn.connection as? NETunnelProviderSession else {
@@ -463,10 +512,10 @@ class VPNManager {
                 session.stopTunnel()
             }
             runStatusObserver()
-            return .installed
+            return await commandResult(.success)
         } catch {
             lastCommandError = error.localizedDescription
-            return .notInstalled
+            return await commandResult(.failed)
         }
         #endif
     }
