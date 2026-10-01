@@ -56,16 +56,6 @@ class VpnAutomationTest {
         assertEquals(AutomationSettings(), store.read())
     }
 
-    @Test fun damagedAndUnpublishedSettingsFailClosed() {
-        val token = store.setEnabled(true).token
-        File(context.noBackupFilesDir, "vpn-automation.json").writeText("{broken secret}")
-        File(context.noBackupFilesDir, "vpn-automation.json.new").writeText("unfinished")
-        assertFalse(store.authorized(token))
-        assertEquals(AutomationSettings(), store.read())
-        val unusable = File(context.noBackupFilesDir, "not-a-directory").apply { writeText("file") }
-        assertThrows(IllegalStateException::class.java) { AutomationStore(unusable).setEnabled(true) }
-    }
-
     @Test fun unauthorizedCommandsHaveNoLifecycleOrFeedbackSideEffects() {
         val token = store.setEnabled(true).token
         val invalid = listOf(

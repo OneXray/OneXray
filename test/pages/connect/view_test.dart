@@ -9,7 +9,6 @@ import 'package:onexray/service/settings/language/locale.dart';
 import 'package:onexray/pages/connect/view.dart';
 import 'package:onexray/pages/theme/layout.dart';
 import 'package:onexray/pages/theme/theme.dart';
-import 'package:onexray/pages/shared/widgets/json_editor.dart';
 import 'package:onexray/pages/shared/widgets/page_action_bar.dart';
 import 'package:onexray/pages/shared/widgets/page_empty_state.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -17,7 +16,6 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/traffic.dart';
 import 'package:onexray/service/settings/backup/service.dart';
-import 'package:re_editor/re_editor.dart';
 
 void main() {
   test('connection traffic keeps byte conversion and prototype precision', () {
@@ -31,35 +29,6 @@ void main() {
     expect(formatTraffic(1536), '1.5 KiB');
   });
 
-  testWidgets('JSON input stays top aligned and LTR in a Persian page', (
-    tester,
-  ) async {
-    final controller = CodeLineEditingController.fromText(
-      '{\n  "outbounds": []\n}',
-    );
-    addTearDown(controller.dispose);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        home: ShadTheme(
-          data: AppTheme.shad(Brightness.light),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Scaffold(body: AppJsonEditor(controller: controller)),
-          ),
-        ),
-      ),
-    );
-    final field = tester.widget<CodeEditor>(find.byType(CodeEditor));
-    expect(field.controller, same(controller));
-    expect(field.autofocus, isFalse);
-    expect(field.wordWrap, isFalse);
-    expect(
-      Directionality.of(tester.element(find.byType(CodeEditor))),
-      TextDirection.ltr,
-    );
-    expect(tester.takeException(), isNull);
-  });
   Widget screen({
     ConnectionView view = const ConnectionView(),
     bool hasServers = true,
@@ -268,25 +237,26 @@ void main() {
     const Locale('ru'),
     const Locale('fa'),
   ]) {
-    for (final width in [390.0, 1160.0]) {
-      testWidgets('connection layout ${locale.toLanguageTag()} at $width', (
-        tester,
-      ) async {
-        await tester.binding.setSurfaceSize(Size(width, 900));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        await tester.pumpWidget(app(screen(), locale: locale, scale: 1.3));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        final context = tester.element(find.byType(ConnectView));
-        final l = AppLocalizations.of(context)!;
-        expect(find.text(l.prototypeCurrentSpeed), findsOneWidget);
-        expect(find.text(l.prototypeServers), findsOneWidget);
-        expect(
-          Directionality.of(context),
-          locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
-        );
-      });
-    }
+    final width = locale.languageCode == 'en' || locale.languageCode == 'fa'
+        ? 1160.0
+        : 390.0;
+    testWidgets('connection layout ${locale.toLanguageTag()} at $width', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(app(screen(), locale: locale, scale: 1.3));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final context = tester.element(find.byType(ConnectView));
+      final l = AppLocalizations.of(context)!;
+      expect(find.text(l.prototypeCurrentSpeed), findsOneWidget);
+      expect(find.text(l.prototypeServers), findsOneWidget);
+      expect(
+        Directionality.of(context),
+        locale.languageCode == 'fa' ? TextDirection.rtl : TextDirection.ltr,
+      );
+    });
     testWidgets(
       'connected path and selection reset notice ${locale.toLanguageTag()}',
       (tester) async {

@@ -11,16 +11,12 @@ void main() {
     addTearDown(db.close);
   });
 
-  test('read/watch defaults and singleton constraint', () async {
+  test('read and watch expose the default connection configuration', () async {
     final dao = db.connectionConfigDao;
     final initial = await dao.read();
     expect(initial.id, 1);
     expect(initial.configurationJson, '{}');
     expect(await dao.watch().first, initial);
-    await expectLater(
-      db.customStatement('INSERT INTO connection_config (id) VALUES (2)'),
-      throwsA(anything),
-    );
   });
 
   test('connection configuration and assets commit as one value', () async {

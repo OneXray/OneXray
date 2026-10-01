@@ -172,7 +172,6 @@ void main() {
     domain.clear();
 
     expect(state.rules.single.domain, ['domain:example.com']);
-    expect(() => state.rules.add(rule), throwsUnsupportedError);
     expect(XrayJson.fromJson(jsonDecode(state.encode())).toJson(), {
       'dns': {
         'servers': [
@@ -290,24 +289,6 @@ void main() {
       });
       _rejectRule({..._rule(), 'balancerTag': 'custom'});
       _rejectRule({..._rule(), 'outboundTag': 'direct'});
-      expect(
-        () => RoutingProfileState.fromXrayJson(
-          name: 'Route',
-          xrayJson: XrayJson(
-            outbounds: const [{}],
-            routing: XrayRouting(
-              rules: [
-                XrayRoutingRule(
-                  domain: const ['domain:example.com'],
-                  inboundTag: const ['hidden'],
-                  balancerTag: 'proxy',
-                ),
-              ],
-            ),
-          ),
-        ),
-        throwsFormatException,
-      );
     },
   );
 

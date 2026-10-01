@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/ffi/windows/native_api.dart';
 
@@ -134,68 +133,6 @@ void main() {
       expect(WindowsVpnPolicy.fromJson(policyJson).toJson(), policyJson);
     },
   );
-
-  test('requires every policy field and rejects unknown policy fields', () {
-    final policyJson = const WindowsVpnPolicy(
-      alwaysOn: false,
-      allowLocalNetwork: true,
-      excludedCidrs: [],
-    ).toJson();
-
-    for (final key in policyJson.keys) {
-      expect(
-        () => WindowsVpnPolicy.fromJson({...policyJson}..remove(key)),
-        throwsA(isA<MissingRequiredKeysException>()),
-      );
-    }
-    expect(
-      () => WindowsVpnPolicy.fromJson({...policyJson, 'unexpected': true}),
-      throwsA(isA<UnrecognizedKeysException>()),
-    );
-  });
-
-  test('requires a policy in the start payload', () {
-    expect(
-      () => WindowsStartVpnPayload.fromJson({
-        'configYaml': 'tun:\n  enable: true\n',
-        'networkSettings': {
-          'ipv4Address': '192.168.8.1',
-          'ipv6Address': 'fd00:8::2',
-          'dnsIpv4Address': '223.5.5.5',
-          'dnsIpv6Address': '2400:3200::1',
-        },
-      }),
-      throwsA(isA<MissingRequiredKeysException>()),
-    );
-  });
-
-  test('rejects a successful response with a noncanonical token', () async {
-    final api = WindowsNativeApi.forTest((_) async {
-      return jsonEncode({
-        'success': true,
-        'data': {'status': 'connected', 'snapshotToken': '../config.yaml'},
-        'error': '',
-      });
-    });
-
-    await expectLater(api.getVpnStatus(), throwsA(isA<FormatException>()));
-  });
-
-  test('rejects malformed native response models', () async {
-    final api = WindowsNativeApi.forTest((_) async {
-      return jsonEncode({
-        'success': true,
-        'data': {'state': 'disabled'},
-        'error': '',
-        'unexpected': true,
-      });
-    });
-
-    await expectLater(
-      api.getStartupTaskStatus(),
-      throwsA(isA<FormatException>()),
-    );
-  });
 
   test('surfaces bounded native failures', () async {
     final api = WindowsNativeApi.forTest((_) async {

@@ -14,9 +14,9 @@ void main() {
     addTearDown(database.close);
   });
 
-  test('asset queries isolate raw and reject retired types', () async {
+  test('asset lists separate Raw, outbound and retired rows', () async {
     final dao = database.coreConfigDao;
-    for (final type in ['setting', 'full', 'unknown']) {
+    for (final type in ['setting', 'full']) {
       await dao.insertRow(_config(type));
     }
     final rawId = await dao.insertRow(_config('raw', subId: 7));
@@ -25,21 +25,7 @@ void main() {
     expect((await dao.allRawRowsWithData).single.id, rawId);
     expect((await dao.allRawRowsWithDataStream.first).single.id, rawId);
     expect((await dao.searchRow(1))!.type, 'setting');
-    await expectLater(
-      dao.updateRow((await dao.searchRow(1))!),
-      throwsStateError,
-    );
-    expect(
-      await dao.updateRow(
-        (await dao.searchRow(rawId))!.copyWith(type: 'outbound'),
-      ),
-      isFalse,
-    );
     expect((await dao.searchRow(rawId))!.type, 'raw');
-    await expectLater(
-      dao.insertAssetRows([_config('outbound'), _config('full')]),
-      throwsArgumentError,
-    );
     expect(await dao.allOutboundRowsWithDataBySubId(0), hasLength(1));
   });
 

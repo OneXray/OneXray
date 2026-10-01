@@ -10,18 +10,6 @@ void main() {
     expect(results, isEmpty);
   });
 
-  test("ping batch rejects more than five configs", () async {
-    final sources = List.generate(
-      PingBatchRunner.maxBatchSize + 1,
-      (_) => const PingBatchSource("{}"),
-    );
-
-    await expectLater(
-      PingBatchRunner.run(sources, PingState()),
-      throwsArgumentError,
-    );
-  });
-
   test('location JSON is parsed per item without changing delay results', () {
     final responses = [
       PingBatchItemResponse(

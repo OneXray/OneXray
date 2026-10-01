@@ -96,21 +96,6 @@ void main() {
     expect(XrayRawValidator.normalize(source, nameOverride: ' ').text, source);
   });
 
-  test('parsed validation does not mutate the source map', () async {
-    final parsed = XrayRawValidator.normalize(source);
-    var calls = 0;
-    final result = await XrayRawValidator.validateParsed(
-      parsed,
-      testXray: (_) async {
-        calls++;
-        return '';
-      },
-    );
-    expect(calls, 1);
-    expect(identical(result, parsed), true);
-    expect(parsed.json, jsonDecode(source));
-  });
-
   test('explicit name override only changes the root name', () {
     final result = XrayRawValidator.normalize(
       source,
@@ -163,6 +148,7 @@ void main() {
       );
       expect(calls, 1);
       expect(result.text, source);
+      expect(result.json, jsonDecode(source));
     },
   );
 

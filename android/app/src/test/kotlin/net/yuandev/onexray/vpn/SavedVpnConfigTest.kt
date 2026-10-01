@@ -85,10 +85,8 @@ class SavedVpnConfigTest {
         assertEquals(old - "startedAt", current - "startedAt")
     }
 
-    @Test fun missingOrInvalidDisplayMetadataDoesNotBlockVpn() {
-        for (metadata in listOf(null, "invalid")) {
-            val saved = SavedVpnConfig.decode(request(metadata = metadata))
-            assertEquals(saved, SavedVpnConfig.renewSession(saved, 9))
-        }
+    @Test fun savedRequestWithoutDisplayMetadataCanStartAgain() {
+        val saved = SavedVpnConfig.decode(request(metadata = null))
+        assertEquals(saved, SavedVpnConfig.renewSession(saved, 9))
     }
 }

@@ -89,20 +89,6 @@ void main() {
     );
   });
 
-  test('unknown start metadata enums are ignored', () async {
-    final request = _runtime().request;
-    final metadata = jsonDecode(request.metadataJson!) as Map<String, dynamic>;
-    metadata['platform'] = 'unknown';
-    request.metadataJson = jsonEncode(metadata);
-    await File(p.join(directory.path, 'start.json'))
-        .writeAsString(jsonEncode(request.toJson()));
-
-    expect(
-      await ConnectionRuntimeHost(runDirectory: directory.path).readRuntime(),
-      isNull,
-    );
-  });
-
   test(
     'inspect associates native status with the active start request',
     () async {

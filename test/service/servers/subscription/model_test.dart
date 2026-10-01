@@ -63,14 +63,4 @@ void main() {
       expect(input.normalizedAgeContext, isNull);
     });
   });
-
-  test('SubscriptionAgeContext keeps the saved key pair together', () {
-    const context = SubscriptionAgeContext(
-      secretKey: 'AGE-SECRET-KEY-1TEST',
-      publicKey: 'age1test',
-    );
-
-    expect(context.secretKey, 'AGE-SECRET-KEY-1TEST');
-    expect(context.publicKey, 'age1test');
-  });
 }

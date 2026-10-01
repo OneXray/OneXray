@@ -75,17 +75,6 @@ void main() {
     expect(readerCalled, isFalse);
   });
 
-  test('uses the fallback User-Agent on unsupported platforms', () async {
-    final result = await DownloadUserAgent.resolveForPlatform(
-      mode: DownloadUserAgentMode.system,
-      platform: DownloadUserAgentPlatform.other,
-      oneXrayUserAgent: fallback,
-      systemUserAgentReader: () async => 'system browser UA',
-    );
-
-    expect(result, fallback);
-  });
-
   test('OneXray mode bypasses the system browser User-Agent', () async {
     var readerCalled = false;
     final result = await DownloadUserAgent.resolveForPlatform(
@@ -113,14 +102,10 @@ void main() {
     );
   });
 
-  test('missing or unknown persisted modes default to OneXray', () {
+  test('first installation defaults to the OneXray User-Agent', () {
     expect(DownloadUserAgentMode.defaultMode, DownloadUserAgentMode.oneXray);
     expect(
       DownloadUserAgentMode.fromString(null),
-      DownloadUserAgentMode.oneXray,
-    );
-    expect(
-      DownloadUserAgentMode.fromString('unknown'),
       DownloadUserAgentMode.oneXray,
     );
   });

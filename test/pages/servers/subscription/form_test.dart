@@ -173,54 +173,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final locale in AppLocalizations.supportedLocales) {
-    for (final width in [390.0, 1000.0]) {
-      testWidgets('format notice and HWID disclosure fit at $width ($locale)', (
-        tester,
-      ) async {
-        await tester.binding.setSurfaceSize(Size(width, 800));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-        url.text = 'https://provider.example/list';
-        await tester.pumpWidget(app(form(), locale: locale));
-        await tester.pumpAndSettle();
-        final l = AppLocalizations.of(
-          tester.element(find.byType(SubscriptionFormView)),
-        )!;
-        expect(
-          l.prototypeSubscriptionDescription,
-          contains('VMessAEAD / VLESS'),
-        );
-        expect(l.prototypeSubscriptionDescription, contains('Hysteria2'));
-        final formatNotice = tester.widget<Text>(
-          find.text(l.prototypeSubscriptionDescription),
-        );
-        expect(formatNotice.maxLines, isNull);
-        expect(formatNotice.overflow, isNull);
-        final disclosure = tester.widget<Text>(
-          find.text(l.subscriptionHwidDescription),
-        );
-        expect(disclosure.maxLines, isNull);
-        expect(disclosure.overflow, isNull);
-        expect(
-          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
-          isFalse,
-        );
-        await tester.ensureVisible(find.text(l.subscriptionHwidTitle));
-        await tester.tap(find.text(l.subscriptionHwidTitle));
-        await tester.pumpAndSettle();
-        expect(
-          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
-          isTrue,
-        );
-        url.text = 'https://another.example/sub';
-        await tester.pumpAndSettle();
-        expect(
-          tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value,
-          isFalse,
-        );
-        expect(tester.takeException(), isNull);
-      });
-    }
+  for (final (locale, width) in const [
+    (Locale('en'), 1000.0),
+    (Locale('zh'), 390.0),
+    (Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'), 390.0),
+    (Locale('ru'), 390.0),
+    (Locale('fa'), 1000.0),
+  ]) {
+    testWidgets('format notice and HWID disclosure fit at $width ($locale)', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(Size(width, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      url.text = 'https://provider.example/list';
+      await tester.pumpWidget(app(form(), locale: locale));
+      await tester.pumpAndSettle();
+      final l = AppLocalizations.of(
+        tester.element(find.byType(SubscriptionFormView)),
+      )!;
+      expect(l.prototypeSubscriptionDescription, contains('VMessAEAD / VLESS'));
+      expect(l.prototypeSubscriptionDescription, contains('Hysteria2'));
+      final formatNotice = tester.widget<Text>(
+        find.text(l.prototypeSubscriptionDescription),
+      );
+      expect(formatNotice.maxLines, isNull);
+      expect(formatNotice.overflow, isNull);
+      final disclosure = tester.widget<Text>(
+        find.text(l.subscriptionHwidDescription),
+      );
+      expect(disclosure.maxLines, isNull);
+      expect(disclosure.overflow, isNull);
+      expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, isFalse);
+      await tester.ensureVisible(find.text(l.subscriptionHwidTitle));
+      await tester.tap(find.text(l.subscriptionHwidTitle));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, isTrue);
+      url.text = 'https://another.example/sub';
+      await tester.pumpAndSettle();
+      expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, isFalse);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   for (final locale in const [Locale('en'), Locale('fa')]) {

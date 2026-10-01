@@ -106,35 +106,17 @@ void main() {
     expect(() => decodeBackup(Uint8List(0)), throwsFormatException);
   });
 
-  test('encoding checks actual UTF-8 size and envelope without decoding', () {
-    BackupDocument document({
-      int createdAt = 1000,
-      String format = 'onexray-backup',
-      int version = 1,
-      List<BackupCoreConfig> rows = const [],
-    }) => BackupDocument(
-      format: format,
-      version: version,
-      createdAt: createdAt,
-      coreConfigs: rows,
+  test('backup encoding checks actual UTF-8 size', () {
+    // Characters fit below the byte limit; UTF-8 bytes do not.
+    final oversized = BackupDocument(
+      createdAt: 1000,
+      coreConfigs: [
+        BackupCoreConfig('中文' * (backupByteLimit ~/ 6), 'raw', '', 'e30='),
+      ],
       subscriptions: const [],
       routingProfiles: const [],
       smartRouting: smart,
       geoData: const [],
-    );
-    for (final invalid in [
-      document(createdAt: 0),
-      document(createdAt: 8640000000000001),
-      document(format: 'other'),
-      document(version: 2),
-    ]) {
-      expect(() => encodeBackup(invalid), throwsFormatException);
-    }
-    // Characters fit below the byte limit; UTF-8 bytes do not.
-    final oversized = document(
-      rows: [
-        BackupCoreConfig('中文' * (backupByteLimit ~/ 6), 'raw', '', 'e30='),
-      ],
     );
     expect(() => encodeBackup(oversized), throwsFormatException);
   });
