@@ -81,7 +81,8 @@ Age App Link 只携带算法，不带公私钥；接收端生成新密钥对，�
 旧 Profile/full 拒绝，不为退休类型生成链接；类型显式指定，不根据字段猜常规/高级。
 Raw 保留原文语义，高级不经过普通模型；两类 Custom 共用名称唯一和三份上限，详见 [配置合同](xray-configuration.md)。
 
-Raw/Custom 完整交换可携带 `geodata.assets` 文件名与 HTTPS URL，省略默认数据，存储前移除交换元数据。
+两类 Custom 完整交换可通过 `geodata.assets` 携带非默认 Geodata 的文件名与 HTTPS 来源 URL，存储前移除该交换元数据。
+Raw 保留配置原文，依赖通过独立 `/dat/add` 伴随链接提供。
 依赖只扫描 routing、DNS、入站嗅探和 DNS outbound 等语义位置的标准 ext 引用，不扫描凭据或任意字符串。
 冲突、下载、确认、发布、回滚统一遵循 [Geodata](data-management.md#geodata-发布)。
 分享/导出完整配置前提示敏感信息风险；旧超额 Raw 完整保留。
