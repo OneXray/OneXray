@@ -21,14 +21,10 @@ import 'package:onexray/service/shared/share/configuration_transfer.dart';
 
 class JsonConfigurationEditorPage extends StatefulWidget {
   final int? configurationId;
-  final String? initialText;
-  final String? initialName;
   final ConfigurationKind kind;
   const JsonConfigurationEditorPage({
     super.key,
     this.configurationId,
-    this.initialText,
-    this.initialName,
     this.kind = ConfigurationKind.raw,
   });
   @override
@@ -39,8 +35,6 @@ class JsonConfigurationEditorPage extends StatefulWidget {
 class _JsonConfigurationEditorState extends State<JsonConfigurationEditorPage> {
   late final controller = JsonConfigurationEditorController(
     configurationId: widget.configurationId,
-    initialText: widget.initialText,
-    initialName: widget.initialName,
     kind: widget.kind,
   );
   bool _started = false;

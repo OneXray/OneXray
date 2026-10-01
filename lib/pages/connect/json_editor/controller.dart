@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/core/errors/json_diagnostic.dart';
@@ -98,13 +97,9 @@ class JsonConfigurationEditorController
       );
   final ConfigurationKind kind;
   final int? configurationId;
-  final String? initialText;
-  final String? initialName;
 
   JsonConfigurationEditorController({
     required this.configurationId,
-    this.initialText,
-    this.initialName,
     RawEditorService? service,
     this._customService,
     this._transferService,
@@ -213,18 +208,6 @@ class JsonConfigurationEditorController
         _draft = draft;
         name.text = draft.name;
         text.text = draft.text;
-      }
-      if (configurationId == null && initialText != null) {
-        text.text = initialText!;
-        final json = jsonDecode(initialText!);
-        if (json is! Map<String, dynamic>) {
-          throw const FormatException('Invalid JSON');
-        }
-        name.text = initialName?.isNotEmpty == true
-            ? initialName!
-            : json['name'] is String
-            ? json['name'] as String
-            : '';
       }
     } catch (error) {
       if (context.mounted) {

@@ -70,6 +70,32 @@ void main() {
     );
   });
 
+  test('manual node probes leave Raw configurations unmeasured', () async {
+    final node = await db.coreConfigDao.insertRow(_node('Node'));
+    final raw = await db.coreConfigDao.insertRow(
+      _node('Raw').copyWith(type: const Value('raw')),
+    );
+    final service = PingService.forTesting(
+      database: db,
+      runBatch: (sources, _) async {
+        expect(sources, hasLength(1));
+        expect(
+          jsonDecode(sources.single.xrayJson)['outbounds'][0]['tag'],
+          'Node',
+        );
+        return _successes(sources.length);
+      },
+    );
+
+    await service.pingConfigIds([raw, node], force: true);
+
+    expect((await db.coreConfigDao.searchRow(node))!.delay, 20);
+    expect(
+      (await db.coreConfigDao.searchRow(raw))!.delay,
+      PingDelayConstants.unknown,
+    );
+  });
+
   test('imported-node and subscription queues always run', () async {
     final local = await db.coreConfigDao.insertRow(_node('Local'));
     final remote = await db.coreConfigDao.insertRow(_node('Remote', subId: 9));

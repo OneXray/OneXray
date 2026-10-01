@@ -12,6 +12,7 @@ import 'package:onexray/pages/connect/routing/custom/rule_controller.dart';
 import 'package:onexray/pages/connect/routing/custom/rule_page.dart';
 import 'package:onexray/pages/theme/theme.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/geodata_suggestions.dart';
@@ -453,6 +454,37 @@ void main() {
     },
   );
 
+  testWidgets('route draft waits for readable connection settings', (
+    tester,
+  ) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    final coordinator = _PendingConfiguration(database: db);
+    final controller = CustomRoutingEditorController(
+      service: _PendingCustomSave(database: db, coordinator: coordinator),
+    );
+    addTearDown(() async {
+      await controller.close();
+      coordinator.dispose();
+      await db.close();
+    });
+    await tester.pumpWidget(_app(const Text('Draft')));
+    final context = tester.element(find.text('Draft'));
+    final loading = controller.load(context);
+    await coordinator.requested.future;
+    expect(controller.state.loaded, isFalse);
+    expect(controller.state.processing, isTrue);
+
+    coordinator.result.completeError(StateError('Settings unavailable'));
+    await loading;
+
+    expect(controller.state.loaded, isFalse);
+    expect(controller.state.processing, isFalse);
+    expect(
+      controller.state.error,
+      AppLocalizations.of(context)!.prototypeCannotReadCustomRoute,
+    );
+  });
+
   testWidgets('route save retains transfer resources until save finishes', (
     tester,
   ) async {
@@ -488,6 +520,19 @@ void main() {
     await tester.pump();
     expect(controller.transfer.isClosed, isTrue);
   });
+}
+
+class _PendingConfiguration extends ConnectionCoordinator {
+  _PendingConfiguration({required super.database});
+
+  final requested = Completer<void>();
+  final result = Completer<ConnectionConfiguration>();
+
+  @override
+  Future<ConnectionConfiguration> get configuration {
+    requested.complete();
+    return result.future;
+  }
 }
 
 class _PendingCustomSave extends CustomRoutingEditorService {

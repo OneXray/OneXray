@@ -21,16 +21,12 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 class CustomRoutingEditorPage extends StatefulWidget {
   final int? profileId;
-  final String? initialText;
-  final String? initialName;
   final OpenCustomRule openRule;
   final Widget Function(BuildContext, CustomRoutingEditorController)?
   transferTools;
   const CustomRoutingEditorPage({
     super.key,
     this.profileId,
-    this.initialText,
-    this.initialName,
     required this.openRule,
     this.transferTools,
   });
@@ -43,8 +39,6 @@ class CustomRoutingEditorPage extends StatefulWidget {
 class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
   late final controller = CustomRoutingEditorController(
     profileId: widget.profileId,
-    initialText: widget.initialText,
-    initialName: widget.initialName,
   );
   bool _started = false;
 

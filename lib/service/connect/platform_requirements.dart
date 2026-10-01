@@ -2,8 +2,6 @@ import 'dart:io';
 
 import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
-import 'package:onexray/core/pigeon/host_api.dart';
-import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/advanced/tunnel/interface.dart';
@@ -57,18 +55,6 @@ final class ConnectionPlatformRequirements {
       );
     }
   }
-
-  Future<PlatformPermissionResult> check({bool request = false}) async {
-    await ensureRuntime();
-    final host = AppHostApi();
-    final current = await host.queryPlatformPermission();
-    if (!request || permissionReady(current)) return current;
-    return host.requestPlatformPermission();
-  }
-
-  static bool permissionReady(PlatformPermissionResult value) =>
-      value.state == PlatformPermissionState.granted ||
-      value.state == PlatformPermissionState.notRequired;
 
   Future<void> ensureRuntime() async {
     if (platform == ConnectionPlatform.windows) {

@@ -324,11 +324,6 @@ class SubscriptionService {
     }
   }
 
-  Future<int> refreshSubscription(SubscriptionData subscription) async {
-    final result = await refreshSubscriptionResult(subscription);
-    return result.success ? result.count : 0;
-  }
-
   /// Explicit refresh, independent of the automatic-update interval. Keep the
   /// whole batch visible to loading/clear-data without waiting for probes.
   Future<Map<SubscriptionData, SubscriptionRefreshResult>> refreshAll() =>
