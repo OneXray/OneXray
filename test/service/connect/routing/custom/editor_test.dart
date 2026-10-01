@@ -88,7 +88,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         start: (_) async {
           actions.add('start');
           throw const ConnectionHostException('startFailed');
@@ -162,7 +162,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -207,7 +208,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),
@@ -290,7 +292,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           start: (runtime) async {
             calls.add(
               runtime.identity == old.identity ? 'start:old' : 'start:new',
@@ -383,7 +385,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         prepare: (next, _) async => _runtime('b', next),
         start: (runtime) async {
           calls.add(
@@ -433,7 +435,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -468,7 +471,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = CustomRoutingEditorService(

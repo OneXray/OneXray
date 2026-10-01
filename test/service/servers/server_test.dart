@@ -64,7 +64,7 @@ void main() {
         final coordinator = await initialize(
           ConnectionCoordinator(
             database: db,
-            inspect: (_) async => change == 'live-unused'
+            inspect: (_, {observedStatus}) async => change == 'live-unused'
                 ? HostConnection(VpnStatus.connected, runtime: live)
                 : const HostConnection(VpnStatus.disconnected),
             start: (_) async => throw StateError('Unexpected start'),
@@ -131,7 +131,8 @@ void main() {
       final coordinator = await initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -174,7 +175,8 @@ void main() {
       final coordinator = await initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
           start: (_) async => throw StateError('Unexpected start'),
           stop: () async => throw StateError('Unexpected stop'),
         ),
@@ -216,7 +218,7 @@ void main() {
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         start: (_) async {
           calls.add('start');
           throw const ConnectionHostException('startFailed');
@@ -288,7 +290,8 @@ void main() {
     final coordinator = await initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),

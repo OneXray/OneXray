@@ -98,7 +98,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
         ),
       );
       final original = await coordinator.configuration;
@@ -142,7 +143,8 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
         ),
       );
       final original = await coordinator.configuration;
@@ -194,7 +196,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),
@@ -248,7 +251,7 @@ void main() {
       final coordinator = await _initialize(
         ConnectionCoordinator(
           database: db,
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           prepare: (next, _) async => _runtime('b', next),
           start: (runtime) async {
             calls.add(
@@ -300,7 +303,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         prepare: (_, _) async => throw StateError('Must not prepare'),
         start: (_) async => throw StateError('Must not start'),
         stop: () async => throw StateError('Must not stop'),

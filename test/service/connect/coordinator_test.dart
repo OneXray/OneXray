@@ -43,38 +43,37 @@ void main() {
     );
   });
 
-  test(
-    'each reconciliation reads start metadata once and reuses that value',
-    () async {
-      final runtime = _runtime('a');
-      final host = ConnectionRuntimeHost(
-        readStatus: () async => VpnStatus.connected,
-      );
-      var reads = 0;
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: () async {
-            reads++;
-            return runtime;
-          },
-          inspect: host.inspect,
-        ),
-      );
-      expect(reads, 1);
-      expect(coordinator.state.value.runtime, same(runtime));
-      await coordinator.refresh();
-      expect(reads, 2);
-      expect(coordinator.state.value.runtime, same(runtime));
-    },
-  );
+  test('reconciliation prefers start metadata and retains runtime if it disappears', () async {
+    final first = _runtime('a');
+    final next = _runtime('b', entryIds: const [2]);
+    ConnectionRuntime? stored = first;
+    final host = ConnectionRuntimeHost(
+      readStatus: () async => VpnStatus.connected,
+    );
+    final coordinator = await _initialize(
+      ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => stored,
+        inspect: host.inspect,
+      ),
+    );
+    expect(coordinator.state.value.runtime, same(first));
+    stored = next;
+    await coordinator.refresh();
+    expect(coordinator.state.value.runtime, same(next));
+    stored = null;
+    await coordinator.refresh();
+    expect(coordinator.state.value.runtime, same(next));
+    expect((await coordinator.readReferences()).runningIds, {2});
+  });
 
   test('initialization trusts native disconnected status', () async {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
 
@@ -92,7 +91,8 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => runtime,
-          inspect: (_) async => HostConnection(status, runtime: runtime),
+          inspect: (_, {observedStatus}) async =>
+              HostConnection(status, runtime: runtime),
           readTraffic: (_) async {
             reads++;
             return ConnectionTraffic(
@@ -161,7 +161,8 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => runtime,
-          inspect: (_) async => HostConnection(status, runtime: runtime),
+          inspect: (_, {observedStatus}) async =>
+              HostConnection(status, runtime: runtime),
           readTraffic: (_) async {
             reads++;
             if (failing) throw const FormatException('Unavailable metrics');
@@ -237,7 +238,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => runtime,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.connected, runtime: runtime),
         readTraffic: (_) async {
           reads++;
@@ -279,7 +280,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => runtime,
-          inspect: (_) async =>
+          inspect: (_, {observedStatus}) async =>
               HostConnection(VpnStatus.connected, runtime: runtime),
           readTraffic: (_) async {
             reads++;
@@ -335,7 +336,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => runtime,
-        inspect: (_) async {
+        inspect: (_, {observedStatus}) async {
           statusReads++;
           return HostConnection(VpnStatus.connected, runtime: runtime);
         },
@@ -411,10 +412,12 @@ void main() {
     final coordinator = ConnectionCoordinator(
       database: db,
       readRuntime: () async => runtime,
-      inspect: (_) async {
-        reads++;
-        return HostConnection(VpnStatus.connected, runtime: runtime);
-      },
+      inspect: ConnectionRuntimeHost(
+        readStatus: () async {
+          reads++;
+          return VpnStatus.connected;
+        },
+      ).inspect,
       statusEvents: events.stream,
       observeStatus: () async {
         subscriptions++;
@@ -451,7 +454,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => current.runtime,
-        inspect: (_) async => current,
+        inspect: (_, {observedStatus}) async => current,
         prepare: (_, _) async => runtime,
         start: (runtime) async {
           starts++;
@@ -483,7 +486,7 @@ void main() {
     final coordinator = ConnectionCoordinator(
       database: db,
       readRuntime: () async => runtime,
-      inspect: (_) async =>
+      inspect: (_, {observedStatus}) async =>
           HostConnection(VpnStatus.connected, runtime: runtime),
       statusEvents: events.stream,
       observeStatus: () async {},
@@ -514,7 +517,8 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => runtime,
-          inspect: (_) async => HostConnection(status, runtime: runtime),
+          inspect: (_, {observedStatus}) async =>
+              HostConnection(status, runtime: runtime),
           readTraffic: (_) async {
             reads++;
             return const ConnectionTraffic(
@@ -552,7 +556,8 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => runtime,
-        inspect: (_) => holdStatus ? statusReply.future : Future.value(host),
+        inspect: (_, {observedStatus}) =>
+            holdStatus ? statusReply.future : Future.value(host),
         readTraffic: (_) => traffic.future,
         stop: () async => host = const HostConnection(VpnStatus.disconnected),
       ),
@@ -584,7 +589,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async {
+        inspect: (_, {observedStatus}) async {
           if (statusFails) {
             throw const ConnectionHostException('nativeStatusFailed');
           }
@@ -652,7 +657,7 @@ void main() {
           ConnectionCoordinator(
             database: db,
             readRuntime: () async => null,
-            inspect: (_) async =>
+            inspect: (_, {observedStatus}) async =>
                 HostConnection(VpnStatus.disconnected, permission: permission),
             stop: () async {
               stopCalls++;
@@ -675,7 +680,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async => HostConnection(
+        inspect: (_, {observedStatus}) async => HostConnection(
           VpnStatus.connected,
           runtime: _runtime('a'),
           permission: PlatformPermissionResult(
@@ -710,7 +715,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.disconnected, permission: permission),
       ),
     );
@@ -735,7 +740,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async {
+        inspect: (_, {observedStatus}) async {
           calls.add('read');
           return HostConnection(VpnStatus.disconnected, permission: permission);
         },
@@ -797,7 +802,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.disconnected, permission: permission),
       );
       addTearDown(coordinator.dispose);
@@ -859,7 +864,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async {
+        inspect: (_, {observedStatus}) async {
           reads++;
           return HostConnection(VpnStatus.disconnected, permission: permission);
         },
@@ -888,7 +893,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => null,
-          inspect: (_) async =>
+          inspect: (_, {observedStatus}) async =>
               HostConnection(VpnStatus.disconnected, permission: permission),
         ),
       );
@@ -929,7 +934,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => null,
-          inspect: (_) async =>
+          inspect: (_, {observedStatus}) async =>
               HostConnection(VpnStatus.disconnected, permission: permission),
         ),
       );
@@ -956,7 +961,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.disconnected, permission: permission),
       ),
     );
@@ -981,7 +986,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.disconnected, permission: permission),
       ),
     );
@@ -1003,7 +1008,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async => throw ConnectionHostException(
+        inspect: (_, {observedStatus}) async => throw ConnectionHostException(
           'nativeStatusFailed',
           permission: permission,
         ),
@@ -1027,7 +1032,7 @@ void main() {
       final coordinator = ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async {
+        inspect: (_, {observedStatus}) async {
           if (fail) {
             throw const ConnectionHostException('nativeStatusFailed');
           }
@@ -1058,11 +1063,12 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => active,
-        inspect: (_) async => HostConnection(status, runtime: active),
-        inspectObserved: (_, observed) async => HostConnection(
-          observed,
-          runtime: observed == VpnStatus.connected ? next : null,
-        ),
+        inspect: (_, {observedStatus}) async => observedStatus == null
+            ? HostConnection(status, runtime: active)
+            : HostConnection(
+                observedStatus,
+                runtime: observedStatus == VpnStatus.connected ? next : null,
+              ),
         prepare: (_, _) async => next,
         start: (runtime) async {
           status = VpnStatus.connected;
@@ -1097,7 +1103,7 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => host.runtime,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         prepare: (_, _) async {
           calls.add('prepare');
           expect(host.status, VpnStatus.disconnected);
@@ -1149,7 +1155,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => old,
-          inspect: (_) async =>
+          inspect: (_, {observedStatus}) async =>
               HostConnection(VpnStatus.connected, runtime: old),
           prepare: (_, _) async {
             calls.add('prepare');
@@ -1188,7 +1194,8 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => null,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         prepare: (_, _) async =>
             throw const FormatException('Raw configuration is empty'),
         start: (_) async {
@@ -1221,7 +1228,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => host.runtime,
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           prepare: (_, _) async {
             if (fail) throw error;
             return runtime;
@@ -1250,13 +1257,53 @@ void main() {
       ConnectionCoordinator(
         database: db,
         readRuntime: () async => active,
-        inspect: (_) async =>
+        inspect: (_, {observedStatus}) async =>
             HostConnection(VpnStatus.connected, runtime: active),
       ),
     );
 
     expect((await coordinator.readReferences()).runningIds, {2, 3, 4});
   });
+
+  test(
+    'an unpersisted pending runtime protects nodes while native start waits',
+    () async {
+      final pending = _runtime('pending', entryIds: const [2, 3], exitId: 4);
+      final starting = Completer<void>();
+      final finish = Completer<void>();
+      var status = VpnStatus.disconnected;
+      final host = ConnectionRuntimeHost(readStatus: () async => status);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => null,
+          inspect: host.inspect,
+          prepare: (_, _) async => pending,
+          start: (runtime) async {
+            status = VpnStatus.connected;
+            starting.complete();
+            await finish.future;
+            return HostConnection(status, runtime: runtime);
+          },
+        ),
+      );
+      final connecting = coordinator.apply(
+        pending.configuration,
+        connect: true,
+      );
+      await starting.future;
+      expect(coordinator.state.value.phase, ConnectionPhase.connecting);
+      expect(coordinator.state.value.runtime, isNull);
+      try {
+        expect((await coordinator.readReferences()).runningIds, {2, 3, 4});
+      } finally {
+        finish.complete();
+        await connecting;
+      }
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      expect(coordinator.state.value.runtime, same(pending));
+    },
+  );
 
   test(
     'start failure stops the attempt and never restarts the old runtime',
@@ -1271,11 +1318,12 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => active,
-          inspect: (_) async => HostConnection(status, runtime: active),
-          inspectObserved: (_, observed) async => HostConnection(
-            observed,
-            runtime: observed == VpnStatus.connected ? next : null,
-          ),
+          inspect: (_, {observedStatus}) async => observedStatus == null
+              ? HostConnection(status, runtime: active)
+              : HostConnection(
+                  observedStatus,
+                  runtime: observedStatus == VpnStatus.connected ? next : null,
+                ),
           prepare: (_, _) async => next,
           start: (_) async {
             starts++;
@@ -1322,7 +1370,7 @@ void main() {
         ConnectionCoordinator(
           database: db,
           readRuntime: () async => host.runtime,
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           prepare: (_, _) async {
             expect(host.status, VpnStatus.disconnected);
             throw const FormatException('bad input');

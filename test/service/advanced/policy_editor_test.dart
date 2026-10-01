@@ -93,7 +93,7 @@ void main() {
     stops = 0;
     coordinator = ConnectionCoordinator(
       database: db,
-      inspect: (_) async => host,
+      inspect: (_, {observedStatus}) async => host,
       prepare: (_, _) async => throw StateError('Must not prepare'),
       start: (_) async => throw StateError('Must not start'),
       stop: () async {

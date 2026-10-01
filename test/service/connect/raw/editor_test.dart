@@ -46,7 +46,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = RawEditorService(database: db, coordinator: coordinator);
@@ -78,7 +79,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         start: (_) async => throw StateError('Unexpected start'),
         stop: () async => throw StateError('Unexpected stop'),
       ),
@@ -131,7 +133,7 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => host,
+        inspect: (_, {observedStatus}) async => host,
         start: (runtime) async {
           calls.add('start:${runtime.identity}');
           throw const ConnectionHostException('startFailed');
@@ -248,7 +250,7 @@ void main() {
             database: db,
             readRuntime: () async => null,
             observeStatus: () async {},
-            inspect: (_) async => host,
+            inspect: (_, {observedStatus}) async => host,
             prepare: (next, _) async => _runtime('b', next, _text),
             start: (runtime) async {
               calls.add('start');
@@ -327,7 +329,7 @@ void main() {
           database: db,
           readRuntime: () async => null,
           observeStatus: () async {},
-          inspect: (_) async => host,
+          inspect: (_, {observedStatus}) async => host,
           prepare: (configuration, _) async =>
               _runtime('b', configuration, _text),
           start: (runtime) async =>
@@ -379,7 +381,8 @@ void main() {
     final coordinator = await _initialize(
       ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
       ),
     );
     final service = RawEditorService(

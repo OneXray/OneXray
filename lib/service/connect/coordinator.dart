@@ -76,13 +76,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final PrepareConnection _prepare;
   late final Future<HostConnection> Function(ConnectionRuntime) _start;
   late final Future<HostConnection> Function() _stop;
-  late final Future<HostConnection> Function(Iterable<ConnectionRuntime>)
-  _inspect;
-  late final Future<HostConnection> Function(
-    Iterable<ConnectionRuntime>,
-    VpnStatus,
-  )
-  _inspectObserved;
+  late final InspectConnection _inspect;
   late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
   final Stream<VpnStatus> _statusEvents;
@@ -116,9 +110,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     PrepareConnection? prepare,
     Future<HostConnection> Function(ConnectionRuntime)? start,
     Future<HostConnection> Function()? stop,
-    Future<HostConnection> Function(Iterable<ConnectionRuntime>)? inspect,
-    Future<HostConnection> Function(Iterable<ConnectionRuntime>, VpnStatus)?
-    inspectObserved,
+    InspectConnection? inspect,
     Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
     Stream<VpnStatus>? statusEvents,
@@ -133,9 +125,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _start = start ?? host.start;
     _stop = stop ?? host.stop;
     _inspect = inspect ?? host.inspect;
-    _inspectObserved =
-        inspectObserved ??
-        ((runtimes, status) => host.inspect(runtimes, observedStatus: status));
     _readTraffic = readTraffic ?? host.query;
     _readRuntime = readRuntime ?? host.readRuntime;
     _prepare =
@@ -178,13 +167,13 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             );
             await _observeStatus();
           }
-          var current = await _inspect(await _known());
+          var current = await _inspect(await _currentRuntime());
           // Only normal startup supplies this action; passive refreshes never
           // request permission or repeat a dismissed prompt.
           if (requestPermission != null &&
               _permissionRequired(current.permission)) {
             await requestPermission();
-            current = await _inspect(await _known());
+            current = await _inspect(await _currentRuntime());
           }
           final permission = current.permission;
           final permissionRequired = _permissionRequired(permission);
@@ -330,7 +319,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<SubscriptionNodeReferences> readReferences() async {
     final stored = await configuration;
-    final current = await _inspect(await _known());
+    final current = await _inspect(await _currentRuntime());
     if (current.runtime == null &&
         _pendingRuntime == null &&
         _preparingNodeIds.isEmpty &&
@@ -350,15 +339,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     );
   }
 
-  Future<List<ConnectionRuntime>> _known() async {
-    final values = <ConnectionRuntime>[
-      ?await _readRuntime(),
-      ?state.value.runtime,
-      ?_pendingRuntime,
-    ];
-    final identities = <String>{};
-    return values.where((value) => identities.add(value.identity)).toList();
-  }
+  Future<ConnectionRuntime?> _currentRuntime() async =>
+      await _readRuntime() ?? state.value.runtime ?? _pendingRuntime;
 
   Future<void> refresh({VpnStatus? observedStatus}) async {
     if (_closed || (!_appVisible && observedStatus == null)) return;
@@ -369,10 +351,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _refreshing = true;
     final commandGeneration = _commandGeneration;
     try {
-      final runtimes = await _known();
-      final current = observedStatus == null
-          ? await _inspect(runtimes)
-          : await _inspectObserved(runtimes, observedStatus);
+      final current = await _inspect(
+        await _currentRuntime(),
+        observedStatus: observedStatus,
+      );
       if (!_commandActive &&
           !_closed &&
           commandGeneration == _commandGeneration &&
@@ -465,7 +447,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   Future<void> _connectOnce() async {
     await initialize();
     if (_commandActive) return;
-    final current = await _inspect(await _known());
+    final current = await _inspect(await _currentRuntime());
     if (current.status != VpnStatus.disconnected) {
       _publish(current);
       return;
@@ -495,7 +477,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         (await configuration).encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final current = await _inspect(await _known());
+    final current = await _inspect(await _currentRuntime());
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
     final shouldStop = disconnect && current.status != VpnStatus.disconnected;
@@ -587,7 +569,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             failed = await _stop();
           } catch (_) {
             try {
-              failed = await _inspect(await _known());
+              failed = await _inspect(await _currentRuntime());
             } catch (_) {
               // The failed state remains explicit when native state is unavailable.
             }
@@ -664,7 +646,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
   Future<void> _stopForMaintenance() async {
     try {
-      final current = await _inspect(await _known());
+      final current = await _inspect(await _currentRuntime());
       state.value = ConnectionView(
         phase: ConnectionPhase.disconnecting,
         runtime: current.runtime,
@@ -685,7 +667,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     ConnectionRuntime? runtime;
     var traffic = state.value.traffic;
     try {
-      final current = await _inspect(await _known());
+      final current = await _inspect(await _currentRuntime());
       traffic = current.traffic ?? traffic;
       // The actual runtime can differ from saved settings after a failed change.
       // Keep it visible and protect its nodes without committing it.

@@ -23,6 +23,11 @@ import 'package:path/path.dart' as p;
 
 export 'traffic.dart' show ConnectionTraffic;
 
+typedef InspectConnection = Future<HostConnection> Function(
+  ConnectionRuntime?, {
+  VpnStatus? observedStatus,
+});
+
 class HostConnection {
   final VpnStatus status;
   final ConnectionRuntime? runtime;
@@ -192,7 +197,7 @@ class ConnectionRuntimeHost {
   }
 
   Future<HostConnection> inspect(
-    Iterable<ConnectionRuntime> knownRuntimes, {
+    ConnectionRuntime? runtime, {
     VpnStatus? observedStatus,
   }) async {
     final platform = observedStatus == null
@@ -200,9 +205,7 @@ class ConnectionRuntimeHost {
         : (status: observedStatus, permission: null, message: null);
     return HostConnection(
       platform.status,
-      runtime: platform.status == VpnStatus.disconnected
-          ? null
-          : knownRuntimes.firstOrNull,
+      runtime: platform.status == VpnStatus.disconnected ? null : runtime,
       permission: platform.permission,
     );
   }

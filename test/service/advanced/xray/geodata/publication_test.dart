@@ -390,7 +390,8 @@ void main() {
       await service.ensureInstalled();
       final coordinator = ConnectionCoordinator(
         database: db,
-        inspect: (_) async => const HostConnection(VpnStatus.disconnected),
+        inspect: (_, {observedStatus}) async =>
+            const HostConnection(VpnStatus.disconnected),
         prepare: (_, _) async => throw StateError('Must not prepare'),
         start: (_) async => throw StateError('Must not start'),
         stop: () async => throw StateError('Must not stop'),
