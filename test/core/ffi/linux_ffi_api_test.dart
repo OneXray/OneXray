@@ -84,6 +84,88 @@ void main() {
     expect(await nextStatus, VpnStatus.disconnected);
   });
 
+  test(
+    'an owned Core publishes Process.exitCode without a pidfd watch',
+    () async {
+      final fixture = await _Fixture.create();
+      final process = _OwnedProcess(42);
+      addTearDown(process.finish);
+      final api = fixture.api(
+        startProcess: (_, _) async {
+          fixture.pids.add(process.pid);
+          return process;
+        },
+      );
+      await api.observeVpnStatus();
+      expect(await api.startCore(_runConfig(), _tunConfig()), isTrue);
+      expect(fixture.watchedPids, isEmpty);
+
+      final nextStatus = fixture.nextStatus();
+      fixture.pids.remove(process.pid);
+      process.finish();
+      expect(await nextStatus, VpnStatus.disconnected);
+
+      // Once the owned process exits, a later discovered process uses pidfd again.
+      fixture.pids.add(process.pid);
+      expect((await api.readVpnStatus()).status, VpnStatus.connected);
+      expect(fixture.watchedPids, [process.pid]);
+    },
+  );
+
+  test(
+    'a retired owned exit preserves its replacement and stop wait',
+    () async {
+      final fixture = await _Fixture.create();
+      final previous = _OwnedProcess(42);
+      final current = _OwnedProcess(42);
+      addTearDown(previous.finish);
+      addTearDown(current.finish);
+      final signalled = Completer<void>();
+      var starts = 0;
+      final api = fixture.api(
+        startProcess: (_, _) async {
+          final process = starts++ == 0 ? previous : current;
+          fixture.pids.add(process.pid);
+          return process;
+        },
+        runCommand: (executable, _) async {
+          if (executable == 'pgrep') return fixture.queryResult();
+          signalled.complete();
+          return ProcessResult(1, 0, '', '');
+        },
+      );
+      await api.observeVpnStatus();
+      expect(await api.startCore(_runConfig(), _tunConfig()), isTrue);
+      api.disposeVpnStatus();
+      fixture.pids.clear();
+      expect(await api.startCore(_runConfig(), _tunConfig()), isTrue);
+      await api.observeVpnStatus();
+
+      previous.finish();
+      await Future<void>.delayed(Duration.zero);
+      expect(fixture.events, isEmpty);
+      expect((await api.readVpnStatus()).status, VpnStatus.connected);
+      api.disposeVpnStatus();
+      await api.observeVpnStatus();
+      expect(fixture.watchedPids, isEmpty);
+
+      // A stop still waits for the owned process when no status observer is active.
+      api.disposeVpnStatus();
+      var completed = false;
+      final stopped = api.stopCore().then((result) {
+        completed = true;
+        return result;
+      });
+      await signalled.future;
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+      fixture.pids.clear();
+      current.finish();
+      expect(await stopped, isTrue);
+      expect(fixture.events, isEmpty);
+    },
+  );
+
   test('only the last named Core exit disconnects the VPN', () async {
     final fixture = await _Fixture.create();
     fixture.pids.addAll([42, 43]);
@@ -459,6 +541,18 @@ void main() {
   }
 }
 
+LibXrayRunConfig _runConfig() => LibXrayRunConfig(
+  LibXrayInvokeRequest(
+    method: LibXrayMethod.runXray,
+    payload: RunXrayRequest('{"inbounds":[]}').toJson(),
+  ),
+);
+
+TunJson _tunConfig() => TunJson.fromJson({
+  'tunDnsIPv4': '8.8.8.8',
+  'autoOutboundsInterface': 'eth0',
+});
+
 class _Fixture {
   final Directory directory;
   final pids = <int>{};
@@ -540,6 +634,27 @@ class _Fixture {
 
   Future<VpnStatus> nextStatus() =>
       _statuses.stream.first.timeout(const Duration(seconds: 2));
+}
+
+class _OwnedProcess extends Fake implements Process {
+  @override
+  final int pid;
+  final _exit = Completer<int>();
+
+  _OwnedProcess(this.pid);
+
+  void finish() {
+    if (!_exit.isCompleted) _exit.complete(0);
+  }
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
 }
 
 class _ExitedProcess extends Fake implements Process {

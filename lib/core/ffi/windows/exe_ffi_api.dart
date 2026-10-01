@@ -1,8 +1,7 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:onexray/core/ffi/base_ffi_api.dart';
-import 'package:onexray/core/ffi/desktop_core_exit.dart';
+import 'package:onexray/core/ffi/core_process_monitor.dart';
 import 'package:onexray/core/ffi/windows/core_process.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
@@ -20,11 +19,13 @@ class WindowsExeFfiApi extends WindowsFfiApi {
   final Future<StartVpnRequest> Function() _readRequest;
   final Future<void> Function(VpnStatus) _notify;
   final void Function(Object) _notifyError;
-  final _exitWatches = <int, DesktopCoreExitWatch>{};
-  // Cancelling waits also invalidates the reads already triggered by their exits.
-  int _watchGeneration = 0;
-  int _queryGeneration = 0;
-  bool _observing = false;
+  late final _monitor = CoreProcessMonitor(
+    discoverPids: _process.findPids,
+    watchExit: _process.watchExit,
+    canPublish: () => _transition == null,
+    notify: _notify,
+    notifyError: _notifyError,
+  );
   VpnStatus? _transition;
 
   WindowsExeFfiApi({
@@ -53,88 +54,12 @@ class WindowsExeFfiApi extends WindowsFfiApi {
       checkRuntimeFiles(const ['libXray.dll', 'OneXrayCore.exe', 'wintun.dll']);
 
   @override
-  Future<void> observeVpnStatus() async {
-    _observing = true;
-    final query = _findCorePids();
-    final generation = _queryGeneration;
-    try {
-      await query;
-    } catch (_) {
-      if (generation == _queryGeneration) disposeVpnStatus();
-      rethrow;
-    }
-  }
+  Future<void> observeVpnStatus() => _monitor.observe();
 
   @override
-  void disposeVpnStatus() {
-    _observing = false;
-    _clearExitWatches();
-  }
+  void disposeVpnStatus() => _monitor.dispose();
 
-  void _clearExitWatches() {
-    _watchGeneration++;
-    _queryGeneration++;
-    for (final watch in _exitWatches.values) {
-      watch.cancel();
-    }
-    _exitWatches.clear();
-  }
-
-  void _syncExitWatches(Set<int> pids) {
-    for (final pid in _exitWatches.keys.toList()) {
-      if (!pids.contains(pid)) _exitWatches.remove(pid)?.cancel();
-    }
-    for (final pid in pids) {
-      if (_exitWatches.containsKey(pid)) continue;
-      final watch = _process.watchExit(pid);
-      final generation = _watchGeneration;
-      int? queryGeneration;
-      _exitWatches[pid] = watch;
-      unawaited(
-        watch.exited
-            .then((exited) async {
-              if (!identical(_exitWatches[pid], watch)) return;
-              _exitWatches.remove(pid);
-              if (!exited || !_observing || _transition != null) return;
-              final query = _findCorePids();
-              queryGeneration = _queryGeneration;
-              final pids = await query;
-              if (_observing &&
-                  _transition == null &&
-                  generation == _watchGeneration &&
-                  queryGeneration == _queryGeneration) {
-                await _notify(
-                  pids.isNotEmpty
-                      ? VpnStatus.connected
-                      : VpnStatus.disconnected,
-                );
-              }
-            })
-            .catchError((Object error) {
-              if (identical(_exitWatches[pid], watch)) {
-                _exitWatches.remove(pid)?.cancel();
-              }
-              if (_observing &&
-                  _transition == null &&
-                  generation == _watchGeneration &&
-                  (queryGeneration == null ||
-                      queryGeneration == _queryGeneration)) {
-                _notifyError(error);
-              }
-            }),
-      );
-    }
-  }
-
-  Future<Set<int>> _findCorePids() async {
-    // Claim the query revision before awaiting, including one-shot status reads.
-    final generation = ++_queryGeneration;
-    final pids = await _process.findPids();
-    if (_observing && generation == _queryGeneration) _syncExitWatches(pids);
-    return pids;
-  }
-
-  Future<bool> _running() async => (await _findCorePids()).isNotEmpty;
+  Future<bool> _running() async => (await _monitor.readPids()).isNotEmpty;
 
   @override
   Future<NativeVpnCommandResult> readVpnStatus() async {
@@ -193,7 +118,7 @@ class WindowsExeFfiApi extends WindowsFfiApi {
         ),
       );
       await Future<void>.delayed(const Duration(seconds: 1));
-      if (!(await _findCorePids()).contains(pid)) {
+      if (!(await _monitor.readPids()).contains(pid)) {
         throw StateError(
           await readDesktopCoreStartError(
             config,
@@ -233,9 +158,9 @@ class WindowsExeFfiApi extends WindowsFfiApi {
 
   Future<void> _stop() async {
     // A denied stop must still retire older queries, but keep live exit watches.
-    _queryGeneration++;
+    _monitor.invalidateQueries();
     await _process.stopAll();
-    _clearExitWatches();
+    _monitor.clearWatches();
   }
 
   NativeVpnCommandResult _failed(
