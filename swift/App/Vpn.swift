@@ -31,7 +31,7 @@ class VPNManager {
     private var cancellable: Cancellable?
     private var statusObserver: VPNStatusCallback?
     #if os(macOS)
-    private var systemExtensionActivationTask: Task<SystemExtensionState, Never>?
+    private let systemExtensionActivation = SystemExtensionActivation()
     #endif
     private struct StatusWait {
         let session: NETunnelProviderSession
@@ -266,20 +266,7 @@ class VPNManager {
     }
 
     private func requestSystemExtensionIfNeeded() async -> SystemExtensionState {
-        if let existing = systemExtensionActivationTask {
-            let result = await existing.value
-            if result != .installed {
-                systemExtensionActivationTask = nil
-            }
-            return result
-        }
-        let task = Task { await self.runSystemExtensionSetup() }
-        systemExtensionActivationTask = task
-        let result = await task.value
-        if result != .installed {
-            systemExtensionActivationTask = nil
-        }
-        return result
+        await systemExtensionActivation.request { await self.runSystemExtensionSetup() }
     }
 
     private func runSystemExtensionSetup() async -> SystemExtensionState {

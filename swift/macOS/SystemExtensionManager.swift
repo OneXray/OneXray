@@ -7,6 +7,25 @@ enum SystemExtensionState {
     case waitForApproval
 }
 
+@MainActor
+final class SystemExtensionActivation {
+    private var task: Task<SystemExtensionState, Never>?
+
+    func request(_ activate: @escaping @MainActor () async -> SystemExtensionState) async -> SystemExtensionState {
+        if let existing = task {
+            return await existing.value
+        }
+        let pending = Task {
+            // Only the activation clears its slot, before waiters can start
+            // another request. Completed results are never permission caches.
+            defer { self.task = nil }
+            return await activate()
+        }
+        task = pending
+        return await pending.value
+    }
+}
+
 /// Public entry points for managing the bundled packet tunnel system extension.
 /// Each call constructs a one-shot driver around a single OSSystemExtensionRequest;
 /// no state is retained between calls.

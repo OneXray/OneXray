@@ -53,6 +53,8 @@ Pigeon、FFI、Drift 或本地化变更先生成对应输出；只改测试时�
   外部打包工具替身证明编排，不证明生成包能安装；渠道发布还需实际产物检查。
 - macOS SE 文件交接：`bash tool/test_dat_file_transfer.sh` 编译生产 Swift，
   验证完整清单、空集合、消息往返与发布回滚，不启动 App/VPN。
+- macOS SE 激活：`bash tool/test_system_extension_activation.sh` 编译生产 Swift，
+  验证并发请求合并及完成后的重新激活；使用可控系统回复，不申请真实扩展授权或启动 VPN。
 - Android 原生：在 `android/` 执行 `./gradlew :app:testDebugUnitTest`，
   Robolectric 调用正式 Receiver、保存配置和 Widget 资源；不替代真实 VPN 与桌面验收。
 - Android Manifest/网络 XML 变更补跑 `./gradlew :app:lintVitalRelease`；
