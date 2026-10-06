@@ -77,10 +77,6 @@ class OneVpnService : VpnService() {
     private var backgroundStart = false
     private val startGeneration = AtomicInteger(0)
     private val released = AtomicBoolean(true)
-    // Binder commands and start admission share the :native owner. In
-    // particular, no saved request can be read/renewed after begin succeeds.
-    private val savedStartAdmission = Any()
-    private var savedVpnChangeActive = false
 
     private val resourceStatus: VpnStatus
         get() = when {
@@ -134,31 +130,10 @@ class OneVpnService : VpnService() {
 
     private val statusBinder = object : Binder() {
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-            if (code !in VpnStatusConnection.READ_STATUS..VpnStatusConnection.COMPLETE_SAVED_VPN_CHANGE) {
-                return super.onTransact(code, data, reply, flags)
-            }
+            if (code != VpnStatusConnection.READ_STATUS) return super.onTransact(code, data, reply, flags)
             data.enforceInterface(VpnStatusConnection.DESCRIPTOR)
-            try {
-                synchronized(savedStartAdmission) {
-                    when (code) {
-                        VpnStatusConnection.READ_STATUS -> {
-                            reply?.writeNoException()
-                            reply?.writeInt(resourceStatus.ordinal)
-                        }
-                        VpnStatusConnection.BEGIN_SAVED_VPN_CHANGE -> {
-                            val begun = beginSavedVpnChange()
-                            reply?.writeNoException()
-                            reply?.writeInt(if (begun) 1 else 0)
-                        }
-                        VpnStatusConnection.COMPLETE_SAVED_VPN_CHANGE -> {
-                            completeSavedVpnChange(data.readInt() != 0)
-                            reply?.writeNoException()
-                        }
-                    }
-                }
-            } catch (error: Exception) {
-                reply?.writeException(error)
-            }
+            reply?.writeNoException()
+            reply?.writeInt(resourceStatus.ordinal)
             return true
         }
     }
@@ -247,71 +222,34 @@ class OneVpnService : VpnService() {
         )
     }
 
-    private fun beginSavedVpnChange(): Boolean {
-        if (resourceStatus != VpnStatus.DISCONNECTED) return false
-        check(!savedVpnChangeActive) { "A saved VPN change is already running" }
-        SavedVpnConfig.beginChange(VpnController.startFile(this))
-        savedVpnChangeActive = true
-        return true
-    }
-
-    private fun completeSavedVpnChange(committed: Boolean) {
-        // A process restart may leave only the persistent block. Completion is
-        // still safe: rollback preserves the exact old request; commit deletes it.
-        val file = VpnController.startFile(this)
-        check(savedVpnChangeActive || SavedVpnConfig.isChangeBlocked(file)) { "No saved VPN change is running" }
-        try {
-            SavedVpnConfig.completeChange(file, committed)
-        } finally {
-            savedVpnChangeActive = false
-        }
-    }
-
     private fun startTun(startId: Int) {
-        synchronized(savedStartAdmission) {
-            XLog.d("OneVpnService: startTun $startId")
+        XLog.d("OneVpnService: startTun $startId")
+        if (!released.compareAndSet(true, false)) {
+            XLog.d("OneVpnService: startTun ignored because VPN resources are active")
+            return
+        }
+        val generation = startGeneration.incrementAndGet()
+        try {
+            updateWidget(VpnStatus.CONNECTING)
+            showNotification()
             val file = VpnController.startFile(this)
-            try {
-                if (backgroundStart) {
-                    check(!SavedVpnConfig.isChangeBlocked(file)) {
-                        "VPN configuration is being changed; connect from the App"
+            val saved = SavedVpnConfig.read(file)
+            val model = if (backgroundStart) {
+                SavedVpnConfig.renewSession(saved, System.currentTimeMillis() * 1000).also {
+                    val atomic = AtomicFile(file)
+                    val output = atomic.startWrite()
+                    try {
+                        output.write(JsonTool.json.encodeToString(it).toByteArray(Charsets.UTF_8))
+                        atomic.finishWrite(output)
+                    } catch (error: Exception) {
+                        atomic.failWrite(output)
+                        throw error
                     }
-                } else {
-                    check(!savedVpnChangeActive) { "VPN configuration is being changed" }
-                    // A fresh App start has compiled and written the current input.
-                    // Only this path can recover a block left by a crashed App.
-                    SavedVpnConfig.clearChangeBlock(file)
                 }
-            } catch (error: Exception) {
-                failStart("OneVpnService: start admission failed", error)
-                return
-            }
-            if (!released.compareAndSet(true, false)) {
-                XLog.d("OneVpnService: startTun ignored because VPN resources are active")
-                return
-            }
-            val generation = startGeneration.incrementAndGet()
-            try {
-                updateWidget(VpnStatus.CONNECTING)
-                showNotification()
-                val saved = SavedVpnConfig.read(file)
-                val model = if (backgroundStart) {
-                    SavedVpnConfig.renewSession(saved, System.currentTimeMillis() * 1000).also {
-                        val atomic = AtomicFile(file)
-                        val output = atomic.startWrite()
-                        try {
-                            output.write(JsonTool.json.encodeToString(it).toByteArray(Charsets.UTF_8))
-                            atomic.finishWrite(output)
-                        } catch (error: Exception) {
-                            atomic.failWrite(output)
-                            throw error
-                        }
-                    }
-                } else saved
-                runTun(model, generation)
-            } catch (e: Exception) {
-                failStart("OneVpnService: startTun failed", e, generation)
-            }
+            } else saved
+            runTun(model, generation)
+        } catch (e: Exception) {
+            failStart("OneVpnService: startTun failed", e, generation)
         }
     }
 
@@ -326,40 +264,38 @@ class OneVpnService : VpnService() {
     }
 
     private fun releaseTun(error: String? = null): Boolean {
-        synchronized(savedStartAdmission) {
-            if (!released.compareAndSet(false, true)) {
-                return false
-            }
-            startGeneration.incrementAndGet()
-            trafficMonitor.stop()
-            updateWidget(VpnStatus.DISCONNECTING)
-            XLog.d("OneVpnService: stopTun")
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            try {
-                stopXray()
-            } catch (e: Exception) {
-                XLog.d("OneVpnService: stopTun stopXray exception")
-                XLog.d(e)
-            }
-            try {
-                LibXray.resetDNS()
-            } catch (e: Exception) {
-                XLog.d("OneVpnService: stopTun resetDNS exception")
-                XLog.d(e)
-            }
-            try {
-                tunnel?.close()
-            } catch (e: Exception) {
-                XLog.d("OneVpnService: stopTun close tunnel exception")
-                XLog.d(e)
-            }
-            tunnel = null
-            controller.vpn = null
-            running = false
-            updateWidget(VpnStatus.DISCONNECTED)
-            sendStatusBroadcast(false, error)
-            return true
+        if (!released.compareAndSet(false, true)) {
+            return false
         }
+        startGeneration.incrementAndGet()
+        trafficMonitor.stop()
+        updateWidget(VpnStatus.DISCONNECTING)
+        XLog.d("OneVpnService: stopTun")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        try {
+            stopXray()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: stopTun stopXray exception")
+            XLog.d(e)
+        }
+        try {
+            LibXray.resetDNS()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: stopTun resetDNS exception")
+            XLog.d(e)
+        }
+        try {
+            tunnel?.close()
+        } catch (e: Exception) {
+            XLog.d("OneVpnService: stopTun close tunnel exception")
+            XLog.d(e)
+        }
+        tunnel = null
+        controller.vpn = null
+        running = false
+        updateWidget(VpnStatus.DISCONNECTED)
+        sendStatusBroadcast(false, error)
+        return true
     }
 
     private fun failStart(message: String, error: Exception, generation: Int? = null) {

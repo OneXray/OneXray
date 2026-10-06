@@ -5,7 +5,6 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
 import net.yuandev.onexray.vpn.OneVpnService
-import net.yuandev.onexray.vpn.SavedVpnConfig
 import net.yuandev.onexray.vpn.VpnController
 import org.junit.Assert.*
 import org.junit.Test
@@ -86,18 +85,6 @@ class VpnAutomationTest {
         assertTrue(intent.getBooleanExtra(OneVpnService.EXTRA_REUSE_CONFIGURATION, false))
         assertTrue(intent.getBooleanExtra(OneVpnService.EXTRA_AUTOMATION_START, false))
         assertNull(shadowOf(context).nextStartedActivity)
-    }
-
-    @Test fun invalidatedConfigurationCannotReopenVpnFromBackground() {
-        savedConfig()
-        val file = VpnController.startFile(context)
-        assertNotNull(SavedVpnConfig.read(file))
-        SavedVpnConfig.invalidate(file)
-        ShadowVpnService.setPrepareResult(null)
-
-        assertEquals(VpnController.SavedStartResult.OPEN_APP, VpnController.startSavedVpn(context))
-        assertFalse(file.exists())
-        assertNull(shadowOf(context).nextStartedService)
     }
 
     @Test fun missingInputsAreReportedBeforeMissingPermission() {

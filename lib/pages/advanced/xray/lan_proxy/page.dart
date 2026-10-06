@@ -59,6 +59,12 @@ class LanProxyPage extends StatelessWidget {
                     spacing: mobile ? 25 : 28,
                     children: [
                       Text(
+                        l.lanProxyNextStartNotice,
+                        style: AppTypography.settingsDetailNote.copyWith(
+                          color: palette.mutedForeground,
+                        ),
+                      ),
+                      Text(
                         l.lanProxyRawJsonNotice,
                         style: AppTypography.settingsDetailNote.copyWith(
                           color: palette.mutedForeground,

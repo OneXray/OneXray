@@ -7,7 +7,6 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/log/params.dart';
-import 'package:onexray/pages/advanced/xray/lan_proxy/dialog.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/connect/coordinator.dart';
@@ -263,7 +262,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
       draft.policy['lanProxy']['enabled'] = enabled;
       final saved = await policyEditor.save(
         draft: draft,
-        confirm: (_) => confirmLanProxyRestart(context),
+        confirm: (_) async => true,
       );
       if (saved && isPageActive) {
         await refreshLanProxy();

@@ -74,6 +74,9 @@ void main() {
       expect(find.text(l.lanProxyProtocolHint), findsOneWidget);
       expect(find.text(l.lanProxySecurityHint), findsOneWidget);
       expect(find.text(l.lanProxyRawJsonNotice), findsOneWidget);
+      expect(find.text(l.lanProxyNextStartNotice), findsOneWidget);
+      expect(find.text(l.prototypeSave), findsOneWidget);
+      expect(find.text(l.prototypeSaveAndReconnect), findsNothing);
       expect(find.text('0.0.0.0'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
       expect(controller.portController.text, '11024');
@@ -86,64 +89,54 @@ void main() {
   }
 
   for (final connected in [false, true]) {
-    testWidgets('switch saves only after required confirmation: $connected', (
-      tester,
-    ) async {
-      coordinator.state.value = ConnectionView(
-        phase: connected
-            ? ConnectionPhase.connected
-            : ConnectionPhase.disconnected,
-      );
-      final controller = _RuntimeController(
-        coordinator: coordinator,
-        policyEditor: service,
-      );
-      registerCleanup(tester, controller.close);
-      await tester.pumpWidget(
-        _app(
-          XrayRuntimePage(
-            createController: () => controller,
-            onGeodata: (_) {},
-            onUpdates: (_) {},
-            onSpeedTest: (_) {},
-            onLog: (_, _) {},
-            onConfig: (_, _) {},
-            onLanProxy: (_) async {},
+    testWidgets(
+      'switch saves for next App start without restarting: $connected',
+      (tester) async {
+        coordinator.state.value = ConnectionView(
+          phase: connected
+              ? ConnectionPhase.connected
+              : ConnectionPhase.disconnected,
+        );
+        final controller = _RuntimeController(
+          coordinator: coordinator,
+          policyEditor: service,
+        );
+        registerCleanup(tester, controller.close);
+        await tester.pumpWidget(
+          _app(
+            XrayRuntimePage(
+              createController: () => controller,
+              onGeodata: (_) {},
+              onUpdates: (_) {},
+              onSpeedTest: (_) {},
+              onLog: (_, _) {},
+              onConfig: (_, _) {},
+              onLanProxy: (_) async {},
+            ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      final toggle = find.byKey(const ValueKey('lan-proxy-switch'));
-      await tester.ensureVisible(toggle);
-      await tester.tap(toggle);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      if (connected) {
-        expect(find.text('Restart VPN?'), findsOneWidget);
-        expect(service.configuration.policy.lanProxyEnabled, isFalse);
-        await tester.tap(find.text('Cancel'));
+        );
         await tester.pumpAndSettle();
-        expect(controller.lanProxyEnabled, isFalse);
-        expect(service.saves, 0);
+        final toggle = find.byKey(const ValueKey('lan-proxy-switch'));
+        await tester.ensureVisible(toggle);
         await tester.tap(toggle);
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-        await tester.tap(find.text('Restart VPN'));
         await tester.pumpAndSettle();
-      } else {
-        expect(find.text('Restart VPN?'), findsNothing);
-      }
-      expect(service.configuration.policy.lanProxyEnabled, isTrue);
-      expect(controller.lanProxyEnabled, isTrue);
-      expect(service.saves, 1);
-      expect(controller.state.lanProxySaving, isFalse);
-      expect(controller.state.systemExtension, isTrue);
-      expect(find.byType(PageActionBar), findsNothing);
-      expect(tester.takeException(), isNull);
-      await tester.runAsync(controller.close);
-      await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
-    });
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(service.configuration.policy.lanProxyEnabled, isTrue);
+        expect(controller.lanProxyEnabled, isTrue);
+        expect(service.saves, 1);
+        expect(controller.state.lanProxySaving, isFalse);
+        expect(controller.state.systemExtension, isTrue);
+        expect(
+          coordinator.state.value.phase,
+          connected ? ConnectionPhase.connected : ConnectionPhase.disconnected,
+        );
+        expect(find.byType(PageActionBar), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.runAsync(controller.close);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+    );
   }
 
   testWidgets('Raw saves the shared port without a restart affordance', (
@@ -174,7 +167,7 @@ void main() {
     );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
-    expect(find.text('Restart VPN?'), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(service.configuration.policy.lanProxyPort, 11026);
     expect(service.saves, 1);
     expect(tester.takeException(), isNull);
@@ -183,49 +176,49 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets(
-    'editing the active port confirms restart and keeps draft on cancel',
-    (tester) async {
-      service.configuration = ConnectionConfiguration(
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true},
-        }),
-      );
-      coordinator.state.value = const ConnectionView(
-        phase: ConnectionPhase.connected,
-      );
-      final controller = LanProxyController(
-        draft: await service.load(),
-        service: service,
-      );
-      registerCleanup(tester, controller.close);
-      await tester.pumpWidget(
-        _app(LanProxyPage(createController: () => controller)),
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('lan-proxy-port')),
-        '11026',
-      );
-      await tester.tap(find.text('Save and reconnect'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.text('Cancel').last);
-      await tester.pumpAndSettle();
-      expect(service.configuration.policy.lanProxyPort, 11024);
-      expect(controller.portController.text, '11026');
-      await tester.tap(find.text('Save and reconnect'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.text('Restart VPN'));
-      await tester.pumpAndSettle();
-      expect(service.configuration.policy.lanProxyPort, 11026);
-      expect(service.saves, 1);
-      expect(tester.takeException(), isNull);
-      await tester.runAsync(controller.close);
-      await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
-    },
-  );
+  for (final connected in [false, true]) {
+    testWidgets(
+      'port saves for next App start without restarting: $connected',
+      (tester) async {
+        service.configuration = ConnectionConfiguration(
+          policy: PlatformPolicy.fromJson({
+            'lanProxy': {'enabled': true},
+          }),
+        );
+        coordinator.state.value = ConnectionView(
+          phase: connected
+              ? ConnectionPhase.connected
+              : ConnectionPhase.disconnected,
+        );
+        final controller = LanProxyController(
+          draft: await service.load(),
+          service: service,
+        );
+        registerCleanup(tester, controller.close);
+        await tester.pumpWidget(
+          _app(LanProxyPage(createController: () => controller)),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('lan-proxy-port')),
+          '11026',
+        );
+        expect(find.text('Save and reconnect'), findsNothing);
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertDialog), findsNothing);
+        expect(service.configuration.policy.lanProxyPort, 11026);
+        expect(service.saves, 1);
+        expect(
+          coordinator.state.value.phase,
+          connected ? ConnectionPhase.connected : ConnectionPhase.disconnected,
+        );
+        expect(tester.takeException(), isNull);
+        await tester.runAsync(controller.close);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpAndSettle();
+      },
+    );
+  }
 }
 
 class _LanService extends PolicyEditorService {
@@ -243,11 +236,6 @@ class _LanService extends PolicyEditorService {
     required PolicyEditorDraft draft,
     required Future<bool> Function(bool disconnect) confirm,
   }) async {
-    if (coordinator.state.value.phase == ConnectionPhase.connected &&
-        !draft.original.connection.expert &&
-        !await confirm(false)) {
-      return false;
-    }
     configuration = ConnectionConfiguration(
       connection: draft.original.connection,
       policy: PlatformPolicy.fromJson(draft.policy),

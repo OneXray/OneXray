@@ -139,32 +139,43 @@ iOS 模拟器完全由 Swift 判断，将 tunIn 转为 SOCKS，原子写回 run/
 
 ## 局域网代理共享
 
-设备级平台策略保存共享开关及端口，默认关闭、端口 `11024`；不写入智能/自定义路由或 Raw 原文，
-不随连接配置备份跨设备恢复。常规模式及自定义路由（含高级模板）开启后追加一个 `app-lan-proxy` 入站：
-`protocol: socks`、`listen: 0.0.0.0`、`auth: noauth`、`udp: true`，不额外创建 HTTP 入站。
-监听地址不可修改；同一端口兼容 HTTP（含 CONNECT）与 SOCKS5，UDP 仅通过 SOCKS5 UDP ASSOCIATE。
-内核为 UDP 会话动态分配中继端口，不保证只放行 `11024/UDP` 即可使用。
+Device platform policy stores the sharing switch and port, defaulting to disabled and `11024`.
+These settings are not embedded in intelligent/custom routes or Raw source, and connection backups
+do not transfer them between devices. On the next App-compiled start/restart, enabled sharing adds
+one `app-lan-proxy` inbound to normal/custom routing, including advanced templates:
+`protocol: socks`, `listen: 0.0.0.0`, `auth: noauth`, `udp: true`. No separate HTTP inbound is created.
+The listening address is fixed. The port supports HTTP, including CONNECT, and SOCKS5;
+UDP uses SOCKS5 UDP ASSOCIATE. Core allocates UDP relay ports dynamically, so allowing only
+`11024/UDP` does not guarantee UDP connectivity.
 
-这是显式代理，不接管其他设备的网关或热点转发。客户端需要填写此设备实际网络地址和共享端口。
-`0.0.0.0` 是通配监听而非来源限制；任何可达客户端均可使用，无认证，仅应在可信网络开启。
-App HTTP API 和 metrics 仍只监听 loopback。共享流量沿用当前路由；不强制代理或改写用户 `inboundTag`，
-只匹配 `tunIn` 的规则不会匹配共享入站。共享入站使用托管嗅探，并在需要时增加 FakeDNS 还原。
+This is an explicit proxy, not a gateway or hotspot traffic capture. Clients use the device's actual
+network address and sharing port. `0.0.0.0` is a wildcard listener, not an access restriction:
+any reachable client can use it without authentication. Enable it only on trusted networks.
+The App HTTP API and metrics remain loopback-only. Shared traffic follows the compiled routing;
+the App does not force proxying or rewrite user `inboundTag`. Rules limited to `tunIn` do not match
+the shared inbound. Managed sniffing includes FakeDNS restoration when required.
 
-完整 Raw 不适用此功能；使用 Raw 时修改共享设置仅保存给其它模式使用，不注入入站、不检查共享冲突、不触发重启。
-共享端口允许 `1024–65535`，适用模式开启时检查本地 HTTP API 保存端口及当前高级模板入站的端口/tag 冲突；
-不静默替换用户入站。修改 API 端口也避开启用的共享端口，实际外部占用由 Xray 启动返回原因。
-VPN 已连接时切换共享需确认重启，取消保持原状态；端口生效变化同样确认。
-未连接仅保存，不主动启动；关闭 VPN 同时关闭共享。离线有效修改在数据库提交成功后使旧 saved-start 失效；
-提交失败保留旧输入及 Apple 按需连接。Android 保存期间通过原生服务阻断后台复用，与服务读取/刷新/启动共用准入；
-后台启动先取得资源则拒绝离线保存，旧策略不变。成功清除输入后 Widget/Tile 回到 App 重新编译；
-Apple 提交后才清除旧 provider request 与按需连接。
-原生失效失败明确报错，不伪装数据库回滚；Android 保留后台复用阻断，正常 App 连接写入新配置后解除。
-异常退出遗留阻断同样只由正常 App 新配置启动解除，不恢复旧连接或引入配置快照。
+Saving the switch or port only persists policy. It does not prompt for a restart, start/stop VPN,
+modify the current runtime, invalidate/rewrite `run/start.json`, change Apple's provider request
+or on-demand rules, or create a saved-start protection marker. The change takes effect only when
+an App start/restart compiles fresh input. Widget, Tile, Android automation and Apple on-demand
+starts keep the last generated configuration until that happens, including its sharing setting.
+Turning sharing off in settings therefore does not close an existing listener. Stopping VPN closes
+that running listener but leaves the saved input unchanged; a background start can still reuse it.
+Other platform-policy changes retain their existing reconnect behavior.
 
-UI 与配置支持全平台，不等于各平台均已实机验收。Apple 明确不支持在 Packet Tunnel Provider 中托管监听器/
-代理服务器；当前扩展内运行的实现仍存在官方支持与审核风险，iOS 主 App 后台也不能作为长期共享保证。
-参见 [Apple TN3120](https://developer.apple.com/documentation/technotes/tn3120-expected-use-cases-for-network-extension-packet-tunnel-providers)。
-跨设备连通、UDP、防火墙、锁屏和签名渠道需要对应平台验收。
+Complete Raw JSON is unaffected by managed sharing. While using Raw, saving sharing settings only
+stores them for other modes; no inbound is added and no sharing-specific tag/port conflict is imposed.
+The configured sharing port is `1024–65535`. In applicable modes, enabling sharing checks the saved
+HTTP API port and the selected advanced template's inbound ports/tags; user inbounds are not silently
+replaced. HTTP API port edits also avoid enabled sharing's configured port. Actual external port
+occupation is reported by Xray startup. These input checks do not modify any existing runtime.
+
+Cross-platform UI/configuration support is not equivalent to device acceptance. Apple explicitly
+does not support hosting listeners/proxy servers in Packet Tunnel Providers; the extension-based
+implementation retains platform-support and review risks, and the iOS main App is not a reliable
+long-running background proxy. See [Apple TN3120](https://developer.apple.com/documentation/technotes/tn3120-expected-use-cases-for-network-extension-packet-tunnel-providers).
+Cross-device connectivity, UDP, firewalls, lock screen and signed channels require platform testing.
 
 ## 隧道与平台策略
 

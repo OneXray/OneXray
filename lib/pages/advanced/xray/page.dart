@@ -287,7 +287,7 @@ class XrayRuntimePage extends StatelessWidget {
                             icon: LucideIcons.slidersHorizontal,
                             title: l.lanProxyConfiguration,
                             description:
-                                '${l.lanProxySecurityHint}\n${l.lanProxyRawJsonNotice}',
+                                '${l.lanProxySecurityHint}\n${l.lanProxyNextStartNotice}\n${l.lanProxyRawJsonNotice}',
                             children: [
                               SettingRow(
                                 title: l.lanProxyTitle,

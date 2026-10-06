@@ -136,27 +136,6 @@ class AppHostApi(
         }
     }
 
-    override fun invalidateSavedVpn(callback: (Result<Unit>) -> Unit) {
-        scope.launch {
-            callback(runCatching {
-                check(vpnStatus.beginSavedVpnChange()) { "VPN resources are active" }
-                vpnStatus.completeSavedVpnChange(true)
-            })
-        }
-    }
-
-    override fun beginSavedVpnChange(callback: (Result<Boolean>) -> Unit) {
-        scope.launch {
-            callback(runCatching { vpnStatus.beginSavedVpnChange() })
-        }
-    }
-
-    override fun completeSavedVpnChange(committed: Boolean, callback: (Result<Unit>) -> Unit) {
-        scope.launch {
-            callback(runCatching { vpnStatus.completeSavedVpnChange(committed) })
-        }
-    }
-
     override fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit) {
         scope.launch {
             callback(Result.success(queryPermissionNow()))

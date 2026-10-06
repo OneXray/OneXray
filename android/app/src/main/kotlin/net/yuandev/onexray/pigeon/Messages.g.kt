@@ -689,9 +689,6 @@ interface BridgeHostApi {
   fun readVpnStatus(callback: (Result<NativeVpnCommandResult>) -> Unit)
   fun startVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
   fun stopVpn(callback: (Result<NativeVpnCommandResult>) -> Unit)
-  fun invalidateSavedVpn(callback: (Result<Unit>) -> Unit)
-  fun beginSavedVpnChange(callback: (Result<Boolean>) -> Unit)
-  fun completeSavedVpnChange(committed: Boolean, callback: (Result<Unit>) -> Unit)
   fun invoke(requestJson: String, callback: (Result<String>) -> Unit)
   fun queryPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
   fun requestPlatformPermission(callback: (Result<PlatformPermissionResult>) -> Unit)
@@ -779,60 +776,6 @@ interface BridgeHostApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(MessagesPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.invalidateSavedVpn$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.invalidateSavedVpn{ result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.beginSavedVpnChange$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { _, reply ->
-            api.beginSavedVpnChange{ result: Result<Boolean> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                val data = result.getOrNull()
-                reply.reply(MessagesPigeonUtils.wrapResult(data))
-              }
-            }
-          }
-        } else {
-          channel.setMessageHandler(null)
-        }
-      }
-      run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.onexray.BridgeHostApi.completeSavedVpnChange$separatedMessageChannelSuffix", codec)
-        if (api != null) {
-          channel.setMessageHandler { message, reply ->
-            val args = message as List<Any?>
-            val committedArg = args[0] as Boolean
-            api.completeSavedVpnChange(committedArg) { result: Result<Unit> ->
-              val error = result.exceptionOrNull()
-              if (error != null) {
-                reply.reply(MessagesPigeonUtils.wrapError(error))
-              } else {
-                reply.reply(MessagesPigeonUtils.wrapResult(null))
               }
             }
           }

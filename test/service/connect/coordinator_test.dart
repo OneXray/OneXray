@@ -13,6 +13,7 @@ import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
+import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
@@ -1001,344 +1002,160 @@ void main() {
     expect(coordinator.state.value.permission, permission);
   });
 
-  test(
-    'failed offline sharing save preserves the previous native input',
-    () async {
-      final fixtures = Directory(
-        p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
-      ).absolute;
-      await fixtures.create(recursive: true);
-      final directory = await fixtures.createTemp('lan-save-failure-');
-      addTearDown(() => directory.delete(recursive: true));
-      final file = File(p.join(directory.path, 'start.json'));
-      final previous = ConnectionConfiguration(
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true, 'port': 11024},
-        }),
-      );
-      await db.connectionConfigDao.commit(configurationJson: previous.encode());
-      final original = jsonEncode(_runtime('a').request.toJson());
-      await file.writeAsString(original);
-      var blocked = false;
-      final completions = <bool>[];
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: () async => null,
-          inspect: (_, {observedStatus}) async =>
-              const HostConnection(VpnStatus.disconnected),
-          beginSavedVpnChange: () async {
-            blocked = true;
-            return true;
-          },
-          completeSavedVpnChange: (committed) async {
-            completions.add(committed);
-            if (committed) await file.delete();
-            blocked = false;
-          },
-        ),
-      );
-      final error = StateError('Unable to save settings');
-
-      await expectLater(
-        coordinator.apply(
-          ConnectionConfiguration(),
-          writeAssets: () async {
-            expect(blocked, isTrue);
-            expect(await file.readAsString(), original);
-            throw error;
-          },
-        ),
-        throwsA(same(error)),
-      );
-
-      expect(await file.exists(), isTrue);
-      expect(await file.readAsString(), original);
-      expect((await coordinator.configuration).encode(), previous.encode());
-      expect(completions, [false]);
-      expect(blocked, isFalse);
-    },
-  );
-
-  test(
-    'offline sharing blocks saved starts until committed input is invalidated',
-    () async {
-      final fixtures = Directory(
-        p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
-      ).absolute;
-      await fixtures.create(recursive: true);
-      final directory = await fixtures.createTemp('lan-saved-start-');
-      addTearDown(() => directory.delete(recursive: true));
-      final file = File(p.join(directory.path, 'start.json'));
-      final previous = ConnectionConfiguration(
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true, 'port': 11024},
-        }),
-      );
-      await db.connectionConfigDao.commit(configurationJson: previous.encode());
-      final runtime = _runtime('a');
-      runtime.request.coreInvokeText = jsonEncode(
-        LibXrayInvokeRequest(
-          method: LibXrayMethod.runXray,
-          payload: RunXrayRequest(
-            jsonEncode({
-              'inbounds': [
-                {
-                  'tag': 'app-lan-proxy',
-                  'protocol': 'socks',
-                  'listen': '0.0.0.0',
-                  'port': 11024,
-                  'settings': {'auth': 'noauth', 'udp': true},
-                },
-              ],
-              'outbounds': [
-                {'protocol': 'freedom'},
-              ],
-            }),
-          ).toJson(),
-        ).toJson(),
-      );
-      await file.writeAsString(jsonEncode(runtime.request.toJson()));
-      final runtimeHost = ConnectionRuntimeHost(runDirectory: directory.path);
-      expect(await runtimeHost.readRuntime(), isNotNull);
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: runtimeHost.readRuntime,
-          inspect: (_, {observedStatus}) async =>
-              const HostConnection(VpnStatus.disconnected),
-          beginSavedVpnChange: () async {
-            expect(
-              (await db.connectionConfigDao.read()).configurationJson,
-              previous.encode(),
-            );
-            expect(await file.exists(), isTrue);
-            return true;
-          },
-          completeSavedVpnChange: (committed) async {
-            expect(committed, isTrue);
-            expect(
-              (await db.connectionConfigDao.read()).configurationJson,
-              ConnectionConfiguration().encode(),
-            );
-            await file.delete();
-          },
-        ),
-      );
-
-      final disabled = ConnectionConfiguration();
-      await coordinator.apply(disabled);
-
-      expect(await file.exists(), false);
-      expect(await runtimeHost.readRuntime(), isNull);
-      expect((await coordinator.configuration).policy.lanProxyEnabled, false);
-      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
-    },
-  );
-
-  test(
-    'a native start winning sharing admission leaves settings unchanged',
-    () async {
-      final previous = ConnectionConfiguration(
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true},
-        }),
-      );
-      await db.connectionConfigDao.commit(configurationJson: previous.encode());
-      var host = const HostConnection(VpnStatus.disconnected);
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: () async => null,
-          inspect: (_, {observedStatus}) async => host,
-          beginSavedVpnChange: () async {
-            host = const HostConnection(VpnStatus.connecting);
-            return false;
-          },
-          completeSavedVpnChange: (_) async =>
-              fail('No admission was acquired'),
-        ),
-      );
-
-      await expectLater(
-        coordinator.apply(ConnectionConfiguration()),
-        throwsA(
-          isA<ConnectionHostException>().having(
-            (error) => error.reason,
-            'reason',
-            'reconnectRequired',
+  for (final initialStatus in [VpnStatus.disconnected, VpnStatus.connected]) {
+    test(
+      'LAN edits preserve the last native input until the next App connection: ${initialStatus.name}',
+      () async {
+        final fixtures = Directory(
+          p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
+        ).absolute;
+        await fixtures.create(recursive: true);
+        final directory = await fixtures.createTemp('lan-next-app-start-');
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File(p.join(directory.path, 'start.json'));
+        final previous = ConnectionConfiguration(
+          connection: ConnectionSettings(
+            selection: const ServerSelection.server(1),
+            trafficMode: TrafficMode.allVpn,
           ),
-        ),
-      );
-      expect((await coordinator.configuration).encode(), previous.encode());
-    },
-  );
+        );
+        ConnectionRuntime compileRuntime(
+          ConnectionConfiguration configuration,
+        ) {
+          final compiled = ConnectionCompiler.compile(
+            settings: configuration.connection,
+            entries: [
+              ResolvedServer(
+                id: 1,
+                sourceId: 7,
+                outbound: {'tag': 'Example', 'protocol': 'freedom'},
+              ),
+            ],
+            regions: const RegionCatalog.empty(),
+            options: RuntimeOptions(
+              platform: ConnectionPlatform.android,
+              sessionDirectory: directory.path,
+              metricsPort: 18003,
+              socksPort: 18004,
+              lanProxyEnabled: configuration.policy.lanProxyEnabled,
+              lanProxyPort: configuration.policy.lanProxyPort,
+            ),
+          );
+          return ConnectionRuntime.create(
+            configuration: configuration,
+            compiled: compiled,
+            platform: ConnectionPlatform.android,
+            request: StartVpnRequest(
+              configuration.policy.toTun(ConnectionPlatform.android),
+              '18004',
+              '18003',
+              jsonEncode(
+                LibXrayInvokeRequest(
+                  method: LibXrayMethod.runXray,
+                  payload: RunXrayRequest(compiled.xrayJson).toJson(),
+                ).toJson(),
+              ),
+            ),
+          );
+        }
 
-  test('native invalidation failure reports saved policy without pretending rollback', () async {
-    final coordinator = await _initialize(
-      ConnectionCoordinator(
-        database: db,
-        readRuntime: () async => null,
-        inspect: (_, {observedStatus}) async =>
-            const HostConnection(VpnStatus.disconnected),
-        beginSavedVpnChange: () async => true,
-        completeSavedVpnChange: (committed) async {
-          expect(committed, isTrue);
-          throw StateError('Unable to invalidate saved VPN configuration');
-        },
-      ),
-    );
-    final next = ConnectionConfiguration(
-      policy: PlatformPolicy.fromJson({
-        'lanProxy': {'enabled': true},
-      }),
-    );
-
-    await expectLater(coordinator.apply(next), throwsStateError);
-    expect((await coordinator.configuration).encode(), next.encode());
-  });
-
-  test(
-    'storage-only changes preserve saved input and cancelled reconnects',
-    () async {
-      final previous = ConnectionConfiguration();
-      await db.connectionConfigDao.commit(configurationJson: previous.encode());
-      var invalidations = 0;
-      var host = const HostConnection(VpnStatus.disconnected);
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: () async => host.runtime,
-          inspect: (_, {observedStatus}) async => host,
-          invalidateSavedVpn: () async {
-            invalidations++;
-          },
-        ),
-      );
-      final storageOnly = ConnectionConfiguration(
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': false, 'port': 12024},
-        }),
-      );
-      await coordinator.apply(storageOnly, affectsRuntime: false);
-      expect(invalidations, 0);
-
-      host = HostConnection(VpnStatus.connected, runtime: _runtime('a'));
-      final service = PolicyEditorService(
-        coordinator: coordinator,
-        platform: ConnectionPlatform.android,
-        reservedApiPort: () async => null,
-      );
-      final draft = await service.load();
-      draft.policy['lanProxy']['enabled'] = true;
-      var confirmations = 0;
-      final saved = await service.save(
-        draft: draft,
-        confirm: (_) async {
-          confirmations++;
-          return false;
-        },
-      );
-      expect(saved, false);
-      expect(confirmations, 1);
-      expect(invalidations, 0);
-      expect((await coordinator.configuration).encode(), storageOnly.encode());
-      expect(coordinator.state.value.phase, ConnectionPhase.connected);
-    },
-  );
-
-  for (final outcome in [
-    'disconnected',
-    'commitFailed',
-    'invalidationFailed',
-    'stillRunning',
-  ]) {
-    test('failed sharing reconnect handles saved input: $outcome', () async {
-      final fixtures = Directory(
-        p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
-      ).absolute;
-      await fixtures.create(recursive: true);
-      final directory = await fixtures.createTemp('lan-failed-start-');
-      addTearDown(() => directory.delete(recursive: true));
-      final file = File(p.join(directory.path, 'start.json'));
-      final old = _runtime('a');
-      final next = _runtime(
-        'b',
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true, 'port': 11024},
-        }),
-      );
-      await db.connectionConfigDao.commit(
-        configurationJson: old.configuration.encode(),
-      );
-      var host = HostConnection(VpnStatus.connected, runtime: old);
-      var startAttempted = false;
-      var invalidations = 0;
-      const startError = ConnectionHostException(
-        'startFailed',
-        cause: 'Listener failed to start',
-      );
-      final commitError = StateError('Unable to save connection settings');
-      final invalidationError = StateError('Unable to remove saved VPN input');
-      final coordinator = await _initialize(
-        ConnectionCoordinator(
-          database: db,
-          readRuntime: () async => host.runtime,
-          inspect: (_, {observedStatus}) async => host,
-          prepare: (_, _) async => next,
-          start: (runtime) async {
-            startAttempted = true;
-            await file.writeAsString(jsonEncode(runtime.request.toJson()));
-            host = HostConnection(VpnStatus.connected, runtime: runtime);
-            if (outcome == 'commitFailed') return host;
-            throw startError;
-          },
-          stop: () async {
-            if (startAttempted && outcome == 'stillRunning') return host;
-            return host = const HostConnection(VpnStatus.disconnected);
-          },
-          invalidateSavedVpn: () async {
-            invalidations++;
-            expect(host.status, VpnStatus.disconnected);
-            if (outcome == 'invalidationFailed') throw invalidationError;
-            await file.delete();
-          },
-        ),
-      );
-
-      final expectedError = switch (outcome) {
-        'invalidationFailed' => invalidationError,
-        'commitFailed' => commitError,
-        _ => startError,
-      };
-      await expectLater(
-        coordinator.apply(
-          next.configuration,
-          writeAssets: outcome == 'commitFailed'
-              ? () async {
-                  throw commitError;
-                }
+        final previousRuntime = compileRuntime(previous);
+        await db.connectionConfigDao.commit(
+          configurationJson: previous.encode(),
+        );
+        await file.writeAsString(jsonEncode(previousRuntime.request.toJson()));
+        var host = HostConnection(
+          initialStatus,
+          runtime: initialStatus == VpnStatus.connected
+              ? previousRuntime
               : null,
-        ),
-        throwsA(same(expectedError)),
-      );
+        );
+        final calls = <String>[];
+        final runtimeHost = ConnectionRuntimeHost(runDirectory: directory.path);
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readRuntime: runtimeHost.readRuntime,
+            inspect: (_, {observedStatus}) async => host,
+            prepare: (configuration, _) async {
+              calls.add('prepare');
+              return compileRuntime(configuration);
+            },
+            start: (runtime) async {
+              calls.add('start');
+              await file.writeAsString(jsonEncode(runtime.request.toJson()));
+              return host = HostConnection(
+                VpnStatus.connected,
+                runtime: runtime,
+              );
+            },
+            stop: () async {
+              calls.add('stop');
+              return host = const HostConnection(VpnStatus.disconnected);
+            },
+          ),
+        );
+        final editor = PolicyEditorService(
+          coordinator: coordinator,
+          platform: ConnectionPlatform.android,
+          reservedApiPort: () async => null,
+        );
 
-      expect(invalidations, outcome == 'stillRunning' ? 0 : 1);
-      expect(
-        await file.exists(),
-        outcome == 'invalidationFailed' || outcome == 'stillRunning',
-      );
-      expect(
-        (await coordinator.configuration).encode(),
-        old.configuration.encode(),
-      );
-      expect(coordinator.state.value.phase, ConnectionPhase.failed);
-      expect(coordinator.state.value.error, same(expectedError));
-      expect(
-        coordinator.state.value.runtime,
-        outcome == 'stillRunning' ? same(next) : isNull,
-      );
-    });
+        for (final change in [
+          (enabled: true, port: 11024),
+          (enabled: true, port: 12024),
+          (enabled: false, port: 12024),
+        ]) {
+          final originalInput = await file.readAsString();
+          final originalHost = host;
+          final callsBeforeSave = List<String>.of(calls);
+          final draft = await editor.load();
+          draft.policy['lanProxy']['enabled'] = change.enabled;
+          draft.policy['lanProxy']['port'] = change.port;
+          expect(
+            await editor.save(
+              draft: draft,
+              confirm: (_) async =>
+                  fail('LAN edits must not request a restart'),
+            ),
+            isTrue,
+          );
+
+          expect(await file.readAsString(), originalInput);
+          expect(host, same(originalHost));
+          expect(calls, callsBeforeSave);
+          expect(coordinator.state.value.runtime, same(originalHost.runtime));
+          final stored = await coordinator.configuration;
+          expect(stored.policy.lanProxyEnabled, change.enabled);
+          expect(stored.policy.lanProxyPort, change.port);
+
+          // Background starts keep the saved input. Only a fresh App connection
+          // compiles the newly stored policy.
+          if (host.connected) await coordinator.disconnect();
+          expect(await file.readAsString(), originalInput);
+          await coordinator.connect();
+
+          final saved = await runtimeHost.readRuntime();
+          expect(saved, isNotNull);
+          expect(saved!.configuration.policy.lanProxyEnabled, change.enabled);
+          expect(saved.configuration.policy.lanProxyPort, change.port);
+          final inbounds =
+              (jsonDecode(saved.xrayJson) as Map<String, dynamic>)['inbounds']
+                  as List;
+          final sharing = inbounds.where(
+            (inbound) => inbound['tag'] == 'app-lan-proxy',
+          );
+          if (change.enabled) {
+            expect(sharing, hasLength(1));
+            expect(sharing.single['listen'], '0.0.0.0');
+            expect(sharing.single['port'], change.port.toString());
+          } else {
+            expect(sharing, isEmpty);
+          }
+          expect(coordinator.state.value.phase, ConnectionPhase.connected);
+        }
+      },
+    );
   }
 
   test(

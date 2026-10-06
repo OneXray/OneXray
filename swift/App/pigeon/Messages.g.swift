@@ -639,9 +639,6 @@ protocol BridgeHostApi {
   func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func startVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
-  func invalidateSavedVpn(completion: @escaping (Result<Void, Error>) -> Void)
-  func beginSavedVpnChange(completion: @escaping (Result<Bool, Error>) -> Void)
-  func completeSavedVpnChange(committed: Bool, completion: @escaping (Result<Void, Error>) -> Void)
   func invoke(requestJson: String, completion: @escaping (Result<String, Error>) -> Void)
   func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
@@ -721,53 +718,6 @@ class BridgeHostApiSetup {
       }
     } else {
       stopVpnChannel.setMessageHandler(nil)
-    }
-    let invalidateSavedVpnChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.invalidateSavedVpn\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      invalidateSavedVpnChannel.setMessageHandler { _, reply in
-        api.invalidateSavedVpn { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      invalidateSavedVpnChannel.setMessageHandler(nil)
-    }
-    let beginSavedVpnChangeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.beginSavedVpnChange\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      beginSavedVpnChangeChannel.setMessageHandler { _, reply in
-        api.beginSavedVpnChange { result in
-          switch result {
-          case .success(let res):
-            reply(wrapResult(res))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      beginSavedVpnChangeChannel.setMessageHandler(nil)
-    }
-    let completeSavedVpnChangeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.completeSavedVpnChange\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
-    if let api = api {
-      completeSavedVpnChangeChannel.setMessageHandler { message, reply in
-        let args = message as! [Any?]
-        let committedArg = args[0] as! Bool
-        api.completeSavedVpnChange(committed: committedArg) { result in
-          switch result {
-          case .success:
-            reply(wrapResult(nil))
-          case .failure(let error):
-            reply(wrapError(error))
-          }
-        }
-      }
-    } else {
-      completeSavedVpnChangeChannel.setMessageHandler(nil)
     }
     let invokeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.invoke\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

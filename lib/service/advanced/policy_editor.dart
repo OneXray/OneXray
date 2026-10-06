@@ -95,7 +95,6 @@ class PolicyEditorService {
         platform,
         windowsMode: windowsMode,
         appleTun: appleTun,
-        includeLanProxy: !draft.original.connection.expert,
       ),
     );
   }
@@ -117,7 +116,6 @@ class PolicyEditorService {
         draft.original.policy,
         platform,
         windowsMode: windowsMode,
-        includeLanProxy: !draft.original.connection.expert,
       ),
       prepared.runtime,
     );
@@ -172,26 +170,16 @@ class PolicyEditorService {
     }
   }
 
-  /// Inactive platform settings and inactive Android lists are storage only.
+  /// LAN sharing applies on the next App start. Inactive platform settings and
+  /// inactive Android lists are also storage only.
   static bool sameRuntime(
     PlatformPolicy a,
     PlatformPolicy b,
     ConnectionPlatform platform, {
     WindowsMode? windowsMode,
-    bool includeLanProxy = true,
   }) => const DeepCollectionEquality().equals(
-    _effectiveRuntime(
-      a,
-      platform,
-      windowsMode: windowsMode,
-      includeLanProxy: includeLanProxy,
-    ),
-    _effectiveRuntime(
-      b,
-      platform,
-      windowsMode: windowsMode,
-      includeLanProxy: includeLanProxy,
-    ),
+    _effectiveRuntime(a, platform, windowsMode: windowsMode),
+    _effectiveRuntime(b, platform, windowsMode: windowsMode),
   );
 
   static Object _effectiveRuntime(
@@ -199,7 +187,6 @@ class PolicyEditorService {
     ConnectionPlatform platform, {
     WindowsMode? windowsMode,
     Map<String, dynamic>? appleTun,
-    bool includeLanProxy = true,
   }) {
     final json = policy.toJson();
     final result = <String, dynamic>{
@@ -210,11 +197,6 @@ class PolicyEditorService {
               (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
         'dnsIpv6Address': policy.dnsIpv6Address,
       'log': json['log'],
-      if (includeLanProxy)
-        'lanProxy': {
-          'enabled': policy.lanProxyEnabled,
-          if (policy.lanProxyEnabled) 'port': policy.lanProxyPort,
-        },
     };
     if (platform == ConnectionPlatform.android) {
       final android = json['android'] as Map<String, dynamic>;

@@ -83,10 +83,12 @@ Linux runner 在创建 Flutter View 前关闭 Impeller，其他平台不受影�
 - Windows 系统 VPN 入口仅 MSIX 显示，提供自动连接、局域网绕过及排除网段。
   EXE 不应用或校验停用的 MSIX 策略，两种模式均保留公共设置和出口网卡。
 - Xray 提供路由数据、更新周期、测速 URL/超时、日志、局域网代理共享、只读实际运行配置。
-  共享开关位于 Xray 配置区，端口在独立详情页修改；已连接时开启/关闭需确认重启，取消不保存。
-  详情说明同一端口支持 HTTP 与 SOCKS5，SOCKS5 支持 UDP，并提示无认证的可信网络使用边界。
-  明确标明不适用于完整 Raw JSON；使用 Raw 时修改共享设置不触发重启。
-  运行及平台限制见 [局域网代理共享](xray-configuration.md#局域网代理共享)。
+  The sharing switch is in the Xray configuration section; its port is edited on a separate page.
+  Saving either only persists settings, without a restart prompt. Changes apply when the App next
+  compiles a connection for start/restart; the current VPN and native saved-start input remain unchanged.
+  The page explains HTTP/SOCKS5 support, SOCKS5 UDP, trusted-network use without authentication,
+  and the exclusion of complete Raw JSON. See [LAN proxy sharing](xray-configuration.md#局域网代理共享)
+  for background-start behavior and platform limits.
   桌面端另有本地 HTTP API；移动端不注册该入口或路由。
   System Extension 隐藏整个日志区和对应保存/恢复按钮，不提供原生日志读取；其他入口不受影响。
 

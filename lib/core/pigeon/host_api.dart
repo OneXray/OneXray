@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:onexray/core/errors/failure.dart';
@@ -8,7 +7,6 @@ import 'package:onexray/core/ffi/linux_ffi_api.dart';
 import 'package:onexray/core/ffi/windows/ffi_api.dart';
 import 'package:onexray/core/ffi/windows/model.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
-import 'package:onexray/core/pigeon/constants.dart';
 import 'package:onexray/core/pigeon/invoke_limits.dart';
 import 'package:onexray/core/pigeon/model.dart';
 import 'package:onexray/core/pigeon/model_reader.dart';
@@ -153,34 +151,6 @@ class AppHostApi {
       return WindowsFfiApi().stopVpn();
     } else {
       return _api.stopVpn();
-    }
-  }
-
-  Future<void> invalidateSavedVpn() async {
-    if (AppPlatform.isLinux || AppPlatform.isWindows) {
-      final file = File(VpnConstants.startPath);
-      if (await file.exists()) await file.delete();
-    } else {
-      await _api.invalidateSavedVpn();
-    }
-  }
-
-  Future<bool> beginSavedVpnChange() async {
-    if (AppPlatform.isLinux || AppPlatform.isWindows) {
-      final result = await _readVpnStatus();
-      if (result.state != NativeVpnCommandState.success) {
-        throw StateError(result.message ?? 'VPN state is unavailable');
-      }
-      return result.status == VpnStatus.disconnected;
-    }
-    return _api.beginSavedVpnChange();
-  }
-
-  Future<void> completeSavedVpnChange(bool committed) async {
-    if (AppPlatform.isLinux || AppPlatform.isWindows) {
-      if (committed) await invalidateSavedVpn();
-    } else {
-      await _api.completeSavedVpnChange(committed);
     }
   }
 

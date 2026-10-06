@@ -96,6 +96,10 @@ Token 不是 HTTP Header，无公开 Token 查询或状态广播；用户参数�
 
 Receiver 在已有 `:native` 进程复用 `VpnController/OneVpnService`，不创建 Flutter 引擎、Activity、第二套编译器或后台队列。
 START 使用最近生成的完整 `run/start.json`，不是“最后成功连接”，也不追随后来 DB 选择；改配置后须从 App 正常连接一次。
+LAN sharing edits likewise leave this input unchanged: automation, Widget/Tile and Apple on-demand
+starts retain the last compiled sharing setting. Only an App start/restart compiles the newly saved
+policy; see [LAN proxy sharing](xray-configuration.md#局域网代理共享). Sharing edits do not add an
+automation or saved-start block; the separate cleanup/restore admission below remains in place.
 顺序为鉴权 → 清理/恢复阻断 → 启动请求外层读取 → VPN/LAN 权限 → 原生交付；
 文件检查在 `VpnService.prepare()` 前，实际配置/资源错误交 Core。
 合法失败只反馈具体原因和通知点击入口，不自动拉起 App、下载、重试或恢复旧连接；通知不可见仍保留原生日志。

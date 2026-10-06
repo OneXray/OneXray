@@ -1,7 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/tunnel/controller.dart';
-import 'package:onexray/pages/advanced/xray/lan_proxy/dialog.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 
 class LanProxyController extends PolicyEditorController {
@@ -23,12 +22,7 @@ class LanProxyController extends PolicyEditorController {
   }
 
   @override
-  String saveLabel(AppLocalizations l) =>
-      connected &&
-          draft?.original.connection.expert != true &&
-          draft?.original.policy.lanProxyEnabled == true
-      ? l.prototypeSaveAndReconnect
-      : l.prototypeSave;
+  String saveLabel(AppLocalizations l) => l.prototypeSave;
 
   @override
   Future<bool> save(BuildContext context, {bool pop = true}) {
@@ -45,10 +39,6 @@ class LanProxyController extends PolicyEditorController {
     update('port', port, section: 'lanProxy');
     return super.save(context, pop: pop);
   }
-
-  @override
-  Future<bool> confirmSave(BuildContext context, bool disconnect) =>
-      confirmLanProxyRestart(context);
 
   @override
   void disposePageResources() {

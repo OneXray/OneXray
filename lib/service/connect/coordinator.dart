@@ -79,9 +79,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final InspectConnection _inspect;
   late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
-  late final Future<void> Function() _invalidateSavedVpn;
-  late final Future<bool> Function() _beginSavedVpnChange;
-  late final Future<void> Function(bool committed) _completeSavedVpnChange;
   final Stream<VpnStatus> _statusEvents;
   final Future<void> Function() _observeStatus;
   final void Function() _disposeStatus;
@@ -116,9 +113,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     InspectConnection? inspect,
     Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
-    Future<void> Function()? invalidateSavedVpn,
-    Future<bool> Function()? beginSavedVpnChange,
-    Future<void> Function(bool committed)? completeSavedVpnChange,
     Stream<VpnStatus>? statusEvents,
     Future<void> Function()? observeStatus,
     void Function()? disposeStatus,
@@ -133,10 +127,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _inspect = inspect ?? host.inspect;
     _readTraffic = readTraffic ?? host.query;
     _readRuntime = readRuntime ?? host.readRuntime;
-    _invalidateSavedVpn = invalidateSavedVpn ?? host.invalidateSavedVpn;
-    _beginSavedVpnChange = beginSavedVpnChange ?? host.beginSavedVpnChange;
-    _completeSavedVpnChange =
-        completeSavedVpnChange ?? host.completeSavedVpnChange;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -488,12 +478,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         stored.encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
-    final oldSharing =
-        !stored.connection.expert && stored.policy.lanProxyEnabled;
-    final newSharing = !next.connection.expert && next.policy.lanProxyEnabled;
-    final sharingChanged =
-        oldSharing != newSharing ||
-        (newSharing && stored.policy.lanProxyPort != next.policy.lanProxyPort);
     final current = await _inspect(await _currentRuntime());
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
@@ -511,25 +495,10 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
       if (!shouldStart && !shouldStop) {
         await validateAssets?.call();
-        final guardSavedStart =
-            current.status == VpnStatus.disconnected && sharingChanged;
-        if (guardSavedStart && !await _beginSavedVpnChange()) {
-          throw const ConnectionHostException('reconnectRequired');
-        }
-        var committed = false;
-        try {
-          await db.connectionConfigDao.commit(
-            configurationJson: next.encode(),
-            writeAssets: write,
-          );
-          committed = true;
-        } finally {
-          if (guardSavedStart) {
-            // The old request remains intact when persistence fails. Native
-            // admission prevents a background start from racing this save.
-            await _completeSavedVpnChange(committed);
-          }
-        }
+        await db.connectionConfigDao.commit(
+          configurationJson: next.encode(),
+          writeAssets: write,
+        );
         _publish(current);
         return;
       }
@@ -592,8 +561,6 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         );
         _publish(running, issue: runtime?.notice);
       } catch (error, stack) {
-        Object reportedError = error;
-        StackTrace reportedStack = stack;
         HostConnection? failed;
         if (touchedHost) {
           try {
@@ -606,23 +573,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             }
           }
         }
-        if (sharingChanged && failed?.status == VpnStatus.disconnected) {
-          // A failed start or transaction may have already saved the new
-          // listener. Do not let a background entry reuse that uncommitted input.
-          try {
-            await _invalidateSavedVpn();
-          } catch (invalidationError, invalidationStack) {
-            reportedError = invalidationError;
-            reportedStack = invalidationStack;
-          }
-        }
-        final permission = reportedError is ConnectionHostException
-            ? reportedError.permission
+        final permission = error is ConnectionHostException
+            ? error.permission
             : null;
-        final issue =
-            cancellation.isCompleted && identical(reportedError, error)
+        final issue = cancellation.isCompleted
             ? 'cancelled'
-            : connectionFailureReason(reportedError);
+            : connectionFailureReason(error);
         if (touchedHost) {
           final status = failed?.status;
           _failureLatched = true;
@@ -636,19 +592,14 @@ class ConnectionCoordinator with WidgetsBindingObserver {
                       current.runtime,
             traffic: failed?.traffic ?? current.traffic,
             issue: issue,
-            error: reportedError,
+            error: error,
             permission: permission,
           );
           _syncTrafficSampling();
         } else {
-          _publish(
-            current,
-            issue: issue,
-            error: reportedError,
-            permission: permission,
-          );
+          _publish(current, issue: issue, error: error, permission: permission);
         }
-        Error.throwWithStackTrace(reportedError, reportedStack);
+        Error.throwWithStackTrace(error, stack);
       } finally {
         _pendingRuntime = null;
         _preparingNodeIds = {};

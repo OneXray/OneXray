@@ -87,13 +87,11 @@ void main() {
   late ConnectionCoordinator coordinator;
   late HostConnection host;
   late int stops;
-  late int invalidations;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     host = const HostConnection(VpnStatus.disconnected);
     stops = 0;
-    invalidations = 0;
     coordinator = ConnectionCoordinator(
       database: db,
       inspect: (_, {observedStatus}) async => host,
@@ -103,11 +101,6 @@ void main() {
         stops++;
         return host = const HostConnection(VpnStatus.disconnected);
       },
-      invalidateSavedVpn: () async => invalidations++,
-      beginSavedVpnChange: () async => true,
-      completeSavedVpnChange: (committed) async {
-        if (committed) invalidations++;
-      },
     );
     await coordinator.initialize(observe: false, registerReferences: false);
     addTearDown(() async {
@@ -116,50 +109,79 @@ void main() {
     });
   });
 
-  test(
-    'LAN sharing is device policy and inactive port edits do not reconnect',
-    () {
-      final off = PlatformPolicy.fromJson({
-        'xrayOutboundInterfaceName': 'Ethernet',
-      });
-      final changedPort = PlatformPolicy.fromJson({
-        ...off.toJson(),
-        'lanProxy': {'enabled': false, 'port': 11026},
-      });
-      final on = PlatformPolicy.fromJson({
-        ...off.toJson(),
-        'lanProxy': {'enabled': true, 'port': 11024},
-      });
-      final onChangedPort = PlatformPolicy.fromJson({
-        ...on.toJson(),
-        'lanProxy': {'enabled': true, 'port': 11026},
-      });
-      for (final platform in ConnectionPlatform.values) {
-        expect(
-          PolicyEditorService.sameRuntime(off, changedPort, platform),
-          isTrue,
-        );
-        expect(PolicyEditorService.sameRuntime(off, on, platform), isFalse);
-        expect(
-          PolicyEditorService.sameRuntime(on, onChangedPort, platform),
-          isFalse,
-        );
-      }
-    },
-  );
-
-  test(
-    'offline sharing saves without starting VPN and invalidates old input',
-    () async {
-      final service = PolicyEditorService(
-        coordinator: coordinator,
-        platform: ConnectionPlatform.android,
-        reservedApiPort: () async => null,
+  test('LAN sharing changes apply only on the next App start', () {
+    final off = PlatformPolicy.fromJson({
+      'xrayOutboundInterfaceName': 'Ethernet',
+    });
+    final changedPort = PlatformPolicy.fromJson({
+      ...off.toJson(),
+      'lanProxy': {'enabled': false, 'port': 11026},
+    });
+    final on = PlatformPolicy.fromJson({
+      ...off.toJson(),
+      'lanProxy': {'enabled': true, 'port': 11024},
+    });
+    final onChangedPort = PlatformPolicy.fromJson({
+      ...on.toJson(),
+      'lanProxy': {'enabled': true, 'port': 11026},
+    });
+    for (final platform in ConnectionPlatform.values) {
+      expect(
+        PolicyEditorService.sameRuntime(off, changedPort, platform),
+        isTrue,
       );
-      var draft = await service.load();
-      expect(draft.original.policy.lanProxyEnabled, isFalse);
-      expect(draft.original.policy.lanProxyPort, 11024);
-      draft.policy['lanProxy']['enabled'] = true;
+      expect(PolicyEditorService.sameRuntime(off, on, platform), isTrue);
+      expect(
+        PolicyEditorService.sameRuntime(on, onChangedPort, platform),
+        isTrue,
+      );
+    }
+  });
+
+  test('offline sharing saves without starting VPN', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.android,
+      reservedApiPort: () async => null,
+    );
+    var draft = await service.load();
+    expect(draft.original.policy.lanProxyEnabled, isFalse);
+    expect(draft.original.policy.lanProxyPort, 11024);
+    draft.policy['lanProxy']['enabled'] = true;
+    expect(
+      await service.save(
+        draft: draft,
+        confirm: (_) async => throw StateError('Must not confirm'),
+      ),
+      isTrue,
+    );
+    expect((await coordinator.configuration).policy.lanProxyEnabled, isTrue);
+    expect(stops, 0);
+    draft = await service.load();
+    draft.policy['lanProxy']['enabled'] = false;
+    expect(
+      await service.save(draft: draft, confirm: (_) async => false),
+      isTrue,
+    );
+    expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
+    expect(stops, 0);
+  });
+
+  test('connected sharing saves without confirmation or changing the active policy', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.android,
+      reservedApiPort: () async => null,
+    );
+    var draft = await service.load();
+    final active = _runtime(draft.original);
+    host = HostConnection(VpnStatus.connected, runtime: active);
+    for (final sharing in [
+      {'enabled': true, 'port': 11024},
+      {'enabled': true, 'port': 11026},
+      {'enabled': false, 'port': 11026},
+    ]) {
+      draft.policy['lanProxy'] = sharing;
       expect(
         await service.save(
           draft: draft,
@@ -167,52 +189,16 @@ void main() {
         ),
         isTrue,
       );
-      expect((await coordinator.configuration).policy.lanProxyEnabled, isTrue);
-      expect(invalidations, 1);
-      expect(stops, 0);
+      expect(
+        (await coordinator.configuration).policy.toJson()['lanProxy'],
+        sharing,
+      );
+      expect(host.runtime, same(active));
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
       draft = await service.load();
-      draft.policy['lanProxy']['enabled'] = false;
-      expect(
-        await service.save(draft: draft, confirm: (_) async => false),
-        isTrue,
-      );
-      expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
-      expect(invalidations, 2);
-    },
-  );
-
-  test(
-    'cancelling sharing restart leaves saved policy and input unchanged',
-    () async {
-      final service = PolicyEditorService(
-        coordinator: coordinator,
-        platform: ConnectionPlatform.android,
-        reservedApiPort: () async => null,
-      );
-      final draft = await service.load();
-      host = HostConnection(
-        VpnStatus.connected,
-        runtime: _runtime(draft.original),
-      );
-      draft.policy['lanProxy']['enabled'] = true;
-      var confirmations = 0;
-      expect(
-        await service.save(
-          draft: draft,
-          confirm: (disconnect) async {
-            confirmations++;
-            expect(disconnect, isFalse);
-            return false;
-          },
-        ),
-        isFalse,
-      );
-      expect(confirmations, 1);
-      expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
-      expect(invalidations, 0);
-      expect(stops, 0);
-    },
-  );
+    }
+    expect(stops, 0);
+  });
 
   test('shared port cannot take the saved local HTTP API port', () async {
     final service = PolicyEditorService(
@@ -227,28 +213,6 @@ void main() {
       throwsFormatException,
     );
     expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
-    expect(invalidations, 0);
-  });
-
-  test('Raw ignores sharing changes for runtime comparison', () {
-    final original = PlatformPolicy.fromJson({
-      'xrayOutboundInterfaceName': 'Ethernet',
-    });
-    final changed = PlatformPolicy.fromJson({
-      ...original.toJson(),
-      'lanProxy': {'enabled': true, 'port': 11026},
-    });
-    for (final platform in ConnectionPlatform.values) {
-      expect(
-        PolicyEditorService.sameRuntime(
-          original,
-          changed,
-          platform,
-          includeLanProxy: false,
-        ),
-        isTrue,
-      );
-    }
   });
 
   for (final connected in [false, true]) {
@@ -308,7 +272,6 @@ void main() {
           isTrue,
         );
         expect((await coordinator.configuration).policy.lanProxyPort, 11026);
-        expect(invalidations, 0);
         expect(stops, 0);
         expect(
           host.status,
@@ -342,7 +305,6 @@ void main() {
           (await coordinator.configuration).policy.lanProxyEnabled,
           isTrue,
         );
-        expect(invalidations, 1);
         expect(stops, 0);
       },
     );
