@@ -117,7 +117,8 @@ App 管理日志、metrics、统计、policy、env、balancers、observatory、�
 
 Raw 保存原文，不经过 `XrayJson` 或常规 State，运行只改深副本。
 App 接管 tunIn 的有限平台设置、metrics、统计、日志、DNS 查询策略、资源路径及出口网卡；其余内容保留。
-不允许额外 TUN、重复 tunIn 或占用 App 保留端口。运行端口分配避开用户入站、本地 HTTP API 的保存端口及已启用的共享端口。
+不允许额外 TUN、重复 tunIn 或占用 App 保留端口。运行端口分配避开用户入站及本地 HTTP API 的保存端口；
+完整 Raw 不应用局域网共享设置，也不为共享预留端口或限制其入站 tag。
 
 已有 tunIn 保持数组位置、sniffing（含缺省/关闭）和非托管设置；仅覆盖 name、mtu、gateway、dns、
 autoSystemRoutingTable、autoOutboundsInterface。原生 TUN 平台生成六项，Apple/Android 仅 name/mtu，移除其余托管项。
@@ -139,7 +140,7 @@ iOS 模拟器完全由 Swift 判断，将 tunIn 转为 SOCKS，原子写回 run/
 ## 局域网代理共享
 
 设备级平台策略保存共享开关及端口，默认关闭、端口 `11024`；不写入智能/自定义路由或 Raw 原文，
-不随连接配置备份跨设备恢复。所有运行编译路径开启后追加一个 `app-lan-proxy` 入站：
+不随连接配置备份跨设备恢复。常规模式及自定义路由（含高级模板）开启后追加一个 `app-lan-proxy` 入站：
 `protocol: socks`、`listen: 0.0.0.0`、`auth: noauth`、`udp: true`，不额外创建 HTTP 入站。
 监听地址不可修改；同一端口兼容 HTTP（含 CONNECT）与 SOCKS5，UDP 仅通过 SOCKS5 UDP ASSOCIATE。
 内核为 UDP 会话动态分配中继端口，不保证只放行 `11024/UDP` 即可使用。
@@ -149,11 +150,16 @@ iOS 模拟器完全由 Swift 判断，将 tunIn 转为 SOCKS，原子写回 run/
 App HTTP API 和 metrics 仍只监听 loopback。共享流量沿用当前路由；不强制代理或改写用户 `inboundTag`，
 只匹配 `tunIn` 的规则不会匹配共享入站。共享入站使用托管嗅探，并在需要时增加 FakeDNS 还原。
 
-共享端口允许 `1024–65535`，开启时检查本地 HTTP API 保存端口及当前高级/Raw 用户入站的端口/tag 冲突；
+完整 Raw 不适用此功能；使用 Raw 时修改共享设置仅保存给其它模式使用，不注入入站、不检查共享冲突、不触发重启。
+共享端口允许 `1024–65535`，适用模式开启时检查本地 HTTP API 保存端口及当前高级模板入站的端口/tag 冲突；
 不静默替换用户入站。修改 API 端口也避开启用的共享端口，实际外部占用由 Xray 启动返回原因。
 VPN 已连接时切换共享需确认重启，取消保持原状态；端口生效变化同样确认。
-未连接仅保存，不主动启动；关闭 VPN 同时关闭共享。离线有效修改使旧 saved-start 失效，
-Android Widget/Tile 回到 App 重新编译；Apple 同时清除旧 provider request 与按需连接，避免旧配置重新开放端口。
+未连接仅保存，不主动启动；关闭 VPN 同时关闭共享。离线有效修改在数据库提交成功后使旧 saved-start 失效；
+提交失败保留旧输入及 Apple 按需连接。Android 保存期间通过原生服务阻断后台复用，与服务读取/刷新/启动共用准入；
+后台启动先取得资源则拒绝离线保存，旧策略不变。成功清除输入后 Widget/Tile 回到 App 重新编译；
+Apple 提交后才清除旧 provider request 与按需连接。
+原生失效失败明确报错，不伪装数据库回滚；Android 保留后台复用阻断，正常 App 连接写入新配置后解除。
+异常退出遗留阻断同样只由正常 App 新配置启动解除，不恢复旧连接或引入配置快照。
 
 UI 与配置支持全平台，不等于各平台均已实机验收。Apple 明确不支持在 Packet Tunnel Provider 中托管监听器/
 代理服务器；当前扩展内运行的实现仍存在官方支持与审核风险，iOS 主 App 后台也不能作为长期共享保证。
@@ -226,8 +232,8 @@ startVpn/stopVpn 成功返回已确认状态，不仅是“提交命令”；只
 
 可见连接页且已连接时共享一个秒级 metrics 采样器；resumed/inactive 均可见，失焦不重置基线。
 无可见连接页、隐藏/后台或断开停止；重新显示建立新速率基线。仅重建流量区域，高级时长用独立本地时钟。
-GET /debug/vars 汇总 stats.inbound 的 `tunIn` 与 `app-lan-proxy` 本次上下行，其他用户入站不计入；
-相邻有效样本算速率，未创建计数按零。Android 通知/Widget 使用相同汇总范围。
+GET /debug/vars 仅统计 stats.inbound 的 `tunIn` 本次上下行，局域网共享及其它入站均不计入；
+相邻有效样本算速率，未创建计数按零。Android 通知/Widget 使用相同范围。
 失败保留内存计数、速率不可用，恢复重建基线。断开清空，无累计持久化/清零/独立 libXray 统计服务。
 运行描述定位 metrics 端口，不以读取成功判断连接状态。
 

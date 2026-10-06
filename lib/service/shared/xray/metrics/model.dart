@@ -1,5 +1,4 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 
 part 'model.g.dart';
 
@@ -10,12 +9,8 @@ class XrayMetricsVars {
   const XrayMetricsVars(this.stats);
 
   ({int uplink, int downlink}) get managedTraffic {
-    final inbound = stats?.inbound;
-    return (
-      uplink: (inbound?.tunIn?.uplink ?? 0) + (inbound?.lanProxy?.uplink ?? 0),
-      downlink:
-          (inbound?.tunIn?.downlink ?? 0) + (inbound?.lanProxy?.downlink ?? 0),
-    );
+    final counter = stats?.inbound?.tunIn;
+    return (uplink: counter?.uplink ?? 0, downlink: counter?.downlink ?? 0);
   }
 
   factory XrayMetricsVars.fromJson(Map<String, dynamic> json) =>
@@ -39,10 +34,8 @@ class XrayMetricsStats {
 @JsonSerializable(explicitToJson: true, includeIfNull: false)
 class XrayMetricsInboundStats {
   final XrayTrafficCounter? tunIn;
-  @JsonKey(name: lanProxyInboundTag)
-  final XrayTrafficCounter? lanProxy;
 
-  const XrayMetricsInboundStats(this.tunIn, {this.lanProxy});
+  const XrayMetricsInboundStats(this.tunIn);
 
   factory XrayMetricsInboundStats.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsInboundStatsFromJson(json);

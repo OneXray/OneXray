@@ -165,6 +165,25 @@ class AppHostApi {
     }
   }
 
+  Future<bool> beginSavedVpnChange() async {
+    if (AppPlatform.isLinux || AppPlatform.isWindows) {
+      final result = await _readVpnStatus();
+      if (result.state != NativeVpnCommandState.success) {
+        throw StateError(result.message ?? 'VPN state is unavailable');
+      }
+      return result.status == VpnStatus.disconnected;
+    }
+    return _api.beginSavedVpnChange();
+  }
+
+  Future<void> completeSavedVpnChange(bool committed) async {
+    if (AppPlatform.isLinux || AppPlatform.isWindows) {
+      if (committed) await invalidateSavedVpn();
+    } else {
+      await _api.completeSavedVpnChange(committed);
+    }
+  }
+
   String get tunFilesDir => _tunFilesDir;
 
   Future<List<int>> getFreePorts(int num, {List<int>? excludePorts}) async {

@@ -102,9 +102,8 @@ void main() {
       final rawBefore = jsonEncode(raw);
       final advancedBefore = advanced.encode();
       for (final platform in ConnectionPlatform.values) {
-        for (final kind in ['smart', 'custom', 'allVpn', 'advanced', 'raw']) {
+        for (final kind in ['smart', 'custom', 'allVpn', 'advanced']) {
           final settings = ConnectionSettings(
-            expert: kind == 'raw',
             trafficMode: switch (kind) {
               'custom' || 'advanced' => TrafficMode.custom,
               'allVpn' => TrafficMode.allVpn,
@@ -114,8 +113,7 @@ void main() {
           Map<String, dynamic> compile(bool enabled) =>
               ConnectionCompiler.compile(
                 settings: settings,
-                entries: kind == 'raw' ? [] : [node(1)],
-                raw: kind == 'raw' ? raw : null,
+                entries: [node(1)],
                 custom: kind == 'advanced'
                     ? advanced
                     : RoutingProfileState(name: 'Custom'),
@@ -172,31 +170,51 @@ void main() {
     expect(shared['sniffing']['destOverride'], contains('fakedns'));
   });
 
-  test(
-    'Raw inbound conflicts are reported only while managed sharing is enabled',
-    () {
-      for (final inbound in [
+  test('Raw inbounds and runtime ignore the device LAN sharing setting', () {
+    for (final inbound in [
+      {'tag': 'user-socks', 'protocol': 'socks', 'port': '11020-11030'},
+      {'tag': lanProxyInboundTag, 'protocol': 'http', 'port': 11424},
+    ]) {
+      final raw = <String, dynamic>{
+        'inbounds': [inbound],
+        'outbounds': [
+          {'protocol': 'freedom'},
+        ],
+      };
+      CompiledConnection compile(bool enabled) => ConnectionCompiler.compile(
+        settings: ConnectionSettings(expert: true),
+        entries: [],
+        raw: raw,
+        regions: catalog,
+        options: options(lanProxyEnabled: enabled),
+      );
+      final disabled = compile(false).config;
+      expect(disabled['inbounds'].last, inbound);
+      expect(compile(true).config, disabled);
+      expect(
+        ConnectionCompiler.rawSemanticJson(raw, options(lanProxyEnabled: true)),
+        ConnectionCompiler.rawSemanticJson(raw, options()),
+      );
+    }
+  });
+
+  test('advanced routing still protects the managed LAN inbound', () {
+    final custom = AdvancedRoutingDocument.fromJson({
+      'outbounds': [<String, dynamic>{}],
+      'inbounds': [
         {'tag': 'user-socks', 'protocol': 'socks', 'port': '11020-11030'},
-        {'tag': lanProxyInboundTag, 'protocol': 'http', 'port': 11424},
-      ]) {
-        final raw = <String, dynamic>{
-          'inbounds': [inbound],
-          'outbounds': [
-            {'protocol': 'freedom'},
-          ],
-        };
-        CompiledConnection compile(bool enabled) => ConnectionCompiler.compile(
-          settings: ConnectionSettings(expert: true),
-          entries: [],
-          raw: raw,
-          regions: catalog,
-          options: options(lanProxyEnabled: enabled),
-        );
-        expect(compile(false).config['inbounds'].last, inbound);
-        expect(() => compile(true), throwsFormatException);
-      }
-    },
-  );
+      ],
+    }).state;
+    CompiledConnection compile(bool enabled) => ConnectionCompiler.compile(
+      settings: ConnectionSettings(trafficMode: TrafficMode.custom),
+      entries: [node(1)],
+      custom: custom,
+      regions: catalog,
+      options: options(lanProxyEnabled: enabled),
+    );
+    expect(compile(false).config['inbounds'].last['tag'], 'user-socks');
+    expect(() => compile(true), throwsFormatException);
+  });
 
   test('Raw tunIn updates only owned settings and retains its position and sniffing', () {
     for (final platform in ConnectionPlatform.values) {

@@ -4,6 +4,7 @@
   "lanProxyListenAddress": "آدرس شنود",
   "lanProxyPort": "درگاه",
   "lanProxyProtocolHint": "از پراکسی‌های HTTP و SOCKS5 پشتیبانی می‌کند؛ SOCKS5 از UDP نیز پشتیبانی می‌کند.",
+  "lanProxyRawJsonNotice": "در حالت Raw JSON کاربرد ندارد. اشتراک‌گذاری را مستقیماً در ورودی‌های Raw JSON تنظیم کنید.",
   "lanProxySecurityHint": "بدون احراز هویت. فقط در شبکه‌های قابل‌اعتماد فعال کنید.",
   "lanProxyClientHint": "در تنظیمات پراکسی دستگاه‌های دیگر، آدرس IP محلی این دستگاه و این درگاه را وارد کنید. اشتراک‌گذاری فقط هنگام اجرای VPN در دسترس است.",
   "lanProxyRestartTitle": "VPN دوباره راه‌اندازی شود؟",

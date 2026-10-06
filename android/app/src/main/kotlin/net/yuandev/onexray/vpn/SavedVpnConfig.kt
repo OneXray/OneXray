@@ -12,11 +12,36 @@ import java.io.File
 
 /** The existing native start request, not a second configuration or a VPN-state cache. */
 object SavedVpnConfig {
+    private fun changeMarker(file: File) = File(file.parentFile, "saved-vpn-change")
+
+    fun isChangeBlocked(file: File): Boolean = changeMarker(file).exists()
+
+    fun beginChange(file: File) {
+        val marker = changeMarker(file)
+        check(marker.parentFile!!.isDirectory || marker.parentFile!!.mkdirs()) {
+            "Unable to create saved VPN change directory"
+        }
+        marker.writeText("blocked")
+    }
+
+    fun completeChange(file: File, committed: Boolean) {
+        // Keep the block if invalidation fails; background starts must not use
+        // an old input after the App has committed different settings.
+        if (committed) invalidate(file)
+        clearChangeBlock(file)
+    }
+
+    fun clearChangeBlock(file: File) {
+        val marker = changeMarker(file)
+        check(!marker.exists() || marker.delete()) { "Unable to unblock saved VPN configuration" }
+    }
+
     fun invalidate(file: File) {
         check(!file.exists() || file.delete()) { "Unable to invalidate saved VPN configuration" }
     }
 
     fun read(file: File): StartVpnRequest {
+        check(!isChangeBlocked(file)) { "VPN configuration is being changed; connect from the App" }
         require(file.isFile && file.length() <= 16 * 1024 * 1024) { "VPN start configuration is unavailable" }
         return try {
             decode(file.readText())

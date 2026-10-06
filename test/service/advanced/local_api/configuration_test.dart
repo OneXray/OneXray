@@ -416,6 +416,45 @@ void main() {
     },
   );
 
+  test(
+    'Raw preview ignores LAN sharing options and keeps user inbounds',
+    () async {
+      final source = jsonDecode(raw) as Map<String, dynamic>;
+      (source['inbounds'] as List).add({
+        'tag': 'app-lan-proxy',
+        'protocol': 'socks',
+        'port': 11024,
+        'listen': '127.0.0.1',
+      });
+      final text = jsonEncode(source);
+      final api = LocalApiConfiguration(withResources: resources);
+      final baseline = await api.compile({
+        'kind': 'raw',
+        'text': text,
+        'options': options(),
+      });
+      expect(baseline['status'], 'passed');
+      for (final port in [11024, 18186, 18187]) {
+        final shared = await api.compile({
+          'kind': 'raw',
+          'text': text,
+          'options': {
+            ...options(),
+            'lanProxyEnabled': true,
+            'lanProxyPort': port,
+          },
+        });
+        expect(shared['status'], 'passed');
+        expect(shared['compiledConfig'], baseline['compiledConfig']);
+      }
+      expect(
+        (jsonDecode(baseline['compiledConfig'] as String)['inbounds'] as List)
+            .last,
+        (source['inbounds'] as List).last,
+      );
+    },
+  );
+
   test('routing compile is the existing compiler with explicit nodes, not a kernel test', () async {
     final nodes = [
       {'tag': 'Node A', 'protocol': 'freedom'},

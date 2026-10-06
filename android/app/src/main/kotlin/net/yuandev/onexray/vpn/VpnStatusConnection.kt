@@ -21,6 +21,8 @@ class VpnStatusConnection(
         const val ACTION_BIND = "net.yuandev.onexray.VPN_STATUS_BIND"
         const val DESCRIPTOR = "net.yuandev.onexray.VpnStatus"
         const val READ_STATUS = IBinder.FIRST_CALL_TRANSACTION
+        const val BEGIN_SAVED_VPN_CHANGE = IBinder.FIRST_CALL_TRANSACTION + 1
+        const val COMPLETE_SAVED_VPN_CHANGE = IBinder.FIRST_CALL_TRANSACTION + 2
     }
 
     private var binding: ServiceConnection? = null
@@ -28,6 +30,7 @@ class VpnStatusConnection(
     private var pending: CompletableDeferred<Unit>? = null
     private var target: VpnStatus? = null
     private var eventGeneration = 0
+    private var savedVpnChangeActive = false
 
     suspend fun read(): VpnStatus = withContext(Dispatchers.Main) {
         target?.let {
@@ -62,7 +65,7 @@ class VpnStatusConnection(
                 throw failure
             }
             if (generation != eventGeneration) return@withContext
-        } else {
+        } else if (!savedVpnChangeActive) {
             unbind()
         }
         if (running || error != null) VpnController.lastError = error
@@ -95,7 +98,49 @@ class VpnStatusConnection(
         }
     }
 
-    private suspend fun bind(): IBinder {
+    suspend fun beginSavedVpnChange(): Boolean = withContext(Dispatchers.Main) {
+        check(!savedVpnChangeActive) { "A saved VPN change is already running" }
+        val wasBound = service != null
+        try {
+            val begun = savedVpnCommand(bind(create = true), BEGIN_SAVED_VPN_CHANGE)
+            savedVpnChangeActive = begun
+            // If start admission won, retain process-death observation of that
+            // now-active service rather than dropping its existing binding.
+            begun
+        } catch (error: Exception) {
+            if (!wasBound && pending == null) unbind()
+            throw error
+        }
+    }
+
+    suspend fun completeSavedVpnChange(committed: Boolean) = withContext(Dispatchers.Main) {
+        check(savedVpnChangeActive) { "No saved VPN change is running" }
+        try {
+            savedVpnCommand(bind(create = true), COMPLETE_SAVED_VPN_CHANGE, committed)
+        } finally {
+            savedVpnChangeActive = false
+            if (pending == null) unbind()
+        }
+        Unit
+    }
+
+    private suspend fun savedVpnCommand(binder: IBinder, code: Int, committed: Boolean = false): Boolean =
+        withContext(Dispatchers.IO) {
+            val request = Parcel.obtain()
+            val reply = Parcel.obtain()
+            try {
+                request.writeInterfaceToken(DESCRIPTOR)
+                if (code == COMPLETE_SAVED_VPN_CHANGE) request.writeInt(if (committed) 1 else 0)
+                check(binder.transact(code, request, reply, 0)) { "Saved VPN change was rejected" }
+                reply.readException()
+                code != BEGIN_SAVED_VPN_CHANGE || reply.readInt() != 0
+            } finally {
+                request.recycle()
+                reply.recycle()
+            }
+        }
+
+    private suspend fun bind(create: Boolean = false): IBinder {
         service?.let { return withTimeout(3_000) { it.await() } }
         val connected = CompletableDeferred<IBinder>()
         val connection = object : ServiceConnection {
@@ -119,8 +164,10 @@ class VpnStatusConnection(
         binding = connection
         service = connected
         try {
-            // Do not create a VPN service merely to query its state.
-            check(context.bindService(Intent(context, OneVpnService::class.java).setAction(ACTION_BIND), connection, 0)) {
+            // Reads only bind existing resources. Saved-input changes create the
+            // service so admission always happens in the same :native owner.
+            val flags = if (create) Context.BIND_AUTO_CREATE else 0
+            check(context.bindService(Intent(context, OneVpnService::class.java).setAction(ACTION_BIND), connection, flags)) {
                 "Could not bind the running VPN service"
             }
             return withTimeout(3_000) { connected.await() }

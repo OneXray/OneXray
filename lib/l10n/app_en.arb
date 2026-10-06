@@ -4,6 +4,7 @@
   "lanProxyListenAddress": "Listen address",
   "lanProxyPort": "Port",
   "lanProxyProtocolHint": "Supports both HTTP and SOCKS5 proxies; SOCKS5 supports UDP.",
+  "lanProxyRawJsonNotice": "Not available in Raw JSON mode. Configure sharing in your Raw JSON inbounds instead.",
   "lanProxySecurityHint": "No authentication. Enable only on trusted networks.",
   "lanProxyClientHint": "On other devices, enter this device's LAN IP address and this port in proxy settings. Sharing is available only while the VPN is running.",
   "lanProxyRestartTitle": "Restart VPN?",

@@ -157,7 +157,7 @@ void main() {
   );
 
   test(
-    'session traffic includes LAN sharing without counting other inbounds',
+    'session traffic counts only tunIn regardless of other inbounds',
     () async {
       final host = ConnectionRuntimeHost(
         readMetrics: (_) async => XrayMetricsVars.fromJson({
@@ -174,8 +174,8 @@ void main() {
         }),
       );
       final traffic = await host.query(_runtime());
-      expect(traffic.uplink, 40);
-      expect(traffic.downlink, 60);
+      expect(traffic.uplink, 10);
+      expect(traffic.downlink, 20);
     },
   );
 

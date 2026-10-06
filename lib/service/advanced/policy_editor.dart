@@ -95,6 +95,7 @@ class PolicyEditorService {
         platform,
         windowsMode: windowsMode,
         appleTun: appleTun,
+        includeLanProxy: !draft.original.connection.expert,
       ),
     );
   }
@@ -116,6 +117,7 @@ class PolicyEditorService {
         draft.original.policy,
         platform,
         windowsMode: windowsMode,
+        includeLanProxy: !draft.original.connection.expert,
       ),
       prepared.runtime,
     );
@@ -145,7 +147,7 @@ class PolicyEditorService {
     PolicyEditorDraft draft,
     PlatformPolicy policy,
   ) async {
-    if (!policy.lanProxyEnabled) return;
+    if (draft.original.connection.expert || !policy.lanProxyEnabled) return;
     if (policy.lanProxyPort == await _reservedApiPort()) {
       throw const FormatException(
         'Proxy port conflicts with the local HTTP API',
@@ -153,11 +155,7 @@ class PolicyEditorService {
     }
     final settings = draft.original.connection;
     String? data;
-    if (settings.expert && settings.rawId != null) {
-      data = (await coordinator.db.coreConfigDao.searchRow(settings.rawId!))
-          ?.data;
-    } else if (!settings.expert &&
-        settings.trafficMode == TrafficMode.custom &&
+    if (settings.trafficMode == TrafficMode.custom &&
         settings.customId != null) {
       final row = await coordinator.db.routingProfileDao.searchRow(
         settings.customId!,
@@ -180,9 +178,20 @@ class PolicyEditorService {
     PlatformPolicy b,
     ConnectionPlatform platform, {
     WindowsMode? windowsMode,
+    bool includeLanProxy = true,
   }) => const DeepCollectionEquality().equals(
-    _effectiveRuntime(a, platform, windowsMode: windowsMode),
-    _effectiveRuntime(b, platform, windowsMode: windowsMode),
+    _effectiveRuntime(
+      a,
+      platform,
+      windowsMode: windowsMode,
+      includeLanProxy: includeLanProxy,
+    ),
+    _effectiveRuntime(
+      b,
+      platform,
+      windowsMode: windowsMode,
+      includeLanProxy: includeLanProxy,
+    ),
   );
 
   static Object _effectiveRuntime(
@@ -190,6 +199,7 @@ class PolicyEditorService {
     ConnectionPlatform platform, {
     WindowsMode? windowsMode,
     Map<String, dynamic>? appleTun,
+    bool includeLanProxy = true,
   }) {
     final json = policy.toJson();
     final result = <String, dynamic>{
@@ -200,10 +210,11 @@ class PolicyEditorService {
               (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
         'dnsIpv6Address': policy.dnsIpv6Address,
       'log': json['log'],
-      'lanProxy': {
-        'enabled': policy.lanProxyEnabled,
-        if (policy.lanProxyEnabled) 'port': policy.lanProxyPort,
-      },
+      if (includeLanProxy)
+        'lanProxy': {
+          'enabled': policy.lanProxyEnabled,
+          if (policy.lanProxyEnabled) 'port': policy.lanProxyPort,
+        },
     };
     if (platform == ConnectionPlatform.android) {
       final android = json['android'] as Map<String, dynamic>;

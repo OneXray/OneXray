@@ -4,6 +4,7 @@
   "lanProxyListenAddress": "Адрес прослушивания",
   "lanProxyPort": "Порт",
   "lanProxyProtocolHint": "Поддерживает прокси HTTP и SOCKS5; SOCKS5 поддерживает UDP.",
+  "lanProxyRawJsonNotice": "Недоступно в режиме Raw JSON. Настройте общий доступ через inbounds в Raw JSON.",
   "lanProxySecurityHint": "Без аутентификации. Включайте только в доверенных сетях.",
   "lanProxyClientHint": "На других устройствах укажите локальный IP-адрес этого устройства и этот порт в настройках прокси. Общий доступ работает только при запущенном VPN.",
   "lanProxyRestartTitle": "Перезапустить VPN?",

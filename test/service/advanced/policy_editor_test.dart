@@ -14,6 +14,7 @@ import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/raw/db.dart';
 
 void main() {
   test('reconnect comparisons include only effective DNS settings', () {
@@ -103,6 +104,10 @@ void main() {
         return host = const HostConnection(VpnStatus.disconnected);
       },
       invalidateSavedVpn: () async => invalidations++,
+      beginSavedVpnChange: () async => true,
+      completeSavedVpnChange: (committed) async {
+        if (committed) invalidations++;
+      },
     );
     await coordinator.initialize(observe: false, registerReferences: false);
     addTearDown(() async {
@@ -224,6 +229,94 @@ void main() {
     expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
     expect(invalidations, 0);
   });
+
+  test('Raw ignores sharing changes for runtime comparison', () {
+    final original = PlatformPolicy.fromJson({
+      'xrayOutboundInterfaceName': 'Ethernet',
+    });
+    final changed = PlatformPolicy.fromJson({
+      ...original.toJson(),
+      'lanProxy': {'enabled': true, 'port': 11026},
+    });
+    for (final platform in ConnectionPlatform.values) {
+      expect(
+        PolicyEditorService.sameRuntime(
+          original,
+          changed,
+          platform,
+          includeLanProxy: false,
+        ),
+        isTrue,
+      );
+    }
+  });
+
+  for (final connected in [false, true]) {
+    test(
+      'Raw saves future sharing policy without affecting VPN: $connected',
+      () async {
+        final rawId = await db.coreConfigDao.insertAssetRow(
+          XrayRawDb.configCompanion(
+            'Raw',
+            jsonEncode({
+              'inbounds': [
+                {'tag': 'app-lan-proxy', 'protocol': 'socks', 'port': 11024},
+              ],
+              'outbounds': [
+                {'protocol': 'freedom'},
+              ],
+            }),
+          ),
+        );
+        final configuration = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true, rawId: rawId),
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: configuration.encode(),
+        );
+        if (connected) {
+          host = HostConnection(
+            VpnStatus.connected,
+            runtime: _runtime(configuration),
+          );
+        }
+        final service = PolicyEditorService(
+          coordinator: coordinator,
+          platform: ConnectionPlatform.android,
+          reservedApiPort: () async => 11024,
+        );
+        var draft = await service.load();
+        draft.policy['lanProxy']['enabled'] = true;
+        expect(
+          await service.save(
+            draft: draft,
+            confirm: (_) async => throw StateError('Raw must not restart'),
+          ),
+          isTrue,
+        );
+        draft = await service.load();
+        draft.policy['lanProxy']['port'] = 11026;
+        expect(
+          await service.save(
+            draft: draft,
+            confirm: (_) async => throw StateError('Raw must not restart'),
+          ),
+          isTrue,
+        );
+        expect(
+          (await coordinator.configuration).policy.lanProxyEnabled,
+          isTrue,
+        );
+        expect((await coordinator.configuration).policy.lanProxyPort, 11026);
+        expect(invalidations, 0);
+        expect(stops, 0);
+        expect(
+          host.status,
+          connected ? VpnStatus.connected : VpnStatus.disconnected,
+        );
+      },
+    );
+  }
 
   for (final platform in [
     ConnectionPlatform.windows,

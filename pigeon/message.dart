@@ -30,6 +30,12 @@ abstract class BridgeHostApi {
   void invalidateSavedVpn();
 
   @asyncCallback
+  bool beginSavedVpnChange();
+
+  @asyncCallback
+  void completeSavedVpnChange(bool committed);
+
+  @asyncCallback
   String invoke(String requestJson);
 
   //platform======================

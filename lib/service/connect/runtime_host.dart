@@ -59,6 +59,8 @@ class ConnectionRuntimeHost {
   _startVpn;
   final Future<NativeVpnCommandResult> Function()? _stopVpn;
   final Future<void> Function()? _invalidateSavedVpn;
+  final Future<bool> Function()? _beginSavedVpnChange;
+  final Future<void> Function(bool committed)? _completeSavedVpnChange;
 
   ConnectionRuntimeHost({
     String? runDirectory,
@@ -68,17 +70,27 @@ class ConnectionRuntimeHost {
     startVpn,
     Future<NativeVpnCommandResult> Function()? stopVpn,
     Future<void> Function()? invalidateSavedVpn,
+    Future<bool> Function()? beginSavedVpnChange,
+    Future<void> Function(bool committed)? completeSavedVpnChange,
   }) : _runDirectory = runDirectory,
        _readStatus = readStatus,
        _startVpn = startVpn,
        _stopVpn = stopVpn,
        _invalidateSavedVpn = invalidateSavedVpn,
+       _beginSavedVpnChange = beginSavedVpnChange,
+       _completeSavedVpnChange = completeSavedVpnChange,
        _metrics = readMetrics;
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
 
   Future<void> invalidateSavedVpn() =>
       (_invalidateSavedVpn ?? _host.invalidateSavedVpn)();
+
+  Future<bool> beginSavedVpnChange() =>
+      (_beginSavedVpnChange ?? _host.beginSavedVpnChange)();
+
+  Future<void> completeSavedVpnChange(bool committed) =>
+      (_completeSavedVpnChange ?? _host.completeSavedVpnChange)(committed);
 
   Future<
     ({VpnStatus status, PlatformPermissionResult? permission, String? message})

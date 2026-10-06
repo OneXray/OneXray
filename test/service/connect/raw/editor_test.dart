@@ -245,6 +245,74 @@ void main() {
     expect(coordinator.state.value.runtime, isNull);
   });
 
+  test(
+    'running Raw rename ignores device sharing and preserves user listener',
+    () async {
+      final text = jsonEncode({
+        'name': 'original',
+        'inbounds': [
+          {
+            'tag': 'app-lan-proxy',
+            'protocol': 'socks',
+            'listen': '127.0.0.1',
+            'port': 11024,
+          },
+        ],
+        'outbounds': [
+          {'protocol': 'freedom'},
+        ],
+      });
+      final rawId = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('original', text),
+      );
+      final configuration = ConnectionConfiguration(
+        connection: ConnectionSettings(expert: true, rawId: rawId),
+        policy: PlatformPolicy.fromJson({
+          'lanProxy': {'enabled': true, 'port': 11024},
+        }),
+      );
+      await db.connectionConfigDao.commit(
+        configurationJson: configuration.encode(),
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_, {observedStatus}) async => HostConnection(
+            VpnStatus.connected,
+            runtime: _runtime('raw', configuration, text),
+          ),
+          start: (_) async => throw StateError('Rename must not start'),
+          stop: () async => throw StateError('Rename must not stop'),
+        ),
+      );
+      final service = RawEditorService(
+        database: db,
+        coordinator: coordinator,
+        validate: (_) async {},
+      );
+      final draft = await service.load(rawId);
+      expect(
+        await service.save(
+          RawEditorDraft(
+            original: draft.original,
+            name: 'Renamed',
+            text: draft.text,
+          ),
+          confirmReconnect: () async =>
+              throw StateError('Rename must not confirm'),
+        ),
+        rawId,
+      );
+      final stored = await db.coreConfigDao.searchRow(rawId);
+      expect(stored!.name, 'Renamed');
+      expect(
+        jsonDecode(XrayRawDb.readFromDbData(stored))['inbounds'],
+        jsonDecode(text)['inbounds'],
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    },
+  );
+
   for (final scenario in ['offline', 'unused', 'disconnect', 'reconnect']) {
     test(
       'Raw deletion preserves confirmation and runtime behavior: $scenario',

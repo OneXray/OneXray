@@ -140,6 +140,7 @@ final class LocalApiConfiguration {
   String _compile(_Configuration input, Map<String, dynamic> request) {
     final options = _runtimeOptions(
       _required<Map<String, dynamic>>(request, 'options'),
+      includeLanProxy: input.raw == null,
     );
     final routing = input.routing;
     final supplied = request['outbounds'];
@@ -240,7 +241,10 @@ final class _Configuration {
   }
 }
 
-RuntimeOptions _runtimeOptions(Map<String, dynamic> values) {
+RuntimeOptions _runtimeOptions(
+  Map<String, dynamic> values, {
+  required bool includeLanProxy,
+}) {
   final platformName = _required<String>(values, 'platform');
   final platform = ConnectionPlatform.values.firstWhere(
     (value) => value.name == platformName,
@@ -269,8 +273,12 @@ RuntimeOptions _runtimeOptions(Map<String, dynamic> values) {
     sessionDirectory: directory,
     metricsPort: metrics,
     socksPort: socks,
-    lanProxyEnabled: _optional<bool>(values, 'lanProxyEnabled') ?? false,
-    lanProxyPort: _optional<int>(values, 'lanProxyPort') ?? 11024,
+    lanProxyEnabled:
+        includeLanProxy &&
+        (_optional<bool>(values, 'lanProxyEnabled') ?? false),
+    lanProxyPort: includeLanProxy
+        ? _optional<int>(values, 'lanProxyPort') ?? 11024
+        : 11024,
     ipv6: _required<bool>(values, 'ipv6'),
     interfaceName: _optional<String>(values, 'interfaceName') ?? '',
     tunDnsIpv4Address:

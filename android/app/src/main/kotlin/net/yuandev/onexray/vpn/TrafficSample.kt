@@ -27,15 +27,15 @@ data class TrafficSample(
             val stats = root?.get("stats") as? JsonObject
                 ?: throw IllegalArgumentException("Missing metrics stats")
             val inbound = stats["inbound"] as? JsonObject
-            fun counter(tag: String, key: String): Long {
-                val tun = inbound?.get(tag) as? JsonObject
+            val tun = inbound?.get("tunIn") as? JsonObject
+            fun counter(key: String): Long {
                 val value = tun?.get(key) ?: return 0 // Counters are created lazily.
                 return (value as? JsonPrimitive)?.longOrNull?.takeIf { it >= 0 }
                     ?: throw IllegalArgumentException("Invalid metrics counter")
             }
             return TrafficSample(
-                counter("tunIn", "uplink") + counter("app-lan-proxy", "uplink"),
-                counter("tunIn", "downlink") + counter("app-lan-proxy", "downlink"),
+                counter("uplink"),
+                counter("downlink"),
             )
         }
 

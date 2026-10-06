@@ -21,7 +21,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
-import net.yuandev.onexray.vpn.SavedVpnConfig
 import net.yuandev.onexray.vpn.VpnStatusConnection
 import java.io.ByteArrayOutputStream
 
@@ -139,7 +138,22 @@ class AppHostApi(
 
     override fun invalidateSavedVpn(callback: (Result<Unit>) -> Unit) {
         scope.launch {
-            callback(runCatching { SavedVpnConfig.invalidate(VpnController.startFile(context)) })
+            callback(runCatching {
+                check(vpnStatus.beginSavedVpnChange()) { "VPN resources are active" }
+                vpnStatus.completeSavedVpnChange(true)
+            })
+        }
+    }
+
+    override fun beginSavedVpnChange(callback: (Result<Boolean>) -> Unit) {
+        scope.launch {
+            callback(runCatching { vpnStatus.beginSavedVpnChange() })
+        }
+    }
+
+    override fun completeSavedVpnChange(committed: Boolean, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            callback(runCatching { vpnStatus.completeSavedVpnChange(committed) })
         }
     }
 

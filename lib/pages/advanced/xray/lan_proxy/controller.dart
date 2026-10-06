@@ -24,7 +24,9 @@ class LanProxyController extends PolicyEditorController {
 
   @override
   String saveLabel(AppLocalizations l) =>
-      connected && draft?.original.policy.lanProxyEnabled == true
+      connected &&
+          draft?.original.connection.expert != true &&
+          draft?.original.policy.lanProxyEnabled == true
       ? l.prototypeSaveAndReconnect
       : l.prototypeSave;
 

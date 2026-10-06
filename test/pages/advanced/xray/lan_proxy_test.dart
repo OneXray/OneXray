@@ -73,6 +73,7 @@ void main() {
       final l = AppLocalizations.of(tester.element(find.byType(LanProxyPage)))!;
       expect(find.text(l.lanProxyProtocolHint), findsOneWidget);
       expect(find.text(l.lanProxySecurityHint), findsOneWidget);
+      expect(find.text(l.lanProxyRawJsonNotice), findsOneWidget);
       expect(find.text('0.0.0.0'), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
       expect(controller.portController.text, '11024');
@@ -145,6 +146,43 @@ void main() {
     });
   }
 
+  testWidgets('Raw saves the shared port without a restart affordance', (
+    tester,
+  ) async {
+    service.configuration = ConnectionConfiguration(
+      connection: ConnectionSettings(expert: true, rawId: 1),
+      policy: PlatformPolicy.fromJson({
+        'lanProxy': {'enabled': true},
+      }),
+    );
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+    );
+    final controller = LanProxyController(
+      draft: await service.load(),
+      service: service,
+    );
+    registerCleanup(tester, controller.close);
+    await tester.pumpWidget(
+      _app(LanProxyPage(createController: () => controller)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Save and reconnect'), findsNothing);
+    await tester.enterText(
+      find.byKey(const ValueKey('lan-proxy-port')),
+      '11026',
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(find.text('Restart VPN?'), findsNothing);
+    expect(service.configuration.policy.lanProxyPort, 11026);
+    expect(service.saves, 1);
+    expect(tester.takeException(), isNull);
+    await tester.runAsync(controller.close);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+  });
+
   testWidgets(
     'editing the active port confirms restart and keeps draft on cancel',
     (tester) async {
@@ -206,6 +244,7 @@ class _LanService extends PolicyEditorService {
     required Future<bool> Function(bool disconnect) confirm,
   }) async {
     if (coordinator.state.value.phase == ConnectionPhase.connected &&
+        !draft.original.connection.expert &&
         !await confirm(false)) {
       return false;
     }

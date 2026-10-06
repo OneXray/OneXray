@@ -239,11 +239,7 @@ class RawEditorService {
     final request = runtime?.request;
     final metricsPort = int.tryParse(request?.metricsPort ?? '');
     final socksPort = int.tryParse(request?.socksPort ?? '');
-    final occupied = {
-      ?metricsPort,
-      ?socksPort,
-      if (policy.lanProxyEnabled) policy.lanProxyPort,
-    };
+    final occupied = {?metricsPort, ?socksPort};
     // Disconnected semantic comparisons need stable placeholders, not sockets.
     final comparisonPorts = [
       for (final port in [65534, 65535, 65533])
@@ -254,8 +250,6 @@ class RawEditorService {
       sessionDirectory: VpnConstants.runDir,
       metricsPort: metricsPort ?? comparisonPorts.removeAt(0),
       socksPort: socksPort ?? comparisonPorts.removeAt(0),
-      lanProxyEnabled: policy.lanProxyEnabled,
-      lanProxyPort: policy.lanProxyPort,
       ipv6: policy.ipv6Enabled,
       interfaceName: policy.xrayOutboundInterfaceName,
       logEnabled: policy.logEnabled,

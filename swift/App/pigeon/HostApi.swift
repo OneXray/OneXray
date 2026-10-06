@@ -76,6 +76,30 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             }
         }
     }
+
+    func beginSavedVpnChange(completion: @escaping (Result<Bool, any Error>) -> Void) {
+        Task {
+            do {
+                let status = try await VPNManager.shared.readVpnStatus()
+                completion(.success(status == .disconnected))
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
+
+    func completeSavedVpnChange(committed: Bool, completion: @escaping (Result<Void, any Error>) -> Void) {
+        Task {
+            do {
+                // Do not change the provider request or on-demand rules until
+                // the App has successfully persisted the new device policy.
+                if committed { try await VPNManager.shared.invalidateSavedVpn() }
+                completion(.success(()))
+            } catch {
+                completion(.failure(error))
+            }
+        }
+    }
     
     func invoke(requestJson: String, completion: @escaping (Result<String, any Error>) -> Void) {
         Task {

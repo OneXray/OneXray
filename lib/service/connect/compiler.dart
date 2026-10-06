@@ -274,7 +274,13 @@ class ConnectionCompiler {
         }
         template['inbounds'] = inbounds;
         return CompiledConnection(
-          xrayJson: jsonEncode(_rawRuntimeMap(template, options)),
+          xrayJson: jsonEncode(
+            _rawRuntimeMap(
+              template,
+              options,
+              includeLanProxy: options.lanProxyEnabled,
+            ),
+          ),
           entries: entries,
           finalExit: null,
           nodeTags: nodeTags,
@@ -512,8 +518,9 @@ class ConnectionCompiler {
 
   static Map<String, dynamic> _rawRuntimeMap(
     Map<String, dynamic> source,
-    RuntimeOptions options,
-  ) {
+    RuntimeOptions options, {
+    bool includeLanProxy = false,
+  }) {
     final config = JsonTool.copyMap(source);
     validateLocalDnsNetworkPolicy(
       config,
@@ -523,7 +530,7 @@ class ConnectionCompiler {
     );
     final outbounds = _objects(config, 'outbounds');
     final inbounds = _objects(config, 'inbounds');
-    if (options.lanProxyEnabled) {
+    if (includeLanProxy) {
       validateLanProxyInbounds(inbounds, options.lanProxyPort);
     }
     for (final inbound in inbounds) {
@@ -590,7 +597,7 @@ class ConnectionCompiler {
         }
       }
     }
-    if (options.lanProxyEnabled) {
+    if (includeLanProxy) {
       inbounds.add(
         createLanProxyInbound(
           options.lanProxyPort,

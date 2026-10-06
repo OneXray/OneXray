@@ -58,6 +58,12 @@ class LanProxyPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     spacing: mobile ? 25 : 28,
                     children: [
+                      Text(
+                        l.lanProxyRawJsonNotice,
+                        style: AppTypography.settingsDetailNote.copyWith(
+                          color: palette.mutedForeground,
+                        ),
+                      ),
                       SettingSection(
                         title: l.lanProxyTitle,
                         icon: LucideIcons.network,

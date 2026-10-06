@@ -80,6 +80,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
   late final Future<void> Function() _invalidateSavedVpn;
+  late final Future<bool> Function() _beginSavedVpnChange;
+  late final Future<void> Function(bool committed) _completeSavedVpnChange;
   final Stream<VpnStatus> _statusEvents;
   final Future<void> Function() _observeStatus;
   final void Function() _disposeStatus;
@@ -115,6 +117,8 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
     Future<void> Function()? invalidateSavedVpn,
+    Future<bool> Function()? beginSavedVpnChange,
+    Future<void> Function(bool committed)? completeSavedVpnChange,
     Stream<VpnStatus>? statusEvents,
     Future<void> Function()? observeStatus,
     void Function()? disposeStatus,
@@ -130,6 +134,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _readTraffic = readTraffic ?? host.query;
     _readRuntime = readRuntime ?? host.readRuntime;
     _invalidateSavedVpn = invalidateSavedVpn ?? host.invalidateSavedVpn;
+    _beginSavedVpnChange = beginSavedVpnChange ?? host.beginSavedVpnChange;
+    _completeSavedVpnChange =
+        completeSavedVpnChange ?? host.completeSavedVpnChange;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -481,10 +488,12 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         stored.encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
+    final oldSharing =
+        !stored.connection.expert && stored.policy.lanProxyEnabled;
+    final newSharing = !next.connection.expert && next.policy.lanProxyEnabled;
     final sharingChanged =
-        stored.policy.lanProxyEnabled != next.policy.lanProxyEnabled ||
-        (next.policy.lanProxyEnabled &&
-            stored.policy.lanProxyPort != next.policy.lanProxyPort);
+        oldSharing != newSharing ||
+        (newSharing && stored.policy.lanProxyPort != next.policy.lanProxyPort);
     final current = await _inspect(await _currentRuntime());
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
@@ -502,15 +511,25 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
       if (!shouldStart && !shouldStop) {
         await validateAssets?.call();
-        if (current.status == VpnStatus.disconnected && sharingChanged) {
-          // Widget/Tile and Apple On Demand may otherwise reuse the old input
-          // and reopen a listener that this device setting has just disabled.
-          await _invalidateSavedVpn();
+        final guardSavedStart =
+            current.status == VpnStatus.disconnected && sharingChanged;
+        if (guardSavedStart && !await _beginSavedVpnChange()) {
+          throw const ConnectionHostException('reconnectRequired');
         }
-        await db.connectionConfigDao.commit(
-          configurationJson: next.encode(),
-          writeAssets: write,
-        );
+        var committed = false;
+        try {
+          await db.connectionConfigDao.commit(
+            configurationJson: next.encode(),
+            writeAssets: write,
+          );
+          committed = true;
+        } finally {
+          if (guardSavedStart) {
+            // The old request remains intact when persistence fails. Native
+            // admission prevents a background start from racing this save.
+            await _completeSavedVpnChange(committed);
+          }
+        }
         _publish(current);
         return;
       }
