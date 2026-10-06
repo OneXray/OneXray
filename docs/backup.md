@@ -26,7 +26,9 @@ UTF-8 JSON 的 `format=onexray-backup`、`version=1`、`createdAt` 为 Unix 毫�
 - 保存本地（subId=0）outbound 与全部 Raw，包括超过新增三份上限的旧 Raw；
   保存订阅来源、原 Age 密钥对及关闭发送时仍存在的 HWID，排除订阅节点缓存、本地修改、更新时间与套餐缓存。
 - 常规/高级路由保留类型、名称及原文，共用名称唯一和三份上限；
-  Smart 显式保存连接设置但排除最终出口选择。最终出口若是本地节点，仍作为普通节点保存。
+  包含 [Fragment 辅助出站及其参数](xray-configuration.md#fragment)。
+  Smart 显式保存连接设置（含 Fragment 开关）但排除最终出口选择，旧 v1 备份缺省 Fragment 为关闭。
+  最终出口若是本地节点，仍作为普通节点保存。
 - 自定义 Geodata 只保存名称/类型/HTTPS URL，包含待下载声明，省略默认组；不保存任何资源文件。
 - `data` 保留数据库 Base64 原字符串，不通过分享格式或普通模型裁剪 Raw/高级内容。
   不保存数据库 ID、收藏、测速/位置缓存、首页选择、专家模式、平台策略、App 偏好、API 或 Android 自动化授权。

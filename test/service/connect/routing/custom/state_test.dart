@@ -3,9 +3,115 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/custom/document.dart';
+import 'package:onexray/service/connect/routing/custom/editor.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/state_db.dart';
 
 void main() {
+  test('fragment helper persists and shares its imported parameters', () {
+    final legacy = RoutingProfileDocument.parse(jsonEncode(_document())).state;
+    expect(legacy.fragment, false);
+    expect(legacy.fragmentOutbound, isNull);
+    for (final count in [1, 2, 3]) {
+      final helper = _fragment();
+      final document = _document(count);
+      (document['outbounds'] as List).add(helper);
+      final state = RoutingProfileDocument.parse(jsonEncode(document)).state;
+      expect(state.entryCount, count);
+      expect(state.fragment, true);
+      expect(state.fragmentOutbound, helper);
+      expect(state.xrayJson.outbounds, [
+        for (var i = 0; i < count; i++) <String, dynamic>{},
+        helper,
+      ]);
+
+      final persisted = RoutingProfileStateDb.readData(
+        id: 7,
+        name: 'Saved route',
+        data: state.databaseData,
+      );
+      expect(persisted.id, 7);
+      expect(persisted.entryCount, count);
+      expect(persisted.fragmentOutbound, helper);
+      final encoded = jsonDecode(persisted.encode()) as Map<String, dynamic>;
+      expect(encoded.containsKey('fragment'), false);
+      expect(encoded.containsKey('fragmentEnabled'), false);
+      final shared = RoutingProfileDocument.parse(
+        jsonEncode({...encoded, 'name': 'Shared route'}),
+      ).state;
+      expect(shared.name, 'Shared route');
+      expect(shared.entryCount, count);
+      expect(shared.fragmentOutbound, helper);
+    }
+  });
+
+  test('fragment copies retain parameters without exposing mutable state', () {
+    final helper = _fragment();
+    final state = RoutingProfileState(name: 'Route', fragmentOutbound: helper);
+    final expected = _fragment();
+    (helper['settings'] as Map).clear();
+    expect(state.fragmentOutbound, expected);
+    final exposed = state.fragmentOutbound!;
+    (exposed['settings'] as Map).clear();
+    final encoded = state.xrayJson;
+    (encoded.outbounds!.last['settings'] as Map).clear();
+    expect(state.fragmentOutbound, expected);
+    expect(state.copyWith(name: 'Renamed').fragmentOutbound, expected);
+    expect(state.copyWith(entryCount: 3).fragmentOutbound, expected);
+    final disabled = state.copyWith(clearFragment: true);
+    expect(disabled.fragment, false);
+    expect(disabled.xrayJson.outbounds, [{}]);
+    expect(
+      disabled.copyWith(fragmentOutbound: expected).fragmentOutbound,
+      expected,
+    );
+    expect(CustomRoutingEditorService.sameRouting(state, disabled), false);
+    expect(
+      CustomRoutingEditorService.sameRouting(
+        state,
+        state.copyWith(name: 'Renamed'),
+      ),
+      true,
+    );
+    final changed = _fragment();
+    ((changed['settings'] as Map)['fragment'] as Map)['length'] = '90-120';
+    expect(
+      CustomRoutingEditorService.sameRouting(
+        state,
+        state.copyWith(fragmentOutbound: changed),
+      ),
+      false,
+    );
+  });
+
+  test('fragment requires leading slots and the freedom tag identity', () {
+    for (final outbounds in [
+      [_fragment()],
+      [{}, _fragment(), {}],
+      [{}, _fragment(), _fragment()],
+      [{}, {}, {}, {}, _fragment()],
+      [
+        {},
+        {..._fragment(), 'protocol': 'blackhole'},
+      ],
+      [
+        {},
+        {..._fragment(), 'tag': 'other'},
+      ],
+    ]) {
+      _reject({..._document(), 'outbounds': outbounds});
+    }
+    final helper = _fragment()
+      ..['settings'] = {'fragment': 'Core validates this'};
+    final state = RoutingProfileDocument.parse(
+      jsonEncode({
+        ..._document(),
+        'outbounds': [{}, helper],
+      }),
+    ).state;
+    expect(state.fragmentOutbound, helper);
+  });
+
   test('FakeDNS round trips as an optional standard tagged DNS server', () {
     final base = RoutingProfileState(name: 'Route');
     expect(base.fakeDns, false);
@@ -401,6 +507,23 @@ Map<String, dynamic> _rule() => {
   'ruleTag': 'A rule',
   'domain': ['domain:example.com'],
   'balancerTag': 'proxy',
+};
+
+Map<String, dynamic> _fragment() => {
+  'tag': 'fragment',
+  'protocol': 'freedom',
+  'settings': {
+    'fragment': {
+      'packets': 'tlshello',
+      'length': '40-80',
+      'interval': '2-3',
+      'maxSplit': '3-5',
+    },
+    'futureSetting': true,
+  },
+  'streamSettings': {
+    'sockopt': {'tcpNoDelay': true},
+  },
 };
 
 void _reject(Map<String, dynamic> document) {

@@ -6,6 +6,7 @@ import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/connect/routing/custom/metadata.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 
 /// Node-free JSON template. No ordinary model round-trip or implicit DNS rules.
 final class AdvancedRoutingProfile implements RoutingConfiguration {
@@ -88,9 +89,13 @@ final class AdvancedRoutingProfile implements RoutingConfiguration {
   /// The same composition is used with real nodes or local validation slots.
   Map<String, dynamic> fillSlots(List<Map<String, dynamic>> entries) {
     final json = toJson();
+    final helpers = (json['outbounds'] as List)
+        .skip(entryCount)
+        .cast<Map<String, dynamic>>()
+        .toList();
     json['outbounds'] = [
-      ...entries.map(JsonTool.copyMap),
-      ...(json['outbounds'] as List).skip(entryCount),
+      ...XrayFragment.connectEntries(entries, helpers),
+      ...helpers,
       createFreedomOutbound(tag: 'direct').toJson(),
       createBlackholeOutbound(tag: 'block').toJson(),
     ];

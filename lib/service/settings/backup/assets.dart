@@ -69,6 +69,7 @@ class BackupAssets {
         directDns: settings.directDns,
         directDnsAddress: settings.directDnsAddress,
         fakeDns: settings.fakeDns,
+        fragment: settings.fragment,
         blockAds: settings.blockAds,
       ),
       geoData: [

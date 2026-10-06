@@ -15,6 +15,7 @@ void main() {
     directDns: true,
     directDnsAddress: '8.8.8.8',
     fakeDns: false,
+    fragment: true,
     blockAds: false,
   );
   BackupDocument sample() => BackupDocument(
@@ -55,8 +56,28 @@ void main() {
       expect(result.subscriptions.single.hwid, 'stable-fixture');
       expect(result.subscriptions.single.hwidEnabled, false);
       expect(result.smartRouting.toJson(), isNot(contains('finalExitId')));
+      expect(result.smartRouting.fragment, true);
     },
   );
+
+  test('previous v1 backups default fragment to disabled', () {
+    final json = sample().toJson();
+    (json['smartRouting'] as Map<String, dynamic>).remove('fragment');
+    final document = decodeBackup(
+      Uint8List.fromList(utf8.encode(jsonEncode(json))),
+    );
+    expect(document.smartRouting.fragment, false);
+    expect(document.smartRouting.toJson()['fragment'], false);
+  });
+
+  test('fragment must be a boolean when present', () {
+    final json = sample().toJson();
+    (json['smartRouting'] as Map<String, dynamic>)['fragment'] = 'true';
+    expect(
+      () => decodeBackup(Uint8List.fromList(utf8.encode(jsonEncode(json)))),
+      throwsFormatException,
+    );
+  });
 
   test(
     'rejects missing partitions, unknown formats and forbidden metadata',

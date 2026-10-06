@@ -96,6 +96,8 @@
   "routingAdvancedNotice": "outbounds 开头的 1–3 个空对象代表接入节点。OneXray 提供所选服务器、proxy 代理组、direct/block 和平台设置。DNS 与规则顺序由你控制，不自动添加 DNS 规则或兜底规则；未命中流量使用第一个接入节点。编辑前请阅读文档。",
   "routingFakeDns": "使用 FakeDNS",
   "routingFakeDnsHint": "返回虚拟 IP，并在路由前还原域名。命中本地 DNS 的域名仍使用真实 IP。断开或重连后，DNS 缓存可能暂时影响访问。",
+  "routingFragment": "使用 Fragment",
+  "routingFragmentHint": "对 TLS 握手进行分片，可能改善部分网络中的访问，也可能增加连接耗时。",
   "routingRuleMoreConditions": "更多匹配条件",
   "routingRuleProtocol": "应用层协议",
   "routingRuleProtocolHint": "匹配嗅探到的流量协议，不是服务器的 VLESS 或 VMess 协议。嗅探不一定能识别所有流量。",

@@ -36,7 +36,7 @@ balancer 选择这些完整链路，接入选择排除最终出口；自定义�
 智能路由把直连域名/IP 分别去重合并为一条规则，无条件时省略对应规则。
 顺序为广告阻断、Windows 开关对应的 GitHub 代理、合并域名直连、合并 IP 直连。
 Windows 服务直连使用 Microsoft/Bing 分类，同时优先代理 GitHub；该开关在所有平台显示。
-直连地区来自安装的官方分类与随包映射。广告、FakeDNS 默认关闭，其余智能开关默认开启；保留已保存值。
+直连地区来自安装的官方分类与随包映射。广告、FakeDNS、Fragment 默认关闭，其余智能开关默认开启；保留已保存值。
 
 ### DNS
 
@@ -59,10 +59,23 @@ Windows 服务直连使用 Microsoft/Bing 分类，同时优先代理 GitHub；�
 Raw 只给新建 tunIn 添加默认还原，已有 sniffing 不自动修改；高级模板省略 sniffing 时使用默认值，显式填写整对象保留。
 池映射随 Core 销毁，重启后的缓存虚拟地址可能无法还原；App 不清系统 DNS 缓存或改用户排除路由。
 
+### Fragment
+
+智能与各常规自定义分别保存 Fragment 开关，默认关闭，全部使用 VPN 不受影响。
+开启时使用 `protocol: freedom`、`tag: fragment` 的辅助出站；默认 `settings.fragment` 为
+`packets: tlshello`、`length: 100-200`、`interval: 10-20`。
+运行把接入节点接到该出站；智能最终出口链路保持 `最终出口 → 接入 → fragment`，balancer 仍选择完整链路。
+Windows/Linux 给 fragment 的物理 socket 绑定已选网卡。
+
+常规路由导入后保留辅助出站的自定义参数，编辑其他字段不重写它们。
+高级模板存在该 freedom 出站即开启，填槽时自动接入所选节点，参数仍由模板管理。
+Raw 保留用户链路，App 不根据 fragment tag 自动接线。
+
 ## 常规自定义路由
 
 `RoutingProfile` 经 Base64 解码为 `XrayJson`，再转换 `RoutingProfileState` 供业务/UI 使用。
-持久化/导出的 outbounds 仅 1–3 个空接入槽；非空节点（含 direct/block）拒绝导入，不兼容转换。
+持久化/导出的 outbounds 以 1–3 个空接入槽开始，随后可有一个 [Fragment](#fragment) freedom 辅助出站；
+其它非空节点（含 direct/block）拒绝导入，不兼容转换。
 direct/block 只在校验/运行时生成，规则的动作引用保留。名称存于表列，交换 JSON 根部可用 `name`。
 
 规则支持域名、目标 IP、目标端口、网络、协议和 localOS；不同条件为 AND，列表/反选遵循内核语义，建议填单一条件。

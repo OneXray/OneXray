@@ -17,6 +17,7 @@ import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 
 class ResolvedServer {
   final int id;
@@ -280,9 +281,21 @@ class ConnectionCompiler {
           selector.add(exitTag);
         }
       }
+      final fragment = switch (settings.trafficMode) {
+        TrafficMode.smart =>
+          settings.smart.fragment ? XrayFragment.defaultOutbound() : null,
+        TrafficMode.custom => ordinary!.fragmentOutbound,
+        TrafficMode.allVpn => null,
+      };
+      final helpers = <Map<String, dynamic>>[?fragment];
+      final connectedEntries = XrayFragment.connectEntries(
+        entriesOutbounds,
+        helpers,
+      );
       final outbounds = <Map<String, dynamic>>[
-        if (finalExit == null) ...entriesOutbounds else ...exits,
-        if (finalExit != null) ...entriesOutbounds,
+        if (finalExit == null) ...connectedEntries else ...exits,
+        if (finalExit != null) ...connectedEntries,
+        ...helpers,
       ];
       _applyOutboundPolicy(outbounds, options, raw: false);
       outbounds.addAll([

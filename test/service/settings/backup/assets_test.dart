@@ -34,9 +34,30 @@ void main() {
     final raw = base64Encode(
       utf8.encode('{\n "outbounds":[], "unknown":true\n}'),
     );
+    final fragmentOutbound = <String, dynamic>{
+      'tag': 'fragment',
+      'protocol': 'freedom',
+      'settings': {
+        'fragment': {
+          'packets': 'tlshello',
+          'length': '80-120',
+          'interval': '1-4',
+        },
+      },
+    };
+    final advanced =
+        jsonDecode(AdvancedRoutingProfile.defaultText) as Map<String, dynamic>;
+    (advanced['outbounds'] as List).add(fragmentOutbound);
     final routeData = [
-      base64Encode(utf8.encode(RoutingProfileState(name: '普通路由').encode())),
-      base64Encode(utf8.encode(AdvancedRoutingProfile.defaultText)),
+      base64Encode(
+        utf8.encode(
+          RoutingProfileState(
+            name: '普通路由',
+            fragmentOutbound: fragmentOutbound,
+          ).encode(),
+        ),
+      ),
+      base64Encode(utf8.encode(jsonEncode(advanced))),
     ];
     for (var i = 0; i < routeData.length; i++) {
       await db.routingProfileDao.insertRow(
@@ -125,7 +146,7 @@ void main() {
       connection: ConnectionSettings(
         expert: true,
         rawId: 1,
-        smart: SmartRoutingSettings(finalExitId: 2),
+        smart: SmartRoutingSettings(finalExitId: 2, fragment: true),
       ),
       policy: PlatformPolicy.fromJson({'ipv6Enabled': false}),
     );
@@ -135,6 +156,7 @@ void main() {
     expect(document.coreConfigs.length, 5);
     expect(document.coreConfigs.last.data, outbound);
     expect(document.routingProfiles.map((row) => row.data), routeData);
+    expect(document.smartRouting.fragment, true);
     expect(jsonEncode(document.toJson()), isNot(contains('finalExitId')));
     expect(document.subscriptions.single.toJson(), {
       'name': 'Source',
@@ -166,6 +188,7 @@ void main() {
     );
     expect(connection.connection.expert, false);
     expect(connection.connection.smart.finalExitId, null);
+    expect(connection.connection.smart.fragment, true);
     expect(connection.policy.toJson(), original.policy.toJson());
     final subscription = (await db.subscriptionDao.allRows).single;
     expect(subscription.hwid, 'keep');

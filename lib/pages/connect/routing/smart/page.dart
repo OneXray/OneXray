@@ -197,6 +197,11 @@ class _SmartRoutingEditorPageState extends State<SmartRoutingEditorPage> {
             enabled: state.original != null,
             onChanged: (value) => controller.update('fakeDns', value),
           ),
+          RoutingFragmentRow(
+            value: smart.fragment,
+            enabled: state.original != null,
+            onChanged: (value) => controller.update('fragment', value),
+          ),
           _switch(
             l.prototypeBlockAdDomains,
             l.prototypeBlockAdDomainsHint,

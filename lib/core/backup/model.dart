@@ -98,6 +98,7 @@ class BackupSmartRouting {
   final bool directDns;
   final String directDnsAddress;
   final bool fakeDns;
+  final bool fragment;
   final bool blockAds;
 
   const BackupSmartRouting({
@@ -109,6 +110,7 @@ class BackupSmartRouting {
     required this.directDns,
     required this.directDnsAddress,
     required this.fakeDns,
+    this.fragment = false,
     required this.blockAds,
   });
   factory BackupSmartRouting.fromJson(Map<String, dynamic> json) =>
