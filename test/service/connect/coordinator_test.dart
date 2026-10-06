@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -7,12 +8,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
+import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   late AppDatabase db;
@@ -997,6 +1002,162 @@ void main() {
     expect(coordinator.state.value.permission, permission);
   });
 
+  for (final initialStatus in [VpnStatus.disconnected, VpnStatus.connected]) {
+    test(
+      'LAN edits preserve the last native input until the next App connection: ${initialStatus.name}',
+      () async {
+        final fixtures = Directory(
+          p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
+        ).absolute;
+        await fixtures.create(recursive: true);
+        final directory = await fixtures.createTemp('lan-next-app-start-');
+        addTearDown(() => directory.delete(recursive: true));
+        final file = File(p.join(directory.path, 'start.json'));
+        final previous = ConnectionConfiguration(
+          connection: ConnectionSettings(
+            selection: const ServerSelection.server(1),
+            trafficMode: TrafficMode.allVpn,
+          ),
+        );
+        ConnectionRuntime compileRuntime(
+          ConnectionConfiguration configuration,
+        ) {
+          final compiled = ConnectionCompiler.compile(
+            settings: configuration.connection,
+            entries: [
+              ResolvedServer(
+                id: 1,
+                sourceId: 7,
+                outbound: {'tag': 'Example', 'protocol': 'freedom'},
+              ),
+            ],
+            regions: const RegionCatalog.empty(),
+            options: RuntimeOptions(
+              platform: ConnectionPlatform.android,
+              sessionDirectory: directory.path,
+              metricsPort: 18003,
+              socksPort: 18004,
+              lanProxyEnabled: configuration.policy.lanProxyEnabled,
+              lanProxyPort: configuration.policy.lanProxyPort,
+            ),
+          );
+          return ConnectionRuntime.create(
+            configuration: configuration,
+            compiled: compiled,
+            platform: ConnectionPlatform.android,
+            request: StartVpnRequest(
+              configuration.policy.toTun(ConnectionPlatform.android),
+              '18004',
+              '18003',
+              jsonEncode(
+                LibXrayInvokeRequest(
+                  method: LibXrayMethod.runXray,
+                  payload: RunXrayRequest(compiled.xrayJson).toJson(),
+                ).toJson(),
+              ),
+            ),
+          );
+        }
+
+        final previousRuntime = compileRuntime(previous);
+        await db.connectionConfigDao.commit(
+          configurationJson: previous.encode(),
+        );
+        await file.writeAsString(jsonEncode(previousRuntime.request.toJson()));
+        var host = HostConnection(
+          initialStatus,
+          runtime: initialStatus == VpnStatus.connected
+              ? previousRuntime
+              : null,
+        );
+        final calls = <String>[];
+        final runtimeHost = ConnectionRuntimeHost(runDirectory: directory.path);
+        final coordinator = await _initialize(
+          ConnectionCoordinator(
+            database: db,
+            readRuntime: runtimeHost.readRuntime,
+            inspect: (_, {observedStatus}) async => host,
+            prepare: (configuration, _) async {
+              calls.add('prepare');
+              return compileRuntime(configuration);
+            },
+            start: (runtime) async {
+              calls.add('start');
+              await file.writeAsString(jsonEncode(runtime.request.toJson()));
+              return host = HostConnection(
+                VpnStatus.connected,
+                runtime: runtime,
+              );
+            },
+            stop: () async {
+              calls.add('stop');
+              return host = const HostConnection(VpnStatus.disconnected);
+            },
+          ),
+        );
+        final editor = PolicyEditorService(
+          coordinator: coordinator,
+          platform: ConnectionPlatform.android,
+          reservedApiPort: () async => null,
+        );
+
+        for (final change in [
+          (enabled: true, port: 11024),
+          (enabled: true, port: 12024),
+          (enabled: false, port: 12024),
+        ]) {
+          final originalInput = await file.readAsString();
+          final originalHost = host;
+          final callsBeforeSave = List<String>.of(calls);
+          final draft = await editor.load();
+          draft.policy['lanProxy']['enabled'] = change.enabled;
+          draft.policy['lanProxy']['port'] = change.port;
+          expect(
+            await editor.save(
+              draft: draft,
+              confirm: (_) async =>
+                  fail('LAN edits must not request a restart'),
+            ),
+            isTrue,
+          );
+
+          expect(await file.readAsString(), originalInput);
+          expect(host, same(originalHost));
+          expect(calls, callsBeforeSave);
+          expect(coordinator.state.value.runtime, same(originalHost.runtime));
+          final stored = await coordinator.configuration;
+          expect(stored.policy.lanProxyEnabled, change.enabled);
+          expect(stored.policy.lanProxyPort, change.port);
+
+          // Background starts keep the saved input. Only a fresh App connection
+          // compiles the newly stored policy.
+          if (host.connected) await coordinator.disconnect();
+          expect(await file.readAsString(), originalInput);
+          await coordinator.connect();
+
+          final saved = await runtimeHost.readRuntime();
+          expect(saved, isNotNull);
+          expect(saved!.configuration.policy.lanProxyEnabled, change.enabled);
+          expect(saved.configuration.policy.lanProxyPort, change.port);
+          final inbounds =
+              (jsonDecode(saved.xrayJson) as Map<String, dynamic>)['inbounds']
+                  as List;
+          final sharing = inbounds.where(
+            (inbound) => inbound['tag'] == 'app-lan-proxy',
+          );
+          if (change.enabled) {
+            expect(sharing, hasLength(1));
+            expect(sharing.single['listen'], '0.0.0.0');
+            expect(sharing.single['port'], change.port.toString());
+          } else {
+            expect(sharing, isEmpty);
+          }
+          expect(coordinator.state.value.phase, ConnectionPhase.connected);
+        }
+      },
+    );
+  }
+
   test(
     'initialization does not report a platform error as missing permission',
     () async {
@@ -1412,8 +1573,10 @@ ConnectionRuntime _runtime(
   String digit, {
   List<int> entryIds = const [1],
   int? exitId,
+  PlatformPolicy? policy,
 }) {
   final configuration = ConnectionConfiguration(
+    policy: policy,
     connection: ConnectionSettings(
       selection: entryIds.length == 1
           ? ServerSelection.server(entryIds.single)
@@ -1432,6 +1595,16 @@ ConnectionRuntime _runtime(
   final entries = entryIds.map(server).toList();
   final finalExit = exitId == null ? null : server(exitId);
   final xrayJson = jsonEncode({
+    if (configuration.policy.lanProxyEnabled)
+      'inbounds': [
+        {
+          'tag': 'app-lan-proxy',
+          'protocol': 'socks',
+          'listen': '0.0.0.0',
+          'port': configuration.policy.lanProxyPort,
+          'settings': {'auth': 'noauth', 'udp': true},
+        },
+      ],
     'outbounds': [
       for (final entry in entries) entry.outbound,
       if (finalExit != null) finalExit.outbound,

@@ -36,7 +36,7 @@ balancer 选择这些完整链路，接入选择排除最终出口；自定义�
 智能路由把直连域名/IP 分别去重合并为一条规则，无条件时省略对应规则。
 顺序为广告阻断、Windows 开关对应的 GitHub 代理、合并域名直连、合并 IP 直连。
 Windows 服务直连使用 Microsoft/Bing 分类，同时优先代理 GitHub；该开关在所有平台显示。
-直连地区来自安装的官方分类与随包映射。广告、FakeDNS 默认关闭，其余智能开关默认开启；保留已保存值。
+直连地区来自安装的官方分类与随包映射。广告、FakeDNS、Fragment 默认关闭，其余智能开关默认开启；保留已保存值。
 
 ### DNS
 
@@ -59,10 +59,23 @@ Windows 服务直连使用 Microsoft/Bing 分类，同时优先代理 GitHub；�
 Raw 只给新建 tunIn 添加默认还原，已有 sniffing 不自动修改；高级模板省略 sniffing 时使用默认值，显式填写整对象保留。
 池映射随 Core 销毁，重启后的缓存虚拟地址可能无法还原；App 不清系统 DNS 缓存或改用户排除路由。
 
+### Fragment
+
+智能与各常规自定义分别保存 Fragment 开关，默认关闭，全部使用 VPN 不受影响。
+开启时使用 `protocol: freedom`、`tag: fragment` 的辅助出站；默认 `settings.fragment` 为
+`packets: tlshello`、`length: 100-200`、`interval: 10-20`。
+运行把接入节点接到该出站；智能最终出口链路保持 `最终出口 → 接入 → fragment`，balancer 仍选择完整链路。
+Windows/Linux 给 fragment 的物理 socket 绑定已选网卡。
+
+常规路由导入后保留辅助出站的自定义参数，编辑其他字段不重写它们。
+高级模板存在该 freedom 出站即开启，填槽时自动接入所选节点，参数仍由模板管理。
+Raw 保留用户链路，App 不根据 fragment tag 自动接线。
+
 ## 常规自定义路由
 
 `RoutingProfile` 经 Base64 解码为 `XrayJson`，再转换 `RoutingProfileState` 供业务/UI 使用。
-持久化/导出的 outbounds 仅 1–3 个空接入槽；非空节点（含 direct/block）拒绝导入，不兼容转换。
+持久化/导出的 outbounds 以 1–3 个空接入槽开始，随后可有一个 [Fragment](#fragment) freedom 辅助出站；
+其它非空节点（含 direct/block）拒绝导入，不兼容转换。
 direct/block 只在校验/运行时生成，规则的动作引用保留。名称存于表列，交换 JSON 根部可用 `name`。
 
 规则支持域名、目标 IP、目标端口、网络、协议和 localOS；不同条件为 AND，列表/反选遵循内核语义，建议填单一条件。
@@ -104,7 +117,8 @@ App 管理日志、metrics、统计、policy、env、balancers、observatory、�
 
 Raw 保存原文，不经过 `XrayJson` 或常规 State，运行只改深副本。
 App 接管 tunIn 的有限平台设置、metrics、统计、日志、DNS 查询策略、资源路径及出口网卡；其余内容保留。
-不允许额外 TUN、重复 tunIn 或占用 App 保留端口。运行端口分配避开用户入站及本地 HTTP API 的保存端口。
+不允许额外 TUN、重复 tunIn 或占用 App 保留端口。运行端口分配避开用户入站及本地 HTTP API 的保存端口；
+完整 Raw 不应用局域网共享设置，也不为共享预留端口或限制其入站 tag。
 
 已有 tunIn 保持数组位置、sniffing（含缺省/关闭）和非托管设置；仅覆盖 name、mtu、gateway、dns、
 autoSystemRoutingTable、autoOutboundsInterface。原生 TUN 平台生成六项，Apple/Android 仅 name/mtu，移除其余托管项。
@@ -122,6 +136,46 @@ iOS 模拟器完全由 Swift 判断，将 tunIn 转为 SOCKS，原子写回 run/
 `testXray` 执行 LoadConfig → New → Close，不 Start；允许进程级副作用，不做环境快照恢复。
 通过只证明投影能构造/关闭，不保证监听、TUN、授权或连通性；必要本地文件缺失直接报错，不下载兜底。
 同进程已有受管理 Core 时 testXray 拒绝，需重连的编辑遵循先停后校验，不绕过生命周期。
+
+## 局域网代理共享
+
+Device platform policy stores the sharing switch and port, defaulting to disabled and `11024`.
+These settings are not embedded in intelligent/custom routes or Raw source, and connection backups
+do not transfer them between devices. On the next App-compiled start/restart, enabled sharing adds
+one `app-lan-proxy` inbound to normal/custom routing, including advanced templates:
+`protocol: socks`, `listen: 0.0.0.0`, `auth: noauth`, `udp: true`. No separate HTTP inbound is created.
+The listening address is fixed. The port supports HTTP, including CONNECT, and SOCKS5;
+UDP uses SOCKS5 UDP ASSOCIATE. Core allocates UDP relay ports dynamically, so allowing only
+`11024/UDP` does not guarantee UDP connectivity.
+
+This is an explicit proxy, not a gateway or hotspot traffic capture. Clients use the device's actual
+network address and sharing port. `0.0.0.0` is a wildcard listener, not an access restriction:
+any reachable client can use it without authentication. Enable it only on trusted networks.
+The App HTTP API and metrics remain loopback-only. Shared traffic follows the compiled routing;
+the App does not force proxying or rewrite user `inboundTag`. Rules limited to `tunIn` do not match
+the shared inbound. Managed sniffing includes FakeDNS restoration when required.
+
+Saving the switch or port only persists policy. It does not prompt for a restart, start/stop VPN,
+modify the current runtime, invalidate/rewrite `run/start.json`, change Apple's provider request
+or on-demand rules, or create a saved-start protection marker. The change takes effect only when
+an App start/restart compiles fresh input. Widget, Tile, Android automation and Apple on-demand
+starts keep the last generated configuration until that happens, including its sharing setting.
+Turning sharing off in settings therefore does not close an existing listener. Stopping VPN closes
+that running listener but leaves the saved input unchanged; a background start can still reuse it.
+Other platform-policy changes retain their existing reconnect behavior.
+
+Complete Raw JSON is unaffected by managed sharing. While using Raw, saving sharing settings only
+stores them for other modes; no inbound is added and no sharing-specific tag/port conflict is imposed.
+The configured sharing port is `1024–65535`. In applicable modes, enabling sharing checks the saved
+HTTP API port and the selected advanced template's inbound ports/tags; user inbounds are not silently
+replaced. HTTP API port edits also avoid enabled sharing's configured port. Actual external port
+occupation is reported by Xray startup. These input checks do not modify any existing runtime.
+
+Cross-platform UI/configuration support is not equivalent to device acceptance. Apple explicitly
+does not support hosting listeners/proxy servers in Packet Tunnel Providers; the extension-based
+implementation retains platform-support and review risks, and the iOS main App is not a reliable
+long-running background proxy. See [Apple TN3120](https://developer.apple.com/documentation/technotes/tn3120-expected-use-cases-for-network-extension-packet-tunnel-providers).
+Cross-device connectivity, UDP, firewalls, lock screen and signed channels require platform testing.
 
 ## 隧道与平台策略
 
@@ -189,7 +243,8 @@ startVpn/stopVpn 成功返回已确认状态，不仅是“提交命令”；只
 
 可见连接页且已连接时共享一个秒级 metrics 采样器；resumed/inactive 均可见，失焦不重置基线。
 无可见连接页、隐藏/后台或断开停止；重新显示建立新速率基线。仅重建流量区域，高级时长用独立本地时钟。
-GET /debug/vars 的 stats.inbound.tunIn 给本次上下行，相邻有效样本算速率；未创建计数按零。
+GET /debug/vars 仅统计 stats.inbound 的 `tunIn` 本次上下行，局域网共享及其它入站均不计入；
+相邻有效样本算速率，未创建计数按零。Android 通知/Widget 使用相同范围。
 失败保留内存计数、速率不可用，恢复重建基线。断开清空，无累计持久化/清零/独立 libXray 统计服务。
 运行描述定位 metrics 端口，不以读取成功判断连接状态。
 

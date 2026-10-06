@@ -34,6 +34,34 @@ class RoutingFakeDnsRow extends StatelessWidget {
   }
 }
 
+class RoutingFragmentRow extends StatelessWidget {
+  final bool value;
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  const RoutingFragmentRow({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return RoutingSettingRow(
+      icon: LucideIcons.scissors,
+      title: l.routingFragment,
+      description: l.routingFragmentHint,
+      enabled: enabled,
+      trailing: Semantics(
+        label: l.routingFragment,
+        child: ShadSwitch(value: value, enabled: enabled, onChanged: onChanged),
+      ),
+    );
+  }
+}
+
 class RoutingCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;

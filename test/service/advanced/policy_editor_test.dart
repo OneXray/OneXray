@@ -14,6 +14,7 @@ import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/connect/raw/db.dart';
 
 void main() {
   test('reconnect comparisons include only effective DNS settings', () {
@@ -107,6 +108,207 @@ void main() {
       await db.close();
     });
   });
+
+  test('LAN sharing changes apply only on the next App start', () {
+    final off = PlatformPolicy.fromJson({
+      'xrayOutboundInterfaceName': 'Ethernet',
+    });
+    final changedPort = PlatformPolicy.fromJson({
+      ...off.toJson(),
+      'lanProxy': {'enabled': false, 'port': 11026},
+    });
+    final on = PlatformPolicy.fromJson({
+      ...off.toJson(),
+      'lanProxy': {'enabled': true, 'port': 11024},
+    });
+    final onChangedPort = PlatformPolicy.fromJson({
+      ...on.toJson(),
+      'lanProxy': {'enabled': true, 'port': 11026},
+    });
+    for (final platform in ConnectionPlatform.values) {
+      expect(
+        PolicyEditorService.sameRuntime(off, changedPort, platform),
+        isTrue,
+      );
+      expect(PolicyEditorService.sameRuntime(off, on, platform), isTrue);
+      expect(
+        PolicyEditorService.sameRuntime(on, onChangedPort, platform),
+        isTrue,
+      );
+    }
+  });
+
+  test('offline sharing saves without starting VPN', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.android,
+      reservedApiPort: () async => null,
+    );
+    var draft = await service.load();
+    expect(draft.original.policy.lanProxyEnabled, isFalse);
+    expect(draft.original.policy.lanProxyPort, 11024);
+    draft.policy['lanProxy']['enabled'] = true;
+    expect(
+      await service.save(
+        draft: draft,
+        confirm: (_) async => throw StateError('Must not confirm'),
+      ),
+      isTrue,
+    );
+    expect((await coordinator.configuration).policy.lanProxyEnabled, isTrue);
+    expect(stops, 0);
+    draft = await service.load();
+    draft.policy['lanProxy']['enabled'] = false;
+    expect(
+      await service.save(draft: draft, confirm: (_) async => false),
+      isTrue,
+    );
+    expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
+    expect(stops, 0);
+  });
+
+  test('connected sharing saves without confirmation or changing the active policy', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.android,
+      reservedApiPort: () async => null,
+    );
+    var draft = await service.load();
+    final active = _runtime(draft.original);
+    host = HostConnection(VpnStatus.connected, runtime: active);
+    for (final sharing in [
+      {'enabled': true, 'port': 11024},
+      {'enabled': true, 'port': 11026},
+      {'enabled': false, 'port': 11026},
+    ]) {
+      draft.policy['lanProxy'] = sharing;
+      expect(
+        await service.save(
+          draft: draft,
+          confirm: (_) async => throw StateError('Must not confirm'),
+        ),
+        isTrue,
+      );
+      expect(
+        (await coordinator.configuration).policy.toJson()['lanProxy'],
+        sharing,
+      );
+      expect(host.runtime, same(active));
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+      draft = await service.load();
+    }
+    expect(stops, 0);
+  });
+
+  test('shared port cannot take the saved local HTTP API port', () async {
+    final service = PolicyEditorService(
+      coordinator: coordinator,
+      platform: ConnectionPlatform.android,
+      reservedApiPort: () async => 11024,
+    );
+    final draft = await service.load();
+    draft.policy['lanProxy']['enabled'] = true;
+    await expectLater(
+      service.save(draft: draft, confirm: (_) async => true),
+      throwsFormatException,
+    );
+    expect((await coordinator.configuration).policy.lanProxyEnabled, isFalse);
+  });
+
+  for (final connected in [false, true]) {
+    test(
+      'Raw saves future sharing policy without affecting VPN: $connected',
+      () async {
+        final rawId = await db.coreConfigDao.insertAssetRow(
+          XrayRawDb.configCompanion(
+            'Raw',
+            jsonEncode({
+              'inbounds': [
+                {'tag': 'app-lan-proxy', 'protocol': 'socks', 'port': 11024},
+              ],
+              'outbounds': [
+                {'protocol': 'freedom'},
+              ],
+            }),
+          ),
+        );
+        final configuration = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true, rawId: rawId),
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: configuration.encode(),
+        );
+        if (connected) {
+          host = HostConnection(
+            VpnStatus.connected,
+            runtime: _runtime(configuration),
+          );
+        }
+        final service = PolicyEditorService(
+          coordinator: coordinator,
+          platform: ConnectionPlatform.android,
+          reservedApiPort: () async => 11024,
+        );
+        var draft = await service.load();
+        draft.policy['lanProxy']['enabled'] = true;
+        expect(
+          await service.save(
+            draft: draft,
+            confirm: (_) async => throw StateError('Raw must not restart'),
+          ),
+          isTrue,
+        );
+        draft = await service.load();
+        draft.policy['lanProxy']['port'] = 11026;
+        expect(
+          await service.save(
+            draft: draft,
+            confirm: (_) async => throw StateError('Raw must not restart'),
+          ),
+          isTrue,
+        );
+        expect(
+          (await coordinator.configuration).policy.lanProxyEnabled,
+          isTrue,
+        );
+        expect((await coordinator.configuration).policy.lanProxyPort, 11026);
+        expect(stops, 0);
+        expect(
+          host.status,
+          connected ? VpnStatus.connected : VpnStatus.disconnected,
+        );
+      },
+    );
+  }
+
+  for (final platform in [
+    ConnectionPlatform.windows,
+    ConnectionPlatform.linux,
+  ]) {
+    test(
+      'sharing can be configured before selecting an interface: $platform',
+      () async {
+        final service = PolicyEditorService(
+          coordinator: coordinator,
+          platform: platform,
+          windowsMode: WindowsMode.exe,
+          validateInterface: false,
+          reservedApiPort: () async => null,
+        );
+        final draft = await service.load();
+        draft.policy['lanProxy']['enabled'] = true;
+        expect(
+          await service.save(draft: draft, confirm: (_) async => false),
+          isTrue,
+        );
+        expect(
+          (await coordinator.configuration).policy.lanProxyEnabled,
+          isTrue,
+        );
+        expect(stops, 0);
+      },
+    );
+  }
 
   test('EXE ignores hidden MSIX settings for validation and reconnection', () {
     final service = PolicyEditorService(

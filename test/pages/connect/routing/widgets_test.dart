@@ -17,13 +17,14 @@ void main() {
     (Locale('fa'), true),
   ]) {
     testWidgets(
-      'FakeDNS row toggles without overflow ($locale, mobile=$mobile)',
+      'routing switches toggle without overflow ($locale, mobile=$mobile)',
       (tester) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = Size(mobile ? 390 : 1200, 900);
         addTearDown(tester.view.resetDevicePixelRatio);
         addTearDown(tester.view.resetPhysicalSize);
         var selected = false;
+        var fragmentSelected = false;
         await tester.pumpWidget(
           MaterialApp(
             theme: AppTheme.material(Brightness.light, mobile: mobile),
@@ -40,9 +41,20 @@ void main() {
                   width: mobile ? 362 : 440,
                   child: StatefulBuilder(
                     builder: (context, setState) => RoutingCard(
-                      child: RoutingFakeDnsRow(
-                        value: selected,
-                        onChanged: (value) => setState(() => selected = value),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          RoutingFakeDnsRow(
+                            value: selected,
+                            onChanged: (value) =>
+                                setState(() => selected = value),
+                          ),
+                          RoutingFragmentRow(
+                            value: fragmentSelected,
+                            onChanged: (value) =>
+                                setState(() => fragmentSelected = value),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -57,11 +69,26 @@ void main() {
         )!;
         expect(find.text(l.routingFakeDns), findsOneWidget);
         expect(find.text(l.routingFakeDnsHint), findsOneWidget);
-        expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, false);
-        await tester.tap(find.byType(ShadSwitch));
+        expect(find.text(l.routingFragment), findsOneWidget);
+        expect(find.text(l.routingFragmentHint), findsOneWidget);
+        final fakeDnsSwitch = find.descendant(
+          of: find.byType(RoutingFakeDnsRow),
+          matching: find.byType(ShadSwitch),
+        );
+        final fragmentSwitch = find.descendant(
+          of: find.byType(RoutingFragmentRow),
+          matching: find.byType(ShadSwitch),
+        );
+        expect(tester.widget<ShadSwitch>(fakeDnsSwitch).value, false);
+        expect(tester.widget<ShadSwitch>(fragmentSwitch).value, false);
+        await tester.tap(fakeDnsSwitch);
         await tester.pumpAndSettle();
         expect(selected, true);
-        expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, true);
+        expect(tester.widget<ShadSwitch>(fakeDnsSwitch).value, true);
+        await tester.tap(fragmentSwitch);
+        await tester.pumpAndSettle();
+        expect(fragmentSelected, true);
+        expect(tester.widget<ShadSwitch>(fragmentSwitch).value, true);
         expect(tester.takeException(), isNull);
       },
     );

@@ -3,6 +3,7 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/core/tools/json.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
 
 enum RoutingRuleAction { proxy, direct, block }
@@ -115,6 +116,7 @@ final class RoutingProfileState implements RoutingConfiguration {
   final int entryCount;
   final String directDnsAddress;
   final bool fakeDns;
+  final Map<String, dynamic>? _fragmentOutbound;
   final List<RoutingRuleState> rules;
 
   RoutingProfileState({
@@ -123,8 +125,17 @@ final class RoutingProfileState implements RoutingConfiguration {
     this.entryCount = 1,
     this.directDnsAddress = RoutingDns.defaultAddress,
     this.fakeDns = false,
+    Map<String, dynamic>? fragmentOutbound,
     Iterable<RoutingRuleState> rules = const [],
-  }) : rules = List.unmodifiable(rules);
+  }) : _fragmentOutbound = fragmentOutbound == null
+           ? null
+           : JsonTool.copyMap(fragmentOutbound),
+       rules = List.unmodifiable(rules);
+
+  bool get fragment => _fragmentOutbound != null;
+
+  Map<String, dynamic>? get fragmentOutbound =>
+      _fragmentOutbound == null ? null : JsonTool.copyMap(_fragmentOutbound);
 
   factory RoutingProfileState.fromXrayJson({
     int? id,
@@ -150,11 +161,17 @@ final class RoutingProfileState implements RoutingConfiguration {
         path: ['outbounds'],
       );
     }
-    if (outbounds.isEmpty ||
-        outbounds.length > 3 ||
-        outbounds.any((outbound) => outbound.isNotEmpty)) {
+    final entryCount = outbounds
+        .takeWhile((outbound) => outbound.isEmpty)
+        .length;
+    final helpers = outbounds.skip(entryCount).toList();
+    if (entryCount < 1 ||
+        entryCount > 3 ||
+        helpers.length > 1 ||
+        helpers.any((outbound) => !XrayFragment.matches(outbound))) {
       throw const JsonDiagnostic(
-        'outbounds must contain 1–3 empty object slots',
+        'outbounds must start with 1–3 empty object slots followed by an '
+        'optional fragment freedom outbound',
         path: ['outbounds'],
       );
     }
@@ -162,9 +179,10 @@ final class RoutingProfileState implements RoutingConfiguration {
     final state = RoutingProfileState(
       id: id,
       name: name,
-      entryCount: outbounds.length,
+      entryCount: entryCount,
       directDnsAddress: dns.directAddress,
       fakeDns: dns.fakeDns,
+      fragmentOutbound: helpers.isEmpty ? null : helpers.single,
       rules: [
         for (final (index, rule)
             in (xrayJson.routing?.rules ?? const <XrayRoutingRule>[]).indexed)
@@ -193,6 +211,7 @@ final class RoutingProfileState implements RoutingConfiguration {
       ),
       outbounds: [
         for (var index = 0; index < entryCount; index++) <String, dynamic>{},
+        if (_fragmentOutbound != null) JsonTool.copyMap(_fragmentOutbound),
       ],
       routing: XrayRouting(
         domainStrategy: 'IPIfNonMatch',
@@ -221,6 +240,8 @@ final class RoutingProfileState implements RoutingConfiguration {
     int? entryCount,
     String? directDnsAddress,
     bool? fakeDns,
+    Map<String, dynamic>? fragmentOutbound,
+    bool clearFragment = false,
     Iterable<RoutingRuleState>? rules,
   }) => RoutingProfileState(
     id: clearId ? null : id ?? this.id,
@@ -228,6 +249,9 @@ final class RoutingProfileState implements RoutingConfiguration {
     entryCount: entryCount ?? this.entryCount,
     directDnsAddress: directDnsAddress ?? this.directDnsAddress,
     fakeDns: fakeDns ?? this.fakeDns,
+    fragmentOutbound: clearFragment
+        ? null
+        : fragmentOutbound ?? _fragmentOutbound,
     rules: rules ?? this.rules,
   );
 
@@ -241,6 +265,12 @@ final class RoutingProfileState implements RoutingConfiguration {
     }
     if (entryCount < 1 || entryCount > 3) {
       throw const FormatException('Custom routing requires 1–3 entry nodes');
+    }
+    if (_fragmentOutbound != null && !XrayFragment.matches(_fragmentOutbound)) {
+      throw JsonDiagnostic(
+        'Custom routing supports only a freedom outbound tagged fragment',
+        path: ['outbounds', entryCount],
+      );
     }
   }
 }

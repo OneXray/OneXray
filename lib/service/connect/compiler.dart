@@ -17,6 +17,7 @@ import 'package:onexray/service/servers/outbound/state_db.dart';
 import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 
 class ResolvedServer {
   final int id;
@@ -58,6 +59,8 @@ class RuntimeOptions {
   final String sessionDirectory;
   final int metricsPort;
   final int socksPort;
+  final bool lanProxyEnabled;
+  final int lanProxyPort;
   final bool ipv6;
   final String tunDnsIpv4Address;
   final String tunDnsIpv6Address;
@@ -74,6 +77,8 @@ class RuntimeOptions {
     required this.sessionDirectory,
     required this.metricsPort,
     required this.socksPort,
+    this.lanProxyEnabled = false,
+    this.lanProxyPort = defaultLanProxyPort,
     this.ipv6 = true,
     this.tunDnsIpv4Address = '8.8.8.8',
     this.tunDnsIpv6Address = '2001:4860:4860::8888',
@@ -86,6 +91,15 @@ class RuntimeOptions {
   }) : windowsMode = windowsMode ?? windowsBuildMode {
     if (metricsPort == socksPort) {
       throw const FormatException('Runtime ports are invalid');
+    }
+    if (lanProxyEnabled && (lanProxyPort < 1024 || lanProxyPort > 65535)) {
+      throw const FormatException('LAN proxy port must be within 1024–65535');
+    }
+    if (lanProxyEnabled &&
+        (lanProxyPort == metricsPort || lanProxyPort == socksPort)) {
+      throw const FormatException(
+        'LAN proxy port conflicts with a runtime port',
+      );
     }
     if ((platform == ConnectionPlatform.windows ||
             platform == ConnectionPlatform.linux) &&
@@ -140,6 +154,21 @@ class ConnectionCompiler {
   static const dnsProxy = RoutingDns.proxyTag;
   static const dnsDirect = RoutingDns.directTag;
   static const dnsOutbound = 'dnsOut';
+
+  /// Checks only collisions with the enabled App-managed LAN listener.
+  static void validateLanProxyInbounds(List<dynamic> inbounds, int port) {
+    for (final inbound in inbounds.whereType<Map>()) {
+      final tag = inbound['tag'];
+      if (tag == lanProxyInboundTag) {
+        throw const FormatException('The LAN proxy inbound tag is App-managed');
+      }
+      if (tag != 'tunIn' && portIncludes(inbound['port'], port)) {
+        throw const FormatException(
+          'LAN proxy port conflicts with a configuration inbound',
+        );
+      }
+    }
+  }
 
   /// The editor and runtime share these exact built-in rules and their order.
   static List<XrayRoutingRule> smartRules(
@@ -245,7 +274,13 @@ class ConnectionCompiler {
         }
         template['inbounds'] = inbounds;
         return CompiledConnection(
-          xrayJson: jsonEncode(_rawRuntimeMap(template, options)),
+          xrayJson: jsonEncode(
+            _rawRuntimeMap(
+              template,
+              options,
+              includeLanProxy: options.lanProxyEnabled,
+            ),
+          ),
           entries: entries,
           finalExit: null,
           nodeTags: nodeTags,
@@ -280,9 +315,21 @@ class ConnectionCompiler {
           selector.add(exitTag);
         }
       }
+      final fragment = switch (settings.trafficMode) {
+        TrafficMode.smart =>
+          settings.smart.fragment ? XrayFragment.defaultOutbound() : null,
+        TrafficMode.custom => ordinary!.fragmentOutbound,
+        TrafficMode.allVpn => null,
+      };
+      final helpers = <Map<String, dynamic>>[?fragment];
+      final connectedEntries = XrayFragment.connectEntries(
+        entriesOutbounds,
+        helpers,
+      );
       final outbounds = <Map<String, dynamic>>[
-        if (finalExit == null) ...entriesOutbounds else ...exits,
-        if (finalExit != null) ...entriesOutbounds,
+        if (finalExit == null) ...connectedEntries else ...exits,
+        if (finalExit != null) ...connectedEntries,
+        ...helpers,
       ];
       _applyOutboundPolicy(outbounds, options, raw: false);
       outbounds.addAll([
@@ -323,7 +370,14 @@ class ConnectionCompiler {
           assetLocation: VpnConstants.datDir,
           certLocation: VpnConstants.datDir,
         ),
-        inbounds: [_runtimeInbound(options, fakeDns: FakeDns.usesServer(dns))],
+        inbounds: [
+          _runtimeInbound(options, fakeDns: FakeDns.usesServer(dns)),
+          if (options.lanProxyEnabled)
+            createLanProxyInbound(
+              options.lanProxyPort,
+              fakeDns: FakeDns.usesServer(dns),
+            ),
+        ],
         log: _runtimeLog(options),
         stats: XrayStats(),
         metrics: XrayMetrics(listen: '127.0.0.1:${options.metricsPort}'),
@@ -464,8 +518,9 @@ class ConnectionCompiler {
 
   static Map<String, dynamic> _rawRuntimeMap(
     Map<String, dynamic> source,
-    RuntimeOptions options,
-  ) {
+    RuntimeOptions options, {
+    bool includeLanProxy = false,
+  }) {
     final config = JsonTool.copyMap(source);
     validateLocalDnsNetworkPolicy(
       config,
@@ -475,6 +530,9 @@ class ConnectionCompiler {
     );
     final outbounds = _objects(config, 'outbounds');
     final inbounds = _objects(config, 'inbounds');
+    if (includeLanProxy) {
+      validateLanProxyInbounds(inbounds, options.lanProxyPort);
+    }
     for (final inbound in inbounds) {
       final tag = inbound['tag'];
       if (tag == 'tunIn') continue;
@@ -538,6 +596,14 @@ class ConnectionCompiler {
           );
         }
       }
+    }
+    if (includeLanProxy) {
+      inbounds.add(
+        createLanProxyInbound(
+          options.lanProxyPort,
+          fakeDns: FakeDns.usedByRaw(config),
+        ).toJson(),
+      );
     }
     config['inbounds'] = inbounds;
     final env = _object(config, 'env');

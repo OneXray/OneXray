@@ -8,6 +8,7 @@ import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/advanced/local_api/configuration.dart';
 import 'package:onexray/service/advanced/local_api/server.dart';
 import 'package:onexray/service/advanced/local_api/settings.dart';
+import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/shared/command_serial_executor.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -29,11 +30,17 @@ final class LocalApiService {
     },
     validate: LocalApiConfiguration().validate,
     compile: LocalApiConfiguration().compile,
+    sharedProxyPort: () async {
+      final policy =
+          (await ConnectionCoordinator.instance.configuration).policy;
+      return policy.lanProxyEnabled ? policy.lanProxyPort : null;
+    },
   );
 
   final Future<Map<String, dynamic>?> Function() _readSettings;
   final Future<void> Function(Map<String, dynamic>) _writeSettings;
   final bool _desktop;
+  final Future<int?> Function()? _sharedProxyPort;
   final _commands = CommandSerialExecutor();
   late final LocalApiServer _server;
   LocalApiSettings? _settings;
@@ -48,6 +55,7 @@ final class LocalApiService {
     required Future<Map<String, dynamic>> Function() info,
     required LocalApiHandler validate,
     required LocalApiHandler compile,
+    this._sharedProxyPort,
   }) {
     _server = LocalApiServer(
       token: () => _settings?.token ?? '',
@@ -65,10 +73,12 @@ final class LocalApiService {
     required LocalApiHandler validate,
     required LocalApiHandler compile,
     bool desktop = true,
+    Future<int?> Function()? sharedProxyPort,
   }) => LocalApiService._(
     readSettings: readSettings,
     writeSettings: writeSettings,
     desktop: desktop,
+    sharedProxyPort: sharedProxyPort,
     info: info,
     validate: validate,
     compile: compile,
@@ -126,6 +136,11 @@ final class LocalApiService {
     _requireAvailable();
     if (port < 1024 || port > 65535) {
       throw const FormatException('Port must be between 1024 and 65535');
+    }
+    if (port == await _sharedProxyPort?.call()) {
+      throw const FormatException(
+        'Local HTTP API port conflicts with LAN proxy sharing',
+      );
     }
     final current = await _load();
     final next = LocalApiSettings(

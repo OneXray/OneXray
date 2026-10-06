@@ -12,6 +12,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/shared/share/configuration_source.dart';
 
@@ -117,6 +118,71 @@ void main() {
     expect(await db.coreConfigDao.allRawRowsWithData, hasLength(3));
   });
 
+  test(
+    'selected Raw saves offline before choosing a network interface',
+    () async {
+      final id = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('original', _text),
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      final validated = <String>[];
+      final service = RawEditorService(
+        database: db,
+        coordinator: coordinator,
+        validate: (text) async => validated.add(text),
+        prepare: (_, _, _) async => throw StateError('Unexpected preparation'),
+      );
+      for (final port in [65534, 65535]) {
+        final selected = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true, rawId: id),
+          policy: PlatformPolicy.fromJson({
+            'lanProxy': {'enabled': true, 'port': port},
+          }),
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: selected.encode(),
+        );
+        final original = await service.load(id);
+        final text = _text.replaceFirst(
+          'freedom',
+          port == 65534 ? 'blackhole' : 'freedom',
+        );
+        expect(
+          await service.save(
+            RawEditorDraft(
+              original: original.original,
+              name: original.name,
+              text: text,
+            ),
+            confirmReconnect: () async =>
+                throw StateError('Unexpected confirmation'),
+          ),
+          id,
+        );
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+        expect((await coordinator.configuration).encode(), selected.encode());
+        expect(
+          (await coordinator.configuration).policy.xrayOutboundInterfaceName,
+          isEmpty,
+        );
+        expect(validated.last, text);
+        expect(
+          XrayRawDb.readFromDbData((await db.coreConfigDao.searchRow(id))!),
+          text,
+        );
+      }
+      expect(validated, hasLength(2));
+    },
+  );
+
   test('running Raw rename does not reconnect; cancel and failed start keep the asset', () async {
     final rawId = await db.coreConfigDao.insertAssetRow(
       XrayRawDb.configCompanion('original', _text),
@@ -215,6 +281,74 @@ void main() {
     expect(coordinator.state.value.phase, ConnectionPhase.failed);
     expect(coordinator.state.value.runtime, isNull);
   });
+
+  test(
+    'running Raw rename ignores device sharing and preserves user listener',
+    () async {
+      final text = jsonEncode({
+        'name': 'original',
+        'inbounds': [
+          {
+            'tag': 'app-lan-proxy',
+            'protocol': 'socks',
+            'listen': '127.0.0.1',
+            'port': 11024,
+          },
+        ],
+        'outbounds': [
+          {'protocol': 'freedom'},
+        ],
+      });
+      final rawId = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('original', text),
+      );
+      final configuration = ConnectionConfiguration(
+        connection: ConnectionSettings(expert: true, rawId: rawId),
+        policy: PlatformPolicy.fromJson({
+          'lanProxy': {'enabled': true, 'port': 11024},
+        }),
+      );
+      await db.connectionConfigDao.commit(
+        configurationJson: configuration.encode(),
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_, {observedStatus}) async => HostConnection(
+            VpnStatus.connected,
+            runtime: _runtime('raw', configuration, text),
+          ),
+          start: (_) async => throw StateError('Rename must not start'),
+          stop: () async => throw StateError('Rename must not stop'),
+        ),
+      );
+      final service = RawEditorService(
+        database: db,
+        coordinator: coordinator,
+        validate: (_) async {},
+      );
+      final draft = await service.load(rawId);
+      expect(
+        await service.save(
+          RawEditorDraft(
+            original: draft.original,
+            name: 'Renamed',
+            text: draft.text,
+          ),
+          confirmReconnect: () async =>
+              throw StateError('Rename must not confirm'),
+        ),
+        rawId,
+      );
+      final stored = await db.coreConfigDao.searchRow(rawId);
+      expect(stored!.name, 'Renamed');
+      expect(
+        jsonDecode(XrayRawDb.readFromDbData(stored))['inbounds'],
+        jsonDecode(text)['inbounds'],
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    },
+  );
 
   for (final scenario in ['offline', 'unused', 'disconnect', 'reconnect']) {
     test(

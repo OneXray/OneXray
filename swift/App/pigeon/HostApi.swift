@@ -65,7 +65,7 @@ final class AppHostApi: @preconcurrency BridgeHostApi {
             completion(.success(await VPNManager.shared.stopVpn()))
         }
     }
-    
+
     func invoke(requestJson: String, completion: @escaping (Result<String, any Error>) -> Void) {
         Task {
             do {

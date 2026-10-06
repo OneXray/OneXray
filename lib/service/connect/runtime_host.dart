@@ -184,8 +184,9 @@ class ConnectionRuntimeHost {
       throw const FormatException('Missing metrics stats');
     }
     // Xray creates inbound counters lazily, when the first connection arrives.
-    final uplink = metrics.tunIn?.uplink ?? 0;
-    final downlink = metrics.tunIn?.downlink ?? 0;
+    final traffic = metrics.managedTraffic;
+    final uplink = traffic.uplink;
+    final downlink = traffic.downlink;
     if (uplink < 0 || downlink < 0) {
       throw const FormatException('Invalid metrics counters');
     }

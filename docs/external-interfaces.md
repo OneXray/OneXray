@@ -9,7 +9,9 @@ App 生命周期见 [App](app.md)，配置/校验语义见 [Xray 配置](xray-co
 桌面“高级 → Xray → 本地 API”管理启用、端口、Token 复制/重置；移动端无入口或路由。
 App 完成服务准备后监听，隐藏窗口不停止，退出进程接口不可用，即使 VPN 仍运行。
 默认 `127.0.0.1:18587`，仅 IPv4 loopback，端口 1024–65535；监听或偏好保存失败保留原地址/凭据。
-桌面自动 SOCKS/metrics 分配排除已保存 API 端口，即使 API 关闭，并继续避开用户入站；不改写手动端口。
+桌面自动 SOCKS/metrics 分配排除已保存 API 端口，即使 API 关闭，并继续避开用户入站；
+常规模式及自定义路由额外避开启用的局域网共享端口，完整 Raw 不预留共享端口，不改写手动端口。
+API 端口与已启用的共享端口不可相同；两者修改时均检查冲突，API 始终保持本机监听。
 
 首次启用生成 32 随机字节 Base64URL Token，设备偏好持久保存；关闭保留，重置立即撤销旧值。
 每次请求必须 `Authorization: Bearer <token>`。用户经复制按钮交给可信工具，不扫描 App 沙箱凭据。
@@ -42,8 +44,12 @@ POST 为 `application/json`，请求体上限 16 MiB；`text` 是原文字符串
 `compile` 必须给 `options`：`platform`（ios/macos/android/windows/linux）、
 `sessionDirectory/metricsPort/socksPort/ipv6`；Windows 另需 `windowsMode: exe|msix`，Windows/Linux 需 `interfaceName`。
 目录必须非空，两个预览端口为 1–65535 且不同；这些是输入检查，不证明端口/网卡在目标系统可用。
-可选 `tunDnsIpv4Address/tunDnsIpv6Address/logEnabled/logFilesSupported/logLevel/dnsLog/maskAddress`
+可选 `tunDnsIpv4Address/tunDnsIpv6Address/logEnabled/logFilesSupported/logLevel/dnsLog/maskAddress/lanProxyEnabled/lanProxyPort`
 使用 `RuntimeOptions` 默认值，不读当前用户策略。
+共享预览默认 `lanProxyEnabled: false`、`lanProxyPort: 11024`；常规/高级路由开启时追加 App 管理的混合 HTTP/SOCKS5 入站，
+端口须为 1024–65535，且不与显式给出的 metrics/SOCKS 预览端口或用户入站冲突，用户不得定义同名托管入站。
+`compile` 不分配或替换这些端口，也不读取设备 API 设置；共享运行边界见 [局域网代理共享](xray-configuration.md#局域网代理共享)。
+`kind: raw` 忽略共享预览参数，不增加共享入站或施加共享 tag/端口限制。
 routing/advanced-routing 另给与槽数一致的真实 `outbounds`；outbound/raw 不接受该数组。
 预览使用当前 App 资源目录，不检查端口空闲/网卡存在、不创建目录、不写运行文件；
 跨平台 JSON 不证明资源在目标设备可用。
@@ -90,6 +96,10 @@ Token 不是 HTTP Header，无公开 Token 查询或状态广播；用户参数�
 
 Receiver 在已有 `:native` 进程复用 `VpnController/OneVpnService`，不创建 Flutter 引擎、Activity、第二套编译器或后台队列。
 START 使用最近生成的完整 `run/start.json`，不是“最后成功连接”，也不追随后来 DB 选择；改配置后须从 App 正常连接一次。
+LAN sharing edits likewise leave this input unchanged: automation, Widget/Tile and Apple on-demand
+starts retain the last compiled sharing setting. Only an App start/restart compiles the newly saved
+policy; see [LAN proxy sharing](xray-configuration.md#局域网代理共享). Sharing edits do not add an
+automation or saved-start block; the separate cleanup/restore admission below remains in place.
 顺序为鉴权 → 清理/恢复阻断 → 启动请求外层读取 → VPN/LAN 权限 → 原生交付；
 文件检查在 `VpnService.prepare()` 前，实际配置/资源错误交 Core。
 合法失败只反馈具体原因和通知点击入口，不自动拉起 App、下载、重试或恢复旧连接；通知不可见仍保留原生日志。

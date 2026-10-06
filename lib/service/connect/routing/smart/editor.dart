@@ -14,6 +14,7 @@ import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 
 class SmartRoutingEditorDraft {
   final ConnectionConfiguration configuration;
@@ -113,11 +114,12 @@ class SmartRoutingEditorService {
       expectedConfiguration: original.encode(),
       validateAssets:
           smart.fakeDns != connection.smart.fakeDns ||
+              smart.fragment != connection.smart.fragment ||
               (smart.directDns &&
                   (!connection.smart.directDns ||
                       smart.directDnsAddress !=
                           connection.smart.directDnsAddress))
-          ? () => _validateDns(smart)
+          ? () => _validateRouting(smart)
           : null,
       writeAssets: () async {
         if (smart.finalExitId == null) return;
@@ -131,17 +133,27 @@ class SmartRoutingEditorService {
     return true;
   }
 
-  Future<void> _validateDns(SmartRoutingSettings smart) async {
+  Future<void> _validateRouting(SmartRoutingSettings smart) async {
     final dns = RoutingDns.compile(
       directAddress: smart.effectiveDirectDnsAddress,
       fakeDns: smart.fakeDns,
     );
+    final helpers = <Map<String, dynamic>>[
+      if (smart.fragment) XrayFragment.defaultOutbound(),
+    ];
     final error = await (testXray ?? AppHostApi().testXray)(
       XrayValidation.normal(
         XrayJson(
           dns: dns,
           fakedns: FakeDns.poolsFor(dns),
-          outbounds: [createFreedomOutbound(tag: 'direct').toJson()],
+          outbounds: [
+            if (smart.fragment)
+              ...XrayFragment.connectEntries([
+                createFreedomOutbound(tag: 'app-entry-0').toJson(),
+              ], helpers),
+            ...helpers,
+            createFreedomOutbound(tag: 'direct').toJson(),
+          ],
         ),
       ),
     );
@@ -176,6 +188,7 @@ class SmartRoutingEditorService {
             : <String>[],
         'directDnsAddress': value.effectiveDirectDnsAddress,
         'fakeDns': value.fakeDns,
+        'fragment': value.fragment,
         'entryCount': original.selection.kind == SelectionKind.server
             ? 1
             : value.entryCount,

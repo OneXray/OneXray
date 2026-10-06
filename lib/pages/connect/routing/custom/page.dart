@@ -235,6 +235,13 @@ class _CustomRoutingEditorPageState extends State<CustomRoutingEditorPage> {
                                                   onChanged:
                                                       controller.setFakeDns,
                                                 ),
+                                                RoutingFragmentRow(
+                                                  value: state.fragment,
+                                                  enabled:
+                                                      !state.editingBlocked,
+                                                  onChanged:
+                                                      controller.setFragment,
+                                                ),
                                                 _dns(context, mobile),
                                                 Padding(
                                                   padding:

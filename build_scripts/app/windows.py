@@ -91,19 +91,6 @@ class WindowsBuilder(Builder):
                 scripts,
                 "--locked",
                 "vcore-scripts",
-                "check",
-                "tls-dependencies",
-            ],
-            cwd=vcore_dir,
-        )
-        run_command(
-            [
-                "uv",
-                "run",
-                "--project",
-                scripts,
-                "--locked",
-                "vcore-scripts",
                 "build",
                 "windows",
             ],

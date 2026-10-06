@@ -264,7 +264,7 @@ class WindowsPackagingTest(unittest.TestCase):
         self.assertEqual(command[command.index("--architecture") + 1], "arm64")
         self.assertEqual(command[-1], "OneXray-windows-arm64")
 
-    def test_vcore_build_lets_vcore_detect_native_architecture(self):
+    def test_vcore_build_uses_build_only_cli_and_native_architecture(self):
         vcore_dir = os.path.join(self.temp_dir.name, "VCore")
         with (
             patch.object(self.builder, "_vcore_dir", return_value=vcore_dir),
@@ -273,8 +273,7 @@ class WindowsPackagingTest(unittest.TestCase):
         ):
             self.builder.build_vcore()
 
-        self.assertEqual(
-            run_command.call_args_list[1].args[0],
+        run_command.assert_called_once_with(
             [
                 "uv",
                 "run",
@@ -285,6 +284,7 @@ class WindowsPackagingTest(unittest.TestCase):
                 "build",
                 "windows",
             ],
+            cwd=vcore_dir,
         )
         copy_vcore_artifacts.assert_called_once_with(
             os.path.join(vcore_dir, "dist", "windows", "x64"),

@@ -2,6 +2,9 @@ import 'package:onexray/core/model/xray_json.dart';
 import 'package:onexray/core/network/constants.dart';
 import 'package:onexray/core/pigeon/constants.dart';
 
+const lanProxyInboundTag = 'app-lan-proxy';
+const defaultLanProxyPort = 11024;
+
 XrayInbound createTunInbound({
   List<String>? gateway,
   List<String>? dns,
@@ -32,6 +35,16 @@ XrayInbound createSocksInbound(String port, {bool fakeDns = false}) =>
       protocol: 'socks',
       settings: XrayInboundSocksSettings(auth: 'noauth', udp: true).toJson(),
       tag: 'tunIn',
+      sniffing: _createSniffing(fakeDns),
+    );
+
+XrayInbound createLanProxyInbound(int port, {bool fakeDns = false}) =>
+    XrayInbound(
+      listen: '0.0.0.0',
+      port: '$port',
+      protocol: 'socks',
+      settings: XrayInboundSocksSettings(auth: 'noauth', udp: true).toJson(),
+      tag: lanProxyInboundTag,
       sniffing: _createSniffing(fakeDns),
     );
 

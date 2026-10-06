@@ -62,6 +62,11 @@ final class PlatformPolicy {
     if (!{'error', 'warning', 'info', 'debug'}.contains(log['level'])) {
       throw const FormatException('Invalid Xray log level');
     }
+    final sharing = policy['lanProxy'] as Map<String, dynamic>;
+    final port = sharing['port'] as int;
+    if (port < 1024 || port > 65535) {
+      throw const FormatException('Proxy port must be between 1024 and 65535');
+    }
     return PlatformPolicy._(policy);
   }
 
@@ -74,6 +79,8 @@ final class PlatformPolicy {
   String get logLevel => toJson()['log']['level'] as String;
   bool get recordDns => toJson()['log']['recordDns'] as bool;
   String get maskAddress => toJson()['log']['maskIp'] == true ? 'full' : '';
+  bool get lanProxyEnabled => toJson()['lanProxy']['enabled'] as bool;
+  int get lanProxyPort => toJson()['lanProxy']['port'] as int;
 
   static const tunIpv4Address = '198.18.0.1';
   static const tunIpv6Address = 'fc00::1';
@@ -224,6 +231,7 @@ const _defaults = <String, dynamic>{
   'dnsIpv6Address': '2001:4860:4860::8888',
   'dnsServerName': 'dns.google',
   'xrayOutboundInterfaceName': '',
+  'lanProxy': {'enabled': false, 'port': 11024},
   'android': {
     'appScope': 'all',
     'includedAppPackageNames': <String>[],
@@ -274,7 +282,8 @@ Map<String, dynamic> _readPolicyObject(
       return MapEntry(key, List<String>.from(item));
     }
     if (fallback is bool && item is bool ||
-        fallback is String && item is String) {
+        fallback is String && item is String ||
+        fallback is int && item is int) {
       return MapEntry(key, item);
     }
     throw FormatException('Invalid platform policy field: $key');

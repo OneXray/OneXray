@@ -73,7 +73,8 @@ class SavedVpnConfigTest {
     }
 
     @Test fun renewsOnlyTheSessionTimestamp() {
-        val saved = SavedVpnConfig.decode(request())
+        val xray = """{"inbounds":[{"tag":"app-lan-proxy","protocol":"socks","listen":"0.0.0.0","port":11024,"settings":{"auth":"noauth","udp":true}}],"outbounds":[{"protocol":"freedom"}]}"""
+        val saved = SavedVpnConfig.decode(request(xray = xray))
         val renewed = SavedVpnConfig.renewSession(saved, 123456789L)
         assertEquals(saved.coreInvokeText, renewed.coreInvokeText)
         assertEquals(saved.tun, renewed.tun)

@@ -7,6 +7,7 @@ import 'package:onexray/pages/advanced/xray/log/params.dart';
 import 'package:onexray/pages/advanced/xray/config/page.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/ping/page.dart';
+import 'package:onexray/pages/advanced/xray/lan_proxy/page.dart';
 import 'package:onexray/pages/advanced/local_api/page.dart';
 import 'package:onexray/pages/settings/about/page.dart';
 import 'package:onexray/pages/settings/backup/page.dart';
@@ -194,6 +195,7 @@ final _pageRoutes = <_PageRoute>[
   _route(AppPageDestination.advanced, (_, _) => const AdvancedRootPage()),
   _route(AppPageDestination.settings, (_, _) => const SettingsPage()),
   _route(AppPageDestination.localApi, (_, _) => const LocalApiPage()),
+  _route(AppPageDestination.lanProxy, (_, _) => const LanProxyPage()),
   _route(
     AppPageDestination.androidAutomation,
     (_, _) => const AndroidAutomationPage(),

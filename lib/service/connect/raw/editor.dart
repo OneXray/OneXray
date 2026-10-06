@@ -88,8 +88,11 @@ class RawEditorService {
         original != null &&
         configuration.connection.expert &&
         configuration.connection.rawId == original.id;
-    var affectsRuntime = false;
-    if (selected) {
+    // Offline saves need no runtime options. Keep the queued reconnect guard
+    // for a selected asset if the VPN connects before the save is executed.
+    var affectsRuntime = selected;
+    if (selected &&
+        coordinator.state.value.phase == ConnectionPhase.connected) {
       final options = _comparisonOptions(configuration, runtime);
       try {
         affectsRuntime = !const DeepCollectionEquality().equals(
@@ -237,11 +240,19 @@ class RawEditorService {
   ) {
     final policy = configuration.policy;
     final request = runtime?.request;
+    final metricsPort = int.tryParse(request?.metricsPort ?? '');
+    final socksPort = int.tryParse(request?.socksPort ?? '');
+    final occupied = {?metricsPort, ?socksPort};
+    // Disconnected semantic comparisons need stable placeholders, not sockets.
+    final comparisonPorts = [
+      for (final port in [65534, 65535, 65533])
+        if (!occupied.contains(port)) port,
+    ];
     return RuntimeOptions(
       platform: runtime?.platform ?? connectionPlatform,
       sessionDirectory: VpnConstants.runDir,
-      metricsPort: int.tryParse(request?.metricsPort ?? '') ?? 65534,
-      socksPort: int.tryParse(request?.socksPort ?? '') ?? 65535,
+      metricsPort: metricsPort ?? comparisonPorts.removeAt(0),
+      socksPort: socksPort ?? comparisonPorts.removeAt(0),
       ipv6: policy.ipv6Enabled,
       interfaceName: policy.xrayOutboundInterfaceName,
       logEnabled: policy.logEnabled,

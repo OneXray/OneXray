@@ -178,6 +178,7 @@ class CustomRoutingEditorService {
       'entries': state.entryCount,
       'directDnsAddress': state.directDnsAddress.trim(),
       'fakeDns': state.fakeDns,
+      'fragmentOutbound': state.fragmentOutbound,
       'rules': [
         for (final rule in state.rules) {...rule.toJson()}..remove('ruleTag'),
       ],

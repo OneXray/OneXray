@@ -343,6 +343,10 @@ void main() {
       expect(controller.name.text, 'Custom Routing 2');
       expect(controller.state.rules, isEmpty);
       expect(controller.state.fakeDns, false);
+      expect(controller.state.fragment, false);
+      controller.setFragment(true);
+      expect(controller.profileState.fragment, true);
+      expect(controller.profileState.fragmentOutbound?['tag'], 'fragment');
       controller.replaceTemplate(
         jsonEncode({
           'outbounds': [{}],
@@ -366,6 +370,12 @@ void main() {
       );
       final selected = controller.state.selectedRuleKey;
       expect(controller.state.fakeDns, true);
+      expect(controller.state.fragment, false);
+      expect(controller.profileState.fragmentOutbound, isNull);
+      controller.setFragment(true);
+      expect(controller.profileState.fragment, true);
+      controller.setFragment(false);
+      expect(controller.profileState.fragmentOutbound, isNull);
       controller.setFakeDns(false);
       expect(controller.profileState.fakeDns, false);
       controller.setFakeDns(true);

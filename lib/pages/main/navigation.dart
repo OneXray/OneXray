@@ -58,6 +58,7 @@ enum AppPageDestination {
   ping("ping"),
   logFile("log-file"),
   configFileViewer("config-file-viewer"),
+  lanProxy("lan-proxy"),
   autoUpdate("auto-update"),
   localApi("local-api"),
   backup("backup"),

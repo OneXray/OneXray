@@ -473,8 +473,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     if (connect && disconnect) {
       throw ArgumentError('Conflicting connection action');
     }
+    final stored = await configuration;
     if (expectedConfiguration != null &&
-        (await configuration).encode() != expectedConfiguration) {
+        stored.encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
     final current = await _inspect(await _currentRuntime());
@@ -559,10 +560,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           },
         );
         _publish(running, issue: runtime?.notice);
-      } catch (error) {
-        final permission = error is ConnectionHostException
-            ? error.permission
-            : null;
+      } catch (error, stack) {
         HostConnection? failed;
         if (touchedHost) {
           try {
@@ -575,6 +573,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             }
           }
         }
+        final permission = error is ConnectionHostException
+            ? error.permission
+            : null;
         final issue = cancellation.isCompleted
             ? 'cancelled'
             : connectionFailureReason(error);
@@ -598,7 +599,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
         } else {
           _publish(current, issue: issue, error: error, permission: permission);
         }
-        rethrow;
+        Error.throwWithStackTrace(error, stack);
       } finally {
         _pendingRuntime = null;
         _preparingNodeIds = {};

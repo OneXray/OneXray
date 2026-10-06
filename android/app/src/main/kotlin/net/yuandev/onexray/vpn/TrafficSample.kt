@@ -33,7 +33,10 @@ data class TrafficSample(
                 return (value as? JsonPrimitive)?.longOrNull?.takeIf { it >= 0 }
                     ?: throw IllegalArgumentException("Invalid metrics counter")
             }
-            return TrafficSample(counter("uplink"), counter("downlink"))
+            return TrafficSample(
+                counter("uplink"),
+                counter("downlink"),
+            )
         }
 
         fun formatBytes(bytes: Long): String {

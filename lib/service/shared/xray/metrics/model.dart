@@ -8,7 +8,10 @@ class XrayMetricsVars {
 
   const XrayMetricsVars(this.stats);
 
-  XrayTrafficCounter? get tunIn => stats?.inbound?.tunIn;
+  ({int uplink, int downlink}) get managedTraffic {
+    final counter = stats?.inbound?.tunIn;
+    return (uplink: counter?.uplink ?? 0, downlink: counter?.downlink ?? 0);
+  }
 
   factory XrayMetricsVars.fromJson(Map<String, dynamic> json) =>
       _$XrayMetricsVarsFromJson(json);

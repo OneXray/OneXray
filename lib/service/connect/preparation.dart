@@ -166,9 +166,15 @@ class ConnectionPreparation {
       throw const FormatException('inbounds must be an object array');
     }
     final apiPort = await LocalApiService.instance.reservedPort();
+    final shareLanProxy = !settings.expert && policy.lanProxyEnabled;
+    if (shareLanProxy && policy.lanProxyPort == apiPort) {
+      throw const FormatException(
+        'LAN proxy port conflicts with the HTTP API port',
+      );
+    }
     final ports = await allocateRuntimePorts(
       userInbounds.cast<Map<String, dynamic>>(),
-      excludePorts: [?apiPort],
+      excludePorts: [?apiPort, if (shareLanProxy) policy.lanProxyPort],
     );
     final compiled = ConnectionCompiler.compile(
       settings: settings,
@@ -182,6 +188,8 @@ class ConnectionPreparation {
         sessionDirectory: VpnConstants.runDir,
         socksPort: ports[0],
         metricsPort: ports[1],
+        lanProxyEnabled: shareLanProxy,
+        lanProxyPort: policy.lanProxyPort,
         ipv6: policy.ipv6Enabled,
         tunDnsIpv4Address: policy.dnsIpv4Address,
         tunDnsIpv6Address: policy.dnsIpv6Address,

@@ -31,6 +31,24 @@ RegionCatalog _regions() => RegionCatalog.fromJson(
 );
 
 void main() {
+  test('Fragment defaults off, persists and changes Smart runtime', () {
+    final before = SmartRoutingSettings.fromJson({});
+    expect(before.fragment, false);
+    final after = SmartRoutingSettings.fromJson({
+      ...before.toJson(),
+      'fragment': true,
+    });
+    expect(SmartRoutingSettings.fromJson(after.toJson()).fragment, true);
+    expect(
+      SmartRoutingEditorService.sameRuntime(
+        ConnectionSettings(smart: before),
+        after,
+        _regions(),
+      ),
+      false,
+    );
+  });
+
   test(
     'FakeDNS defaults off, persists and affects Smart runtime comparison',
     () {
@@ -134,6 +152,54 @@ void main() {
       );
       expect(validations, 1);
       expect((await coordinator.configuration).connection.smart.fakeDns, true);
+    },
+  );
+
+  test(
+    'saving Fragment validates its chain and persists without servers',
+    () async {
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
+        ),
+      );
+      final original = await coordinator.configuration;
+      String? validated;
+      final service = SmartRoutingEditorService(
+        database: db,
+        coordinator: coordinator,
+        loadRegions: () async => _regions(),
+        testXray: (text) async {
+          validated = text;
+          return '';
+        },
+      );
+      expect(
+        await service.save(
+          original: original,
+          smart: SmartRoutingSettings.fromJson({
+            ...original.connection.smart.toJson(),
+            'fragment': true,
+          }),
+          confirmReconnect: () async => throw StateError('No VPN is running'),
+        ),
+        true,
+      );
+      final outbounds = (jsonDecode(validated!)['outbounds'] as List)
+          .cast<Map>();
+      expect(
+        outbounds.first['streamSettings']['sockopt']['dialerProxy'],
+        'fragment',
+      );
+      expect(outbounds[1]['settings']['fragment'], {
+        'packets': 'tlshello',
+        'length': '100-200',
+        'interval': '10-20',
+      });
+      expect((await coordinator.configuration).connection.smart.fragment, true);
+      expect(await db.coreConfigDao.watchHasOutbounds().first, false);
     },
   );
 

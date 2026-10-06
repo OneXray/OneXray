@@ -9,6 +9,7 @@ import 'package:onexray/service/advanced/local_api/settings.dart';
 void main() {
   Map<String, dynamic>? stored;
   var failWrite = false;
+  int? sharedProxyPort;
   late LocalApiService service;
   late HttpClient client;
 
@@ -25,11 +26,13 @@ void main() {
     validate: (_) async => {'status': 'passed'},
     compile: (_) async => {'status': 'passed'},
     desktop: desktop,
+    sharedProxyPort: () async => sharedProxyPort,
   );
 
   setUp(() {
     stored = null;
     failWrite = false;
+    sharedProxyPort = null;
     service = create();
     client = HttpClient()..findProxy = (_) => 'DIRECT';
     addTearDown(() async {
@@ -62,6 +65,19 @@ void main() {
     expect(await service.reservedPort(), LocalApiSettings.defaultPort);
     expect(service.listening, isFalse);
     expect(stored, isNull);
+  });
+
+  test('API port changes preserve active LAN proxy reservation', () async {
+    final before = await service.configure(enabled: false, port: 19587);
+    sharedProxyPort = 11024;
+    await expectLater(
+      service.configure(enabled: false, port: 11024),
+      throwsFormatException,
+    );
+    expect((await service.load()).port, before.port);
+    expect(stored, before.toJson());
+    sharedProxyPort = null;
+    expect((await service.configure(enabled: false, port: 11024)).port, 11024);
   });
 
   test('reserves a saved custom port before startup while disabled', () async {

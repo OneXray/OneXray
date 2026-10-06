@@ -17,6 +17,7 @@ import 'package:onexray/service/connect/routing/custom/document.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
 import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 
 typedef OpenCustomRule = Future<RoutingRuleState?> Function(
   BuildContext context,
@@ -35,6 +36,7 @@ class CustomRoutingEditorState {
   final int entryCount;
   final String directDnsAddress;
   final bool fakeDns;
+  final Map<String, dynamic>? fragmentOutbound;
   final bool processing;
   final bool transferBusy;
   final bool saving;
@@ -52,6 +54,7 @@ class CustomRoutingEditorState {
     this.entryCount = 1,
     this.directDnsAddress = RoutingDns.defaultAddress,
     this.fakeDns = false,
+    this.fragmentOutbound,
     this.processing = true,
     this.transferBusy = false,
     this.saving = false,
@@ -65,6 +68,7 @@ class CustomRoutingEditorState {
   bool get loaded => original != null;
   bool get busy => processing || transferBusy;
   bool get editingBlocked => deleting || transferBusy;
+  bool get fragment => fragmentOutbound != null;
 
   CustomRoutingEditorState copyWith({
     Object? original = _unchangedCustomRoutingValue,
@@ -76,6 +80,8 @@ class CustomRoutingEditorState {
     int? entryCount,
     String? directDnsAddress,
     bool? fakeDns,
+    Map<String, dynamic>? fragmentOutbound,
+    bool clearFragment = false,
     bool? processing,
     bool? transferBusy,
     bool? saving,
@@ -96,6 +102,9 @@ class CustomRoutingEditorState {
     entryCount: entryCount ?? this.entryCount,
     directDnsAddress: directDnsAddress ?? this.directDnsAddress,
     fakeDns: fakeDns ?? this.fakeDns,
+    fragmentOutbound: clearFragment
+        ? null
+        : fragmentOutbound ?? this.fragmentOutbound,
     processing: processing ?? this.processing,
     transferBusy: transferBusy ?? this.transferBusy,
     saving: saving ?? this.saving,
@@ -192,6 +201,7 @@ class CustomRoutingEditorController
           entryCount: value.entryCount,
           directDnsAddress: value.directDnsAddress,
           fakeDns: value.fakeDns,
+          fragmentOutbound: value.fragmentOutbound,
           processing: false,
           transferBusy: transfer.state.busy,
           inlineEditing: state.inlineEditing,
@@ -232,6 +242,7 @@ class CustomRoutingEditorController
     entryCount: state.entryCount,
     directDnsAddress: state.directDnsAddress.trim(),
     fakeDns: state.fakeDns,
+    fragmentOutbound: state.fragmentOutbound,
     rules: state.rules,
   );
 
@@ -256,6 +267,8 @@ class CustomRoutingEditorController
         entryCount: value.entryCount,
         directDnsAddress: value.directDnsAddress,
         fakeDns: value.fakeDns,
+        fragmentOutbound: value.fragmentOutbound,
+        clearFragment: !value.fragment,
         rules: value.rules,
         ruleKeys: keys,
         selectedRuleKey: selected,
@@ -343,6 +356,17 @@ class CustomRoutingEditorController
 
   void setFakeDns(bool value) {
     emit(state.copyWith(fakeDns: value, error: null));
+  }
+
+  void setFragment(bool value) {
+    if (value == state.fragment) return;
+    emit(
+      state.copyWith(
+        fragmentOutbound: value ? XrayFragment.defaultOutbound() : null,
+        clearFragment: !value,
+        error: null,
+      ),
+    );
   }
 
   Future<void> editRule(

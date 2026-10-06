@@ -150,6 +150,7 @@ BackupSmartRouting _$BackupSmartRoutingFromJson(Map<String, dynamic> json) {
       'directDns',
       'directDnsAddress',
       'fakeDns',
+      'fragment',
       'blockAds',
     ],
   );
@@ -164,6 +165,7 @@ BackupSmartRouting _$BackupSmartRoutingFromJson(Map<String, dynamic> json) {
     directDns: json['directDns'] as bool,
     directDnsAddress: json['directDnsAddress'] as String,
     fakeDns: json['fakeDns'] as bool,
+    fragment: json['fragment'] as bool? ?? false,
     blockAds: json['blockAds'] as bool,
   );
 }
@@ -178,5 +180,6 @@ Map<String, dynamic> _$BackupSmartRoutingToJson(BackupSmartRouting instance) =>
       'directDns': instance.directDns,
       'directDnsAddress': instance.directDnsAddress,
       'fakeDns': instance.fakeDns,
+      'fragment': instance.fragment,
       'blockAds': instance.blockAds,
     };

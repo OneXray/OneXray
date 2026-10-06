@@ -10,6 +10,7 @@ import 'package:onexray/service/connect/routing/dns.dart';
 import 'package:onexray/service/shared/xray/runtime_outbounds.dart';
 import 'package:onexray/service/shared/xray/validation.dart';
 import 'package:onexray/service/shared/xray/fake_dns.dart';
+import 'package:onexray/service/shared/xray/fragment.dart';
 import 'package:onexray/service/connect/routing/custom/configuration.dart';
 import 'package:onexray/service/connect/routing/custom/advanced.dart';
 
@@ -64,8 +65,13 @@ class CustomRoutingService {
     );
     config.fakedns = FakeDns.poolsFor(config.dns);
     final tags = [for (var i = 0; i < state.entryCount; i++) 'app-entry-$i'];
+    final fragment = state.fragmentOutbound;
+    final helpers = <Map<String, dynamic>>[?fragment];
     config.outbounds = [
-      for (final tag in tags) createFreedomOutbound(tag: tag).toJson(),
+      ...XrayFragment.connectEntries([
+        for (final tag in tags) createFreedomOutbound(tag: tag).toJson(),
+      ], helpers),
+      ...helpers,
       createFreedomOutbound(tag: 'direct').toJson(),
       createBlackholeOutbound(tag: 'block').toJson(),
     ];
