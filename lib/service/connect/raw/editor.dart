@@ -88,8 +88,11 @@ class RawEditorService {
         original != null &&
         configuration.connection.expert &&
         configuration.connection.rawId == original.id;
-    var affectsRuntime = false;
-    if (selected) {
+    // Offline saves need no runtime options. Keep the queued reconnect guard
+    // for a selected asset if the VPN connects before the save is executed.
+    var affectsRuntime = selected;
+    if (selected &&
+        coordinator.state.value.phase == ConnectionPhase.connected) {
       final options = _comparisonOptions(configuration, runtime);
       try {
         affectsRuntime = !const DeepCollectionEquality().equals(

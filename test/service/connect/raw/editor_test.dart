@@ -116,35 +116,72 @@ void main() {
       throwsA(isA<RawEditorException>()),
     );
     expect(await db.coreConfigDao.allRawRowsWithData, hasLength(3));
-    for (final port in [65534, 65535]) {
-      final selected = ConnectionConfiguration(
-        connection: ConnectionSettings(expert: true, rawId: id),
-        policy: PlatformPolicy.fromJson({
-          'lanProxy': {'enabled': true, 'port': port},
-        }),
-      );
-      await db.connectionConfigDao.commit(configurationJson: selected.encode());
-      final original = await service.load(id);
-      expect(
-        await service.save(
-          RawEditorDraft(
-            original: original.original,
-            name: original.name,
-            text: original.text.replaceFirst('freedom', 'blackhole'),
-          ),
-          confirmReconnect: () async =>
-              throw StateError('Unexpected confirmation'),
-        ),
-        id,
-      );
-      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
-      expect((await coordinator.configuration).policy.lanProxyPort, port);
-      expect(
-        XrayRawDb.readFromDbData((await db.coreConfigDao.searchRow(id))!),
-        contains('blackhole'),
-      );
-    }
   });
+
+  test(
+    'selected Raw saves offline before choosing a network interface',
+    () async {
+      final id = await db.coreConfigDao.insertAssetRow(
+        XrayRawDb.configCompanion('original', _text),
+      );
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
+          start: (_) async => throw StateError('Unexpected start'),
+          stop: () async => throw StateError('Unexpected stop'),
+        ),
+      );
+      final validated = <String>[];
+      final service = RawEditorService(
+        database: db,
+        coordinator: coordinator,
+        validate: (text) async => validated.add(text),
+        prepare: (_, _, _) async => throw StateError('Unexpected preparation'),
+      );
+      for (final port in [65534, 65535]) {
+        final selected = ConnectionConfiguration(
+          connection: ConnectionSettings(expert: true, rawId: id),
+          policy: PlatformPolicy.fromJson({
+            'lanProxy': {'enabled': true, 'port': port},
+          }),
+        );
+        await db.connectionConfigDao.commit(
+          configurationJson: selected.encode(),
+        );
+        final original = await service.load(id);
+        final text = _text.replaceFirst(
+          'freedom',
+          port == 65534 ? 'blackhole' : 'freedom',
+        );
+        expect(
+          await service.save(
+            RawEditorDraft(
+              original: original.original,
+              name: original.name,
+              text: text,
+            ),
+            confirmReconnect: () async =>
+                throw StateError('Unexpected confirmation'),
+          ),
+          id,
+        );
+        expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+        expect((await coordinator.configuration).encode(), selected.encode());
+        expect(
+          (await coordinator.configuration).policy.xrayOutboundInterfaceName,
+          isEmpty,
+        );
+        expect(validated.last, text);
+        expect(
+          XrayRawDb.readFromDbData((await db.coreConfigDao.searchRow(id))!),
+          text,
+        );
+      }
+      expect(validated, hasLength(2));
+    },
+  );
 
   test('running Raw rename does not reconnect; cancel and failed start keep the asset', () async {
     final rawId = await db.coreConfigDao.insertAssetRow(
