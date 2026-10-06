@@ -59,6 +59,8 @@ class RuntimeOptions {
   final String sessionDirectory;
   final int metricsPort;
   final int socksPort;
+  final bool lanProxyEnabled;
+  final int lanProxyPort;
   final bool ipv6;
   final String tunDnsIpv4Address;
   final String tunDnsIpv6Address;
@@ -75,6 +77,8 @@ class RuntimeOptions {
     required this.sessionDirectory,
     required this.metricsPort,
     required this.socksPort,
+    this.lanProxyEnabled = false,
+    this.lanProxyPort = defaultLanProxyPort,
     this.ipv6 = true,
     this.tunDnsIpv4Address = '8.8.8.8',
     this.tunDnsIpv6Address = '2001:4860:4860::8888',
@@ -87,6 +91,15 @@ class RuntimeOptions {
   }) : windowsMode = windowsMode ?? windowsBuildMode {
     if (metricsPort == socksPort) {
       throw const FormatException('Runtime ports are invalid');
+    }
+    if (lanProxyEnabled && (lanProxyPort < 1024 || lanProxyPort > 65535)) {
+      throw const FormatException('LAN proxy port must be within 1024–65535');
+    }
+    if (lanProxyEnabled &&
+        (lanProxyPort == metricsPort || lanProxyPort == socksPort)) {
+      throw const FormatException(
+        'LAN proxy port conflicts with a runtime port',
+      );
     }
     if ((platform == ConnectionPlatform.windows ||
             platform == ConnectionPlatform.linux) &&
@@ -141,6 +154,21 @@ class ConnectionCompiler {
   static const dnsProxy = RoutingDns.proxyTag;
   static const dnsDirect = RoutingDns.directTag;
   static const dnsOutbound = 'dnsOut';
+
+  /// Checks only collisions with the enabled App-managed LAN listener.
+  static void validateLanProxyInbounds(List<dynamic> inbounds, int port) {
+    for (final inbound in inbounds.whereType<Map>()) {
+      final tag = inbound['tag'];
+      if (tag == lanProxyInboundTag) {
+        throw const FormatException('The LAN proxy inbound tag is App-managed');
+      }
+      if (tag != 'tunIn' && portIncludes(inbound['port'], port)) {
+        throw const FormatException(
+          'LAN proxy port conflicts with a configuration inbound',
+        );
+      }
+    }
+  }
 
   /// The editor and runtime share these exact built-in rules and their order.
   static List<XrayRoutingRule> smartRules(
@@ -336,7 +364,14 @@ class ConnectionCompiler {
           assetLocation: VpnConstants.datDir,
           certLocation: VpnConstants.datDir,
         ),
-        inbounds: [_runtimeInbound(options, fakeDns: FakeDns.usesServer(dns))],
+        inbounds: [
+          _runtimeInbound(options, fakeDns: FakeDns.usesServer(dns)),
+          if (options.lanProxyEnabled)
+            createLanProxyInbound(
+              options.lanProxyPort,
+              fakeDns: FakeDns.usesServer(dns),
+            ),
+        ],
         log: _runtimeLog(options),
         stats: XrayStats(),
         metrics: XrayMetrics(listen: '127.0.0.1:${options.metricsPort}'),
@@ -488,6 +523,9 @@ class ConnectionCompiler {
     );
     final outbounds = _objects(config, 'outbounds');
     final inbounds = _objects(config, 'inbounds');
+    if (options.lanProxyEnabled) {
+      validateLanProxyInbounds(inbounds, options.lanProxyPort);
+    }
     for (final inbound in inbounds) {
       final tag = inbound['tag'];
       if (tag == 'tunIn') continue;
@@ -551,6 +589,14 @@ class ConnectionCompiler {
           );
         }
       }
+    }
+    if (options.lanProxyEnabled) {
+      inbounds.add(
+        createLanProxyInbound(
+          options.lanProxyPort,
+          fakeDns: FakeDns.usedByRaw(config),
+        ).toJson(),
+      );
     }
     config['inbounds'] = inbounds;
     final env = _object(config, 'env');

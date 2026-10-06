@@ -507,6 +507,35 @@ class VPNManager {
         #endif
     }
 
+    func invalidateSavedVpn() async throws {
+        #if !targetEnvironment(simulator)
+        // Only update an existing profile. This must not create a VPN profile
+        // or request authorization while saving a disconnected device setting.
+        if let manager = try await findVpn() {
+            guard [.disconnected, .invalid].contains(manager.connection.status) else {
+                throw VPNError.sessionNotReady
+            }
+            if let conf = manager.protocolConfiguration as? NETunnelProviderProtocol {
+                var providerConfig = conf.providerConfiguration ?? [:]
+                providerConfig.removeValue(forKey: "request")
+                conf.providerConfiguration = providerConfig
+            }
+            manager.isOnDemandEnabled = false
+            manager.onDemandRules = nil
+            try await manager.saveToPreferences()
+            try await manager.loadFromPreferences()
+            vpn = manager
+        }
+        #endif
+        guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupId()) else {
+            throw VPNError.noGroupContainer
+        }
+        let startURL = groupURL.adaptedAppendPath(path: StartModelFile)
+        if FileManager.default.fileExists(atPath: startURL.path) {
+            try FileManager.default.removeItem(at: startURL)
+        }
+    }
+
     private func saveVpn(vpn: NETunnelProviderManager, tun: TunJson, request: StartVpnRequest? = nil) async throws {
         vpn.isEnabled = true
         if let conf = vpn.protocolConfiguration as? NETunnelProviderProtocol {

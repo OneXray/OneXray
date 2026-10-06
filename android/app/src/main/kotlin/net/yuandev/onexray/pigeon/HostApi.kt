@@ -21,6 +21,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import libXray.LibXray
 import net.yuandev.onexray.vpn.VpnController
+import net.yuandev.onexray.vpn.SavedVpnConfig
 import net.yuandev.onexray.vpn.VpnStatusConnection
 import java.io.ByteArrayOutputStream
 
@@ -133,6 +134,12 @@ class AppHostApi(
             invokeMutex.withLock {
                 callback(runCatching { LibXray.invoke(requestJson) })
             }
+        }
+    }
+
+    override fun invalidateSavedVpn(callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            callback(runCatching { SavedVpnConfig.invalidate(VpnController.startFile(context)) })
         }
     }
 

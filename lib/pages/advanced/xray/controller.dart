@@ -7,10 +7,12 @@ import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/pages/advanced/controller.dart';
 import 'package:onexray/pages/advanced/xray/config/params.dart';
 import 'package:onexray/pages/advanced/xray/log/params.dart';
+import 'package:onexray/pages/advanced/xray/lan_proxy/dialog.dart';
 import 'package:onexray/pages/shared/alert.dart';
 import 'package:onexray/pages/shared/page_cubit.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/shared/ping/state.dart';
 import 'package:onexray/service/advanced/xray/runtime_files.dart';
@@ -32,6 +34,7 @@ class XrayRuntimePageState {
   final bool failed;
   final Object? failure;
   final bool saving;
+  final bool lanProxySaving;
   final bool systemExtension;
 
   XrayRuntimePageState({
@@ -47,6 +50,7 @@ class XrayRuntimePageState {
     this.failed = false,
     this.failure,
     this.saving = false,
+    this.lanProxySaving = false,
     this.systemExtension = false,
   }) : log = Map<String, dynamic>.unmodifiable(log);
 
@@ -63,6 +67,7 @@ class XrayRuntimePageState {
     bool? failed,
     Object? failure,
     bool? saving,
+    bool? lanProxySaving,
     bool? systemExtension,
   }) => XrayRuntimePageState(
     base: identical(base, _notProvided)
@@ -81,16 +86,25 @@ class XrayRuntimePageState {
     failed: failed ?? this.failed,
     failure: failed == false ? null : failure ?? this.failure,
     saving: saving ?? this.saving,
+    lanProxySaving: lanProxySaving ?? this.lanProxySaving,
     systemExtension: systemExtension ?? this.systemExtension,
   );
 }
 
 class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
-  XrayRuntimeController({ConnectionCoordinator? coordinator})
-    : this._(coordinator ?? ConnectionCoordinator.instance);
+  XrayRuntimeController({
+    ConnectionCoordinator? coordinator,
+    PolicyEditorService? policyEditor,
+  }) : this._(coordinator ?? ConnectionCoordinator.instance, policyEditor);
 
-  XrayRuntimeController._(this.coordinator)
+  XrayRuntimeController._(this.coordinator, PolicyEditorService? policyEditor)
     : reader = AdvancedController(coordinator: coordinator),
+      policyEditor =
+          policyEditor ??
+          PolicyEditorService(
+            coordinator: coordinator,
+            validateInterface: false,
+          ),
       super(XrayRuntimePageState()) {
     _subscription = reader.stream.listen(_advancedChanged);
     _advancedChanged(reader.state);
@@ -98,6 +112,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   }
   final ConnectionCoordinator coordinator;
   final AdvancedController reader;
+  final PolicyEditorService policyEditor;
   late final StreamSubscription<AdvancedPageState> _subscription;
 
   ConnectionConfiguration? get base => state.base;
@@ -108,7 +123,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   bool get saving => state.saving;
   String get xrayVersion => state.xrayVersion;
   String get uptime => state.uptime;
-  bool get busy => state.saving;
+  bool get busy => state.saving || state.lanProxySaving;
   bool get runtimeBusy => state.connection.busy;
   bool get dirty =>
       base != null &&
@@ -118,6 +133,7 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
   bool get maskIp => log['maskIp'] == true;
   String get level => log['level'] as String? ?? 'warning';
   bool get connected => state.connection.phase == ConnectionPhase.connected;
+  bool get lanProxyEnabled => base?.policy.lanProxyEnabled ?? false;
   String speedSummary(AppLocalizations l) =>
       '${l.prototypeSeconds(state.pingTimeout.round())} · ${state.pingUrl == PingUrl.custom ? l.prototypeCustomUrl : state.pingUrl.name}';
   String statusLabel(AppLocalizations l) => switch (state.connection.phase) {
@@ -235,6 +251,38 @@ class XrayRuntimeController extends PageCubit<XrayRuntimePageState> {
       emit(state.copyWith(failed: true, failure: error));
     } finally {
       emit(state.copyWith(saving: false));
+    }
+  }
+
+  Future<void> setLanProxyEnabled(BuildContext context, bool enabled) async {
+    if (busy || state.lanProxySaving || runtimeBusy || base == null) return;
+    emit(state.copyWith(lanProxySaving: true, failed: false));
+    try {
+      final draft = await policyEditor.load();
+      if (!isPageActive || !context.mounted) return;
+      draft.policy['lanProxy']['enabled'] = enabled;
+      final saved = await policyEditor.save(
+        draft: draft,
+        confirm: (_) => confirmLanProxyRestart(context),
+      );
+      if (saved && isPageActive) {
+        await refreshLanProxy();
+        if (context.mounted) ContextAlert.settingsSaved(context);
+      }
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
+    } finally {
+      emit(state.copyWith(lanProxySaving: false));
+    }
+  }
+
+  /// Do not replace the unsaved log draft when a child changes sharing.
+  Future<void> refreshLanProxy() async {
+    try {
+      final configuration = await coordinator.configuration;
+      emit(state.copyWith(base: configuration));
+    } catch (error) {
+      emit(state.copyWith(failed: true, failure: error));
     }
   }
 

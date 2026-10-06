@@ -12,6 +12,10 @@ import java.io.File
 
 /** The existing native start request, not a second configuration or a VPN-state cache. */
 object SavedVpnConfig {
+    fun invalidate(file: File) {
+        check(!file.exists() || file.delete()) { "Unable to invalidate saved VPN configuration" }
+    }
+
     fun read(file: File): StartVpnRequest {
         require(file.isFile && file.length() <= 16 * 1024 * 1024) { "VPN start configuration is unavailable" }
         return try {

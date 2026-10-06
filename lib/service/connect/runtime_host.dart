@@ -58,6 +58,7 @@ class ConnectionRuntimeHost {
   final Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
   _startVpn;
   final Future<NativeVpnCommandResult> Function()? _stopVpn;
+  final Future<void> Function()? _invalidateSavedVpn;
 
   ConnectionRuntimeHost({
     String? runDirectory,
@@ -66,13 +67,18 @@ class ConnectionRuntimeHost {
     Future<NativeVpnCommandResult> Function(ConnectionRuntime runtime)?
     startVpn,
     Future<NativeVpnCommandResult> Function()? stopVpn,
+    Future<void> Function()? invalidateSavedVpn,
   }) : _runDirectory = runDirectory,
        _readStatus = readStatus,
        _startVpn = startVpn,
        _stopVpn = stopVpn,
+       _invalidateSavedVpn = invalidateSavedVpn,
        _metrics = readMetrics;
 
   String get _directory => _runDirectory ?? VpnConstants.runDir;
+
+  Future<void> invalidateSavedVpn() =>
+      (_invalidateSavedVpn ?? _host.invalidateSavedVpn)();
 
   Future<
     ({VpnStatus status, PlatformPermissionResult? permission, String? message})
@@ -184,8 +190,9 @@ class ConnectionRuntimeHost {
       throw const FormatException('Missing metrics stats');
     }
     // Xray creates inbound counters lazily, when the first connection arrives.
-    final uplink = metrics.tunIn?.uplink ?? 0;
-    final downlink = metrics.tunIn?.downlink ?? 0;
+    final traffic = metrics.managedTraffic;
+    final uplink = traffic.uplink;
+    final downlink = traffic.downlink;
     if (uplink < 0 || downlink < 0) {
       throw const FormatException('Invalid metrics counters');
     }

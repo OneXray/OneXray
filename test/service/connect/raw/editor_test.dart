@@ -12,6 +12,7 @@ import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/shared/share/configuration_transfer.dart';
 import 'package:onexray/service/shared/share/configuration_source.dart';
 
@@ -115,6 +116,34 @@ void main() {
       throwsA(isA<RawEditorException>()),
     );
     expect(await db.coreConfigDao.allRawRowsWithData, hasLength(3));
+    for (final port in [65534, 65535]) {
+      final selected = ConnectionConfiguration(
+        connection: ConnectionSettings(expert: true, rawId: id),
+        policy: PlatformPolicy.fromJson({
+          'lanProxy': {'enabled': true, 'port': port},
+        }),
+      );
+      await db.connectionConfigDao.commit(configurationJson: selected.encode());
+      final original = await service.load(id);
+      expect(
+        await service.save(
+          RawEditorDraft(
+            original: original.original,
+            name: original.name,
+            text: original.text.replaceFirst('freedom', 'blackhole'),
+          ),
+          confirmReconnect: () async =>
+              throw StateError('Unexpected confirmation'),
+        ),
+        id,
+      );
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+      expect((await coordinator.configuration).policy.lanProxyPort, port);
+      expect(
+        XrayRawDb.readFromDbData((await db.coreConfigDao.searchRow(id))!),
+        contains('blackhole'),
+      );
+    }
   });
 
   test('running Raw rename does not reconnect; cancel and failed start keep the asset', () async {

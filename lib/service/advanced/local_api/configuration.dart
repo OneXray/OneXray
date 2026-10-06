@@ -269,6 +269,8 @@ RuntimeOptions _runtimeOptions(Map<String, dynamic> values) {
     sessionDirectory: directory,
     metricsPort: metrics,
     socksPort: socks,
+    lanProxyEnabled: _optional<bool>(values, 'lanProxyEnabled') ?? false,
+    lanProxyPort: _optional<int>(values, 'lanProxyPort') ?? 11024,
     ipv6: _required<bool>(values, 'ipv6'),
     interfaceName: _optional<String>(values, 'interfaceName') ?? '',
     tunDnsIpv4Address:

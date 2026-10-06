@@ -230,18 +230,7 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
     try {
       final saved = await service.save(
         draft: current,
-        confirm: (disconnect) => context.mounted
-            ? ContextAlert.showConfirmDialog(
-                context,
-                title: l.prototypeApplyChange,
-                content: disconnect
-                    ? '${l.prototypeNoAppsSelected}. ${l.prototypeDisconnectVpn}.'
-                    : l.prototypeReconnectNotice,
-                confirmLabel: disconnect
-                    ? l.prototypeDisconnectVpn
-                    : l.prototypeSaveAndReconnect,
-              )
-            : Future.value(false),
+        confirm: (disconnect) => confirmSave(context, disconnect),
       );
       if (saved && isPageActive) {
         if (context.mounted) {
@@ -270,6 +259,21 @@ class PolicyEditorController extends PageCubit<PolicyEditorPageState> {
     } finally {
       emit(state.copyWith(busy: false));
     }
+  }
+
+  Future<bool> confirmSave(BuildContext context, bool disconnect) {
+    if (!context.mounted) return Future.value(false);
+    final l = AppLocalizations.of(context)!;
+    return ContextAlert.showConfirmDialog(
+      context,
+      title: l.prototypeApplyChange,
+      content: disconnect
+          ? '${l.prototypeNoAppsSelected}. ${l.prototypeDisconnectVpn}.'
+          : l.prototypeReconnectNotice,
+      confirmLabel: disconnect
+          ? l.prototypeDisconnectVpn
+          : l.prototypeSaveAndReconnect,
+    );
   }
 
   Future<void> openChild(BuildContext context, OpenPolicyChild open) async {

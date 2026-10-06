@@ -50,6 +50,22 @@ void main() {
   }
 
   test(
+    'keeps API and enabled LAN sharing ports out of runtime allocation',
+    () async {
+      final ports = await allocateRuntimePorts(
+        const [],
+        excludePorts: [LocalApiSettings.defaultPort, 11024],
+        getFreePorts: (count, {excludePorts}) async {
+          expect(count, 2);
+          expect(excludePorts, [LocalApiSettings.defaultPort, 11024]);
+          return [12001, 13000];
+        },
+      );
+      expect(ports, [12001, 13000]);
+    },
+  );
+
+  test(
     'preserves allocator failures without retrying invalid responses',
     () async {
       await expectLater(

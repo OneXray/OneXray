@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -7,12 +8,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/db/database/database.dart';
 import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
+import 'package:onexray/service/advanced/platform_policy.dart';
+import 'package:onexray/service/advanced/policy_editor.dart';
 import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/coordinator.dart';
 import 'package:onexray/service/connect/resolver.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
 import 'package:onexray/service/connect/settings.dart';
+import 'package:path/path.dart' as p;
 
 void main() {
   late AppDatabase db;
@@ -998,6 +1002,188 @@ void main() {
   });
 
   test(
+    'offline sharing changes invalidate saved input before committing',
+    () async {
+      final fixtures = Directory(
+        p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
+      ).absolute;
+      await fixtures.create(recursive: true);
+      final directory = await fixtures.createTemp('lan-saved-start-');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(p.join(directory.path, 'start.json'));
+      final previous = ConnectionConfiguration(
+        policy: PlatformPolicy.fromJson({
+          'lanProxy': {'enabled': true, 'port': 11024},
+        }),
+      );
+      await db.connectionConfigDao.commit(configurationJson: previous.encode());
+      final runtime = _runtime('a');
+      runtime.request.coreInvokeText = jsonEncode(
+        LibXrayInvokeRequest(
+          method: LibXrayMethod.runXray,
+          payload: RunXrayRequest(
+            jsonEncode({
+              'inbounds': [
+                {
+                  'tag': 'app-lan-proxy',
+                  'protocol': 'socks',
+                  'listen': '0.0.0.0',
+                  'port': 11024,
+                  'settings': {'auth': 'noauth', 'udp': true},
+                },
+              ],
+              'outbounds': [
+                {'protocol': 'freedom'},
+              ],
+            }),
+          ).toJson(),
+        ).toJson(),
+      );
+      await file.writeAsString(jsonEncode(runtime.request.toJson()));
+      final runtimeHost = ConnectionRuntimeHost(runDirectory: directory.path);
+      expect(await runtimeHost.readRuntime(), isNotNull);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: runtimeHost.readRuntime,
+          inspect: (_, {observedStatus}) async =>
+              const HostConnection(VpnStatus.disconnected),
+          invalidateSavedVpn: () async {
+            expect(
+              (await db.connectionConfigDao.read()).configurationJson,
+              previous.encode(),
+            );
+            await file.delete();
+          },
+        ),
+      );
+
+      final disabled = ConnectionConfiguration();
+      await coordinator.apply(disabled);
+
+      expect(await file.exists(), false);
+      expect(await runtimeHost.readRuntime(), isNull);
+      expect((await coordinator.configuration).policy.lanProxyEnabled, false);
+      expect(coordinator.state.value.phase, ConnectionPhase.disconnected);
+    },
+  );
+
+  test(
+    'storage-only changes preserve saved input and cancelled reconnects',
+    () async {
+      final previous = ConnectionConfiguration();
+      await db.connectionConfigDao.commit(configurationJson: previous.encode());
+      var invalidations = 0;
+      var host = const HostConnection(VpnStatus.disconnected);
+      final coordinator = await _initialize(
+        ConnectionCoordinator(
+          database: db,
+          readRuntime: () async => host.runtime,
+          inspect: (_, {observedStatus}) async => host,
+          invalidateSavedVpn: () async {
+            invalidations++;
+          },
+        ),
+      );
+      final storageOnly = ConnectionConfiguration(
+        policy: PlatformPolicy.fromJson({
+          'lanProxy': {'enabled': false, 'port': 12024},
+        }),
+      );
+      await coordinator.apply(storageOnly, affectsRuntime: false);
+      expect(invalidations, 0);
+
+      host = HostConnection(VpnStatus.connected, runtime: _runtime('a'));
+      final service = PolicyEditorService(
+        coordinator: coordinator,
+        platform: ConnectionPlatform.android,
+        reservedApiPort: () async => null,
+      );
+      final draft = await service.load();
+      draft.policy['lanProxy']['enabled'] = true;
+      var confirmations = 0;
+      final saved = await service.save(
+        draft: draft,
+        confirm: (_) async {
+          confirmations++;
+          return false;
+        },
+      );
+      expect(saved, false);
+      expect(confirmations, 1);
+      expect(invalidations, 0);
+      expect((await coordinator.configuration).encode(), storageOnly.encode());
+      expect(coordinator.state.value.phase, ConnectionPhase.connected);
+    },
+  );
+
+  for (final outcome in ['disconnected', 'commitFailed', 'invalidationFailed', 'stillRunning']) {
+    test('failed sharing reconnect handles saved input: $outcome', () async {
+      final fixtures = Directory(
+        p.join('..', 'references', 'onexray-refactor-validation', 'fixtures'),
+      ).absolute;
+      await fixtures.create(recursive: true);
+      final directory = await fixtures.createTemp('lan-failed-start-');
+      addTearDown(() => directory.delete(recursive: true));
+      final file = File(p.join(directory.path, 'start.json'));
+      final old = _runtime('a');
+      final next = _runtime('b', policy: PlatformPolicy.fromJson({
+        'lanProxy': {'enabled': true, 'port': 11024},
+      }));
+      await db.connectionConfigDao.commit(configurationJson: old.configuration.encode());
+      var host = HostConnection(VpnStatus.connected, runtime: old);
+      var startAttempted = false;
+      var invalidations = 0;
+      const startError = ConnectionHostException('startFailed', cause: 'Listener failed to start');
+      final commitError = StateError('Unable to save connection settings');
+      final invalidationError = StateError('Unable to remove saved VPN input');
+      final coordinator = await _initialize(ConnectionCoordinator(
+        database: db,
+        readRuntime: () async => host.runtime,
+        inspect: (_, {observedStatus}) async => host,
+        prepare: (_, _) async => next,
+        start: (runtime) async {
+          startAttempted = true;
+          await file.writeAsString(jsonEncode(runtime.request.toJson()));
+          host = HostConnection(VpnStatus.connected, runtime: runtime);
+          if (outcome == 'commitFailed') return host;
+          throw startError;
+        },
+        stop: () async {
+          if (startAttempted && outcome == 'stillRunning') return host;
+          return host = const HostConnection(VpnStatus.disconnected);
+        },
+        invalidateSavedVpn: () async {
+          invalidations++;
+          expect(host.status, VpnStatus.disconnected);
+          if (outcome == 'invalidationFailed') throw invalidationError;
+          await file.delete();
+        },
+      ));
+
+      final expectedError = switch (outcome) {
+        'invalidationFailed' => invalidationError,
+        'commitFailed' => commitError,
+        _ => startError,
+      };
+      await expectLater(
+        coordinator.apply(
+          next.configuration,
+          writeAssets: outcome == 'commitFailed' ? () async { throw commitError; } : null,
+        ),
+        throwsA(same(expectedError)),
+      );
+
+      expect(invalidations, outcome == 'stillRunning' ? 0 : 1);
+      expect(await file.exists(), outcome == 'invalidationFailed' || outcome == 'stillRunning');
+      expect((await coordinator.configuration).encode(), old.configuration.encode());
+      expect(coordinator.state.value.phase, ConnectionPhase.failed);
+      expect(coordinator.state.value.error, same(expectedError));
+      expect(coordinator.state.value.runtime, outcome == 'stillRunning' ? same(next) : isNull);
+    });
+  }
+
+  test(
     'initialization does not report a platform error as missing permission',
     () async {
       final permission = PlatformPermissionResult(
@@ -1412,8 +1598,10 @@ ConnectionRuntime _runtime(
   String digit, {
   List<int> entryIds = const [1],
   int? exitId,
+  PlatformPolicy? policy,
 }) {
   final configuration = ConnectionConfiguration(
+    policy: policy,
     connection: ConnectionSettings(
       selection: entryIds.length == 1
           ? ServerSelection.server(entryIds.single)
@@ -1432,6 +1620,16 @@ ConnectionRuntime _runtime(
   final entries = entryIds.map(server).toList();
   final finalExit = exitId == null ? null : server(exitId);
   final xrayJson = jsonEncode({
+    if (configuration.policy.lanProxyEnabled)
+      'inbounds': [
+        {
+          'tag': 'app-lan-proxy',
+          'protocol': 'socks',
+          'listen': '0.0.0.0',
+          'port': configuration.policy.lanProxyPort,
+          'settings': {'auth': 'noauth', 'udp': true},
+        },
+      ],
     'outbounds': [
       for (final entry in entries) entry.outbound,
       if (finalExit != null) finalExit.outbound,

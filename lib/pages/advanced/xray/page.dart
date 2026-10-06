@@ -28,6 +28,7 @@ class XrayRuntimePage extends StatelessWidget {
     required this.onLog,
     required this.onConfig,
     this.onLocalApi,
+    this.onLanProxy,
     this.createController,
   });
   final void Function(BuildContext) onGeodata;
@@ -36,6 +37,7 @@ class XrayRuntimePage extends StatelessWidget {
   final void Function(BuildContext, LogFileViewerParams) onLog;
   final void Function(BuildContext, ConfigFileViewerParams) onConfig;
   final void Function(BuildContext)? onLocalApi;
+  final Future<void> Function(BuildContext)? onLanProxy;
   final XrayRuntimeController Function()? createController;
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -281,6 +283,53 @@ class XrayRuntimePage extends StatelessWidget {
                                 ),
                               ],
                             ),
+                          _section(
+                            icon: LucideIcons.slidersHorizontal,
+                            title: l.lanProxyConfiguration,
+                            description: l.lanProxySecurityHint,
+                            children: [
+                              SettingRow(
+                                title: l.lanProxyTitle,
+                                titleMaxLines: 4,
+                                titleStyle: AppTypography.settingsRow,
+                                subtitle: l.lanProxyProtocolHint,
+                                minHeight: 64,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: mobile ? 13 : 14,
+                                  vertical: 12,
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (state.lanProxySaving)
+                                      const ButtonProgressIndicator()
+                                    else
+                                      ShadSwitch(
+                                        key: const ValueKey('lan-proxy-switch'),
+                                        value: controller.lanProxyEnabled,
+                                        enabled:
+                                            !disabled &&
+                                            !controller.runtimeBusy,
+                                        onChanged: (value) => controller
+                                            .setLanProxyEnabled(context, value),
+                                      ),
+                                    if (onLanProxy != null) ...[
+                                      const SizedBox(width: 8),
+                                      _chevron(context),
+                                    ],
+                                  ],
+                                ),
+                                onTap: onLanProxy == null || disabled
+                                    ? null
+                                    : () async {
+                                        await onLanProxy!(context);
+                                        if (controller.isPageActive) {
+                                          await controller.refreshLanProxy();
+                                        }
+                                      },
+                              ),
+                            ],
+                          ),
                           _section(
                             icon: LucideIcons.fileJson,
                             title: l.prototypeRuntimeConfiguration,

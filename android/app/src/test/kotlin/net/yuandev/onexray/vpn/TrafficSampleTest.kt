@@ -7,9 +7,10 @@ import org.junit.Test
 
 class TrafficSampleTest {
     @Test fun readsOnlyManagedInboundCounters() {
-        val sample = TrafficSample.parse("""{"stats":{"inbound":{"tunIn":{"uplink":1024,"downlink":4096},"other":{"uplink":999}},"outbound":{"proxy":{"uplink":999}}}}""")
-        assertEquals(1024L, sample.uplink)
-        assertEquals(4096L, sample.downlink)
+        val sample = TrafficSample.parse("""{"stats":{"inbound":{"tunIn":{"uplink":1024,"downlink":4096},"app-lan-proxy":{"uplink":512,"downlink":2048},"other":{"uplink":999}},"outbound":{"proxy":{"uplink":999}}}}""")
+        assertEquals(1536L, sample.uplink)
+        assertEquals(6144L, sample.downlink)
+        assertEquals(TrafficSample(512, 2048), TrafficSample.parse("""{"stats":{"inbound":{"app-lan-proxy":{"uplink":512,"downlink":2048}}}}"""))
         assertEquals(TrafficSample(0, 0), TrafficSample.parse("""{"stats":{}}"""))
     }
 

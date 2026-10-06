@@ -639,6 +639,7 @@ protocol BridgeHostApi {
   func readVpnStatus(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func startVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
   func stopVpn(completion: @escaping (Result<NativeVpnCommandResult, Error>) -> Void)
+  func invalidateSavedVpn(completion: @escaping (Result<Void, Error>) -> Void)
   func invoke(requestJson: String, completion: @escaping (Result<String, Error>) -> Void)
   func queryPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
   func requestPlatformPermission(completion: @escaping (Result<PlatformPermissionResult, Error>) -> Void)
@@ -718,6 +719,21 @@ class BridgeHostApiSetup {
       }
     } else {
       stopVpnChannel.setMessageHandler(nil)
+    }
+    let invalidateSavedVpnChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.invalidateSavedVpn\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      invalidateSavedVpnChannel.setMessageHandler { _, reply in
+        api.invalidateSavedVpn { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      invalidateSavedVpnChannel.setMessageHandler(nil)
     }
     let invokeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.onexray.BridgeHostApi.invoke\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:onexray/core/ffi/windows/mode.dart';
+import 'package:onexray/service/advanced/local_api/service.dart';
 import 'package:onexray/service/connect/coordinator.dart';
+import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/advanced/platform_policy.dart';
 import 'package:onexray/service/connect/runtime.dart';
 import 'package:onexray/service/connect/runtime_host.dart';
@@ -26,14 +28,20 @@ class PolicyEditorService {
   final ConnectionCoordinator coordinator;
   final ConnectionPlatform platform;
   final WindowsMode windowsMode;
+  final bool validateInterface;
+  final Future<int?> Function() _reservedApiPort;
 
   PolicyEditorService({
     ConnectionCoordinator? coordinator,
     ConnectionPlatform? platform,
     WindowsMode? windowsMode,
+    this.validateInterface = true,
+    Future<int?> Function()? reservedApiPort,
   }) : coordinator = coordinator ?? ConnectionCoordinator.instance,
        platform = platform ?? connectionPlatform,
-       windowsMode = windowsMode ?? windowsBuildMode;
+       windowsMode = windowsMode ?? windowsBuildMode,
+       _reservedApiPort =
+           reservedApiPort ?? LocalApiService.instance.reservedPort;
 
   bool get supportsWindowsSystemVpn =>
       platform == ConnectionPlatform.windows && windowsMode == WindowsMode.msix;
@@ -44,8 +52,9 @@ class PolicyEditorService {
   }
 
   bool get requiresInterface =>
-      platform == ConnectionPlatform.windows ||
-      platform == ConnectionPlatform.linux;
+      validateInterface &&
+      (platform == ConnectionPlatform.windows ||
+          platform == ConnectionPlatform.linux);
 
   static bool emptyAndroidScope(PlatformPolicy policy) {
     final android = policy.toJson()['android'] as Map<String, dynamic>;
@@ -97,6 +106,7 @@ class PolicyEditorService {
     final prepared = prepare(draft);
     final policy = prepared.policy;
     await coordinator.initialize();
+    await _validateLanProxy(draft, policy);
     await coordinator.refresh();
     if ((await coordinator.configuration).encode() != draft.original.encode()) {
       throw const ConnectionHostException('configurationChanged');
@@ -131,6 +141,39 @@ class PolicyEditorService {
     return true;
   }
 
+  Future<void> _validateLanProxy(
+    PolicyEditorDraft draft,
+    PlatformPolicy policy,
+  ) async {
+    if (!policy.lanProxyEnabled) return;
+    if (policy.lanProxyPort == await _reservedApiPort()) {
+      throw const FormatException(
+        'Proxy port conflicts with the local HTTP API',
+      );
+    }
+    final settings = draft.original.connection;
+    String? data;
+    if (settings.expert && settings.rawId != null) {
+      data = (await coordinator.db.coreConfigDao.searchRow(settings.rawId!))
+          ?.data;
+    } else if (!settings.expert &&
+        settings.trafficMode == TrafficMode.custom &&
+        settings.customId != null) {
+      final row = await coordinator.db.routingProfileDao.searchRow(
+        settings.customId!,
+      );
+      if (row?.advanced == true) data = row!.data;
+    }
+    if (data != null) {
+      final json =
+          jsonDecode(utf8.decode(base64Decode(data))) as Map<String, dynamic>;
+      ConnectionCompiler.validateLanProxyInbounds(
+        json['inbounds'] as List? ?? [],
+        policy.lanProxyPort,
+      );
+    }
+  }
+
   /// Inactive platform settings and inactive Android lists are storage only.
   static bool sameRuntime(
     PlatformPolicy a,
@@ -157,6 +200,10 @@ class PolicyEditorService {
               (windowsMode ?? windowsBuildMode) == WindowsMode.msix))
         'dnsIpv6Address': policy.dnsIpv6Address,
       'log': json['log'],
+      'lanProxy': {
+        'enabled': policy.lanProxyEnabled,
+        if (policy.lanProxyEnabled) 'port': policy.lanProxyPort,
+      },
     };
     if (platform == ConnectionPlatform.android) {
       final android = json['android'] as Map<String, dynamic>;

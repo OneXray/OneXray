@@ -79,6 +79,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
   late final InspectConnection _inspect;
   late final Future<ConnectionTraffic> Function(ConnectionRuntime) _readTraffic;
   late final Future<ConnectionRuntime?> Function() _readRuntime;
+  late final Future<void> Function() _invalidateSavedVpn;
   final Stream<VpnStatus> _statusEvents;
   final Future<void> Function() _observeStatus;
   final void Function() _disposeStatus;
@@ -113,6 +114,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     InspectConnection? inspect,
     Future<ConnectionTraffic> Function(ConnectionRuntime)? readTraffic,
     Future<ConnectionRuntime?> Function()? readRuntime,
+    Future<void> Function()? invalidateSavedVpn,
     Stream<VpnStatus>? statusEvents,
     Future<void> Function()? observeStatus,
     void Function()? disposeStatus,
@@ -127,6 +129,7 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     _inspect = inspect ?? host.inspect;
     _readTraffic = readTraffic ?? host.query;
     _readRuntime = readRuntime ?? host.readRuntime;
+    _invalidateSavedVpn = invalidateSavedVpn ?? host.invalidateSavedVpn;
     _prepare =
         prepare ??
         ((configuration, cancelled) => ConnectionPreparation(db: db).prepare(
@@ -473,10 +476,15 @@ class ConnectionCoordinator with WidgetsBindingObserver {
     if (connect && disconnect) {
       throw ArgumentError('Conflicting connection action');
     }
+    final stored = await configuration;
     if (expectedConfiguration != null &&
-        (await configuration).encode() != expectedConfiguration) {
+        stored.encode() != expectedConfiguration) {
       throw const ConnectionHostException('configurationChanged');
     }
+    final sharingChanged =
+        stored.policy.lanProxyEnabled != next.policy.lanProxyEnabled ||
+        (next.policy.lanProxyEnabled &&
+            stored.policy.lanProxyPort != next.policy.lanProxyPort);
     final current = await _inspect(await _currentRuntime());
     final shouldStart =
         !disconnect && (connect || (affectsRuntime && current.connected));
@@ -494,6 +502,11 @@ class ConnectionCoordinator with WidgetsBindingObserver {
 
       if (!shouldStart && !shouldStop) {
         await validateAssets?.call();
+        if (current.status == VpnStatus.disconnected && sharingChanged) {
+          // Widget/Tile and Apple On Demand may otherwise reuse the old input
+          // and reopen a listener that this device setting has just disabled.
+          await _invalidateSavedVpn();
+        }
         await db.connectionConfigDao.commit(
           configurationJson: next.encode(),
           writeAssets: write,
@@ -559,10 +572,9 @@ class ConnectionCoordinator with WidgetsBindingObserver {
           },
         );
         _publish(running, issue: runtime?.notice);
-      } catch (error) {
-        final permission = error is ConnectionHostException
-            ? error.permission
-            : null;
+      } catch (error, stack) {
+        Object reportedError = error;
+        StackTrace reportedStack = stack;
         HostConnection? failed;
         if (touchedHost) {
           try {
@@ -575,9 +587,23 @@ class ConnectionCoordinator with WidgetsBindingObserver {
             }
           }
         }
-        final issue = cancellation.isCompleted
+        if (sharingChanged && failed?.status == VpnStatus.disconnected) {
+          // A failed start or transaction may have already saved the new
+          // listener. Do not let a background entry reuse that uncommitted input.
+          try {
+            await _invalidateSavedVpn();
+          } catch (invalidationError, invalidationStack) {
+            reportedError = invalidationError;
+            reportedStack = invalidationStack;
+          }
+        }
+        final permission = reportedError is ConnectionHostException
+            ? reportedError.permission
+            : null;
+        final issue =
+            cancellation.isCompleted && identical(reportedError, error)
             ? 'cancelled'
-            : connectionFailureReason(error);
+            : connectionFailureReason(reportedError);
         if (touchedHost) {
           final status = failed?.status;
           _failureLatched = true;
@@ -591,14 +617,19 @@ class ConnectionCoordinator with WidgetsBindingObserver {
                       current.runtime,
             traffic: failed?.traffic ?? current.traffic,
             issue: issue,
-            error: error,
+            error: reportedError,
             permission: permission,
           );
           _syncTrafficSampling();
         } else {
-          _publish(current, issue: issue, error: error, permission: permission);
+          _publish(
+            current,
+            issue: issue,
+            error: reportedError,
+            permission: permission,
+          );
         }
-        rethrow;
+        Error.throwWithStackTrace(reportedError, reportedStack);
       } finally {
         _pendingRuntime = null;
         _preparingNodeIds = {};

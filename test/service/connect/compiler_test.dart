@@ -9,6 +9,8 @@ import 'package:onexray/service/connect/compiler.dart';
 import 'package:onexray/service/connect/settings.dart';
 import 'package:onexray/service/connect/routing/region_catalog.dart';
 import 'package:onexray/service/connect/routing/custom/state.dart';
+import 'package:onexray/service/connect/routing/custom/advanced.dart';
+import 'package:onexray/service/shared/xray/runtime_inbounds.dart';
 
 final catalog = RegionCatalog.fromJson(
   {
@@ -33,6 +35,8 @@ RuntimeOptions options({
   String interfaceName = '',
   String tunDnsIpv4Address = '8.8.8.8',
   String tunDnsIpv6Address = '2001:4860:4860::8888',
+  bool lanProxyEnabled = false,
+  int lanProxyPort = defaultLanProxyPort,
 }) => RuntimeOptions(
   platform: platform,
   windowsMode: windowsMode,
@@ -43,6 +47,8 @@ RuntimeOptions options({
   interfaceName: interfaceName,
   tunDnsIpv4Address: tunDnsIpv4Address,
   tunDnsIpv6Address: tunDnsIpv6Address,
+  lanProxyEnabled: lanProxyEnabled,
+  lanProxyPort: lanProxyPort,
 );
 
 ResolvedServer node(int id, {String? address}) => ResolvedServer(
@@ -56,6 +62,142 @@ ResolvedServer node(int id, {String? address}) => ResolvedServer(
 );
 
 void main() {
+  test(
+    'LAN sharing adds one mixed SOCKS inbound without changing selected routes',
+    () {
+      final raw = <String, dynamic>{
+        'inbounds': [
+          {
+            'tag': 'user-http',
+            'protocol': 'http',
+            'listen': '127.0.0.1',
+            'port': 12080,
+            'sniffing': {'enabled': false},
+          },
+        ],
+        'outbounds': [
+          {'tag': 'user-direct', 'protocol': 'freedom'},
+        ],
+        'routing': {
+          'rules': [
+            {
+              'inboundTag': ['user-http'],
+              'outboundTag': 'user-direct',
+            },
+          ],
+        },
+      };
+      final advanced = AdvancedRoutingDocument.fromJson({
+        'outbounds': [<String, dynamic>{}],
+        'inbounds': raw['inbounds'],
+        'routing': {
+          'rules': [
+            {
+              'inboundTag': ['user-http'],
+              'balancerTag': 'proxy',
+            },
+          ],
+        },
+      }).state;
+      final rawBefore = jsonEncode(raw);
+      final advancedBefore = advanced.encode();
+      for (final platform in ConnectionPlatform.values) {
+        for (final kind in ['smart', 'custom', 'allVpn', 'advanced', 'raw']) {
+          final settings = ConnectionSettings(
+            expert: kind == 'raw',
+            trafficMode: switch (kind) {
+              'custom' || 'advanced' => TrafficMode.custom,
+              'allVpn' => TrafficMode.allVpn,
+              _ => TrafficMode.smart,
+            },
+          );
+          Map<String, dynamic> compile(bool enabled) =>
+              ConnectionCompiler.compile(
+                settings: settings,
+                entries: kind == 'raw' ? [] : [node(1)],
+                raw: kind == 'raw' ? raw : null,
+                custom: kind == 'advanced'
+                    ? advanced
+                    : RoutingProfileState(name: 'Custom'),
+                regions: catalog,
+                options: options(
+                  platform: platform,
+                  windowsMode: WindowsMode.msix,
+                  interfaceName: 'Ethernet',
+                  lanProxyEnabled: enabled,
+                ),
+              ).config;
+          final disabled = compile(false);
+          final shared = compile(true);
+          final inbounds = shared['inbounds'] as List;
+          expect(
+            inbounds.take(inbounds.length - 1).toList(),
+            disabled['inbounds'],
+          );
+          expect(inbounds.last, {
+            'tag': lanProxyInboundTag,
+            'protocol': 'socks',
+            'listen': '0.0.0.0',
+            'port': '11024',
+            'settings': {'auth': 'noauth', 'udp': true},
+            'sniffing': {
+              'enabled': true,
+              'routeOnly': false,
+              'destOverride': ['http', 'tls', 'quic'],
+            },
+          });
+          expect(shared['routing'], disabled['routing']);
+          expect(shared['outbounds'], disabled['outbounds']);
+          expect(shared['metrics']['listen'], '127.0.0.1:18186');
+          if (platform == ConnectionPlatform.windows) {
+            expect(inbounds.first['listen'], '127.0.0.1');
+            expect(inbounds.first['port'], '18187');
+          }
+        }
+      }
+      expect(jsonEncode(raw), rawBefore);
+      expect(advanced.encode(), advancedBefore);
+    },
+  );
+
+  test('sharing uses the saved port and includes managed FakeDNS recovery', () {
+    final compiled = ConnectionCompiler.compile(
+      settings: ConnectionSettings(smart: SmartRoutingSettings(fakeDns: true)),
+      entries: [node(1)],
+      regions: catalog,
+      options: options(lanProxyEnabled: true, lanProxyPort: 11424),
+    ).config;
+    final shared = (compiled['inbounds'] as List).last;
+    expect(shared['port'], '11424');
+    expect(shared['sniffing']['destOverride'], contains('fakedns'));
+  });
+
+  test(
+    'Raw inbound conflicts are reported only while managed sharing is enabled',
+    () {
+      for (final inbound in [
+        {'tag': 'user-socks', 'protocol': 'socks', 'port': '11020-11030'},
+        {'tag': lanProxyInboundTag, 'protocol': 'http', 'port': 11424},
+      ]) {
+        final raw = <String, dynamic>{
+          'inbounds': [inbound],
+          'outbounds': [
+            {'protocol': 'freedom'},
+          ],
+        };
+        CompiledConnection compile(bool enabled) => ConnectionCompiler.compile(
+          settings: ConnectionSettings(expert: true),
+          entries: [],
+          raw: raw,
+          regions: catalog,
+          options: options(lanProxyEnabled: enabled),
+        );
+        expect(compile(false).config['inbounds'].last, inbound);
+        expect(() => compile(true), throwsFormatException);
+      }
+    },
+  );
+
   test('Raw tunIn updates only owned settings and retains its position and sniffing', () {
     for (final platform in ConnectionPlatform.values) {
       for (final windowsMode in WindowsMode.values) {

@@ -157,6 +157,29 @@ void main() {
   );
 
   test(
+    'session traffic includes LAN sharing without counting other inbounds',
+    () async {
+      final host = ConnectionRuntimeHost(
+        readMetrics: (_) async => XrayMetricsVars.fromJson({
+          'stats': {
+            'inbound': {
+              'tunIn': {'uplink': 10, 'downlink': 20},
+              'app-lan-proxy': {'uplink': 30, 'downlink': 40},
+              'other': {'uplink': 1000, 'downlink': 2000},
+            },
+            'outbound': {
+              'proxy': {'uplink': 4000, 'downlink': 5000},
+            },
+          },
+        }),
+      );
+      final traffic = await host.query(_runtime());
+      expect(traffic.uplink, 40);
+      expect(traffic.downlink, 60);
+    },
+  );
+
+  test(
     'start and stop depend on native state, not metrics availability',
     () async {
       final runtime = _runtime();

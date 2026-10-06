@@ -27,6 +27,9 @@ abstract class BridgeHostApi {
   NativeVpnCommandResult stopVpn();
 
   @asyncCallback
+  void invalidateSavedVpn();
+
+  @asyncCallback
   String invoke(String requestJson);
 
   //platform======================
