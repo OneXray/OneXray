@@ -21,7 +21,7 @@
 在工作空间中只 clone 尚未准备的仓库：
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```

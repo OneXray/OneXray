@@ -9,7 +9,7 @@
 # Required repository secrets:
 #   PACKAGE_MANAGER_GITHUB_TOKEN       Classic GitHub PAT with public_repo
 #                                      scope and write access to the
-#                                      OneXray/winget-pkgs fork
+#                                      YuanDevTeam/winget-pkgs fork
 #
 
 name: Update winget

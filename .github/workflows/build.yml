@@ -70,7 +70,7 @@ concurrency:
 env:
   NDK_VERSION: r30
   LIBXRAY_REF: main
-  VCORE_REPOSITORY: OneXray/VCore
+  VCORE_REPOSITORY: YuanDevTeam/VCore
   VCORE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 

@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Please write your report in English and describe one problem per issue.
-        Check the [latest release](https://github.com/OneXray/OneXray/releases/latest) and mention if you cannot test it.
+        Check the [latest release](https://github.com/YuanDevTeam/OneXray/releases/latest) and mention if you cannot test it.
         Issues and attachments are public. Remove passwords, UUIDs, subscription URLs or tokens, age private keys, and other private data before sharing logs, configurations, or screenshots.
   - type: checkboxes
     id: existing-issues

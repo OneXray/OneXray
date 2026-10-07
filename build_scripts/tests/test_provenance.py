@@ -22,14 +22,14 @@ class ProvenanceTest(unittest.TestCase):
         self.metadata.mkdir()
         for name, value in {
             "sha": "a" * 40, "libxray-sha": "b" * 40, "vcore-sha": "c" * 40,
-            "run-id": "123", "run-attempt": "1", "repository": "OneXray/OneXray",
+            "run-id": "123", "run-attempt": "1", "repository": "YuanDevTeam/OneXray",
             "target": "windows",
         }.items():
             (self.metadata / f"{name}.txt").write_text(value)
         self.run = {
             "path": ".github/workflows/build.yml", "conclusion": "success",
             "id": 123, "run_attempt": 1, "head_sha": "a" * 40,
-            "repository": {"full_name": "OneXray/OneXray"},
+            "repository": {"full_name": "YuanDevTeam/OneXray"},
         }
 
     def receipt(self, architecture, *, target="windows", paths=None, mode="msix"):
@@ -41,7 +41,7 @@ class ProvenanceTest(unittest.TestCase):
             package.write_bytes(package.name.encode())
         receipt = {
             "formatVersion": 1, "target": target, "architecture": architecture,
-            "runId": "123", "runAttempt": "1", "repository": "OneXray/OneXray",
+            "runId": "123", "runAttempt": "1", "repository": "YuanDevTeam/OneXray",
             "sources": {"app": "a" * 40, "libXray": "b" * 40, "VCore": "c" * 40},
             "sourceDirty": {"app": False, "libXray": False, "VCore": False},
             "tools": {"python": {"version": "fixture"}},

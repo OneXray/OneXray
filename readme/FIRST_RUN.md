@@ -21,7 +21,7 @@ Add Flutter, Go and Go-installed tools (`GOBIN`, or `GOPATH/bin`) to `PATH`.
 From your workspace, clone only missing repositories:
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```

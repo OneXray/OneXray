@@ -18,7 +18,7 @@ class WingetManifestTest(unittest.TestCase):
             "tag_name": "v26.9.3", "draft": False, "prerelease": False,
             "assets": [
                 {"name": name,
-                 "browser_download_url": f"https://github.com/OneXray/OneXray/releases/download/v26.9.3/{name}",
+                 "browser_download_url": f"https://github.com/YuanDevTeam/OneXray/releases/download/v26.9.3/{name}",
                  "digest": "sha256:" + str(index) * 64}
                 for index, name in enumerate(INSTALLER_NAMES.values(), 1)
             ],

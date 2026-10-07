@@ -21,7 +21,7 @@ Git, Python 3.12+, Go согласно `go.mod` libXray и LLVM/libclang для 
 В рабочем каталоге клонируйте только отсутствующие репозитории:
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```
