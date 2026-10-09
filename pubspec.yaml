@@ -106,6 +106,8 @@ msix_config:
   identity_name: YuanDevLLC.OneXray
   publisher: CN=3666BCB5-5482-46DD-9C19-D8A7290A39FD
   logo_path: assets/logo.png
+  # Preserve the blue margin; trimming it makes the X fill Windows app icons.
+  trim_logo: false
   protocol_activation: onexray
   languages: en-us
   capabilities: internetClientServer, privateNetworkClientServer, networkingVpnProvider
