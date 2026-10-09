@@ -51,9 +51,9 @@ class WindowsMsixFfiApi extends WindowsFfiApi {
     await checkRuntimeFiles(const [
       'libXray.dll',
       _coreRelativePath,
-      'vcore.dll',
-      'vcore-windows-vpn-host.exe',
-      'vcore-windows-session-host.exe',
+      'vole.dll',
+      'vole-windows-vpn-host.exe',
+      'vole-windows-session-host.exe',
     ]);
   }
 

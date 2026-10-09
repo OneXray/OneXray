@@ -128,7 +128,7 @@ Windows/Linux 网卡不默认选第一张，必须存在；其他平台隐藏。
   回前台和普通状态刷新只查询，不重复弹框；通知和相机分别由对应功能管理。
 - iOS 模拟器由 Swift 返回权限“不需要”，安装检查通过，不调用 NetworkExtension preferences IPC。
   iOS 真机 Debug 和正式构建都走正常授权。
-- Windows 按编译模式检查相应 Core/Wintun 或包身份/VCore；Linux 检查 Core 执行权限、TUN 和 capabilities。
+- Windows 按编译模式检查相应 Core/Wintun 或包身份/Vole；Linux 检查 Core 执行权限、TUN 和 capabilities。
   每次连接在停止旧运行后检查已保存出口网卡；缺少/失效时提示选择，连接后不持续监测。
 
 ## 桌面启动与退出

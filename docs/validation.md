@@ -49,7 +49,7 @@ git diff --check
 Pigeon、FFI、Drift 或本地化变更先生成对应输出；只改测试时不重复生成无关代码。
 只改文档时检查路径、锚点和 diff，不运行 App 测试。
 
-- 构建脚本：在 `build_scripts/` 执行 `uv run --locked python -m unittest discover -s tests`。
+- 构建脚本：在 `build_scripts/` 执行 `python -m unittest discover -s tests`（仅需 Python 标准库）。
   外部打包工具替身证明编排，不证明生成包能安装；渠道发布还需实际产物检查。
 - macOS SE 文件交接：`bash tool/test_dat_file_transfer.sh` 编译生产 Swift，
   验证完整清单、空集合、消息往返与发布回滚，不启动 App/VPN。

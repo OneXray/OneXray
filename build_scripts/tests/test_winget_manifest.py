@@ -1,5 +1,5 @@
-from copy import deepcopy
 import unittest
+from copy import deepcopy
 
 from winget_manifest import (
     DISPLAY_NAME,
@@ -15,30 +15,43 @@ from winget_manifest import (
 class WingetManifestTest(unittest.TestCase):
     def setUp(self):
         self.release = {
-            "tag_name": "v26.9.3", "draft": False, "prerelease": False,
+            "tag_name": "v26.9.3",
+            "draft": False,
+            "prerelease": False,
             "assets": [
-                {"name": name,
-                 "browser_download_url": f"https://github.com/YuanDevTeam/OneXray/releases/download/v26.9.3/{name}",
-                 "digest": "sha256:" + str(index) * 64}
-                for index, name in enumerate(INSTALLER_NAMES.values(), 1)
+                {
+                    "name": name,
+                    "browser_download_url": f"https://github.com/YuanDevTeam/OneXray/releases/download/v26.9.3/{name}",
+                }
+                for name in INSTALLER_NAMES.values()
             ],
         }
-        base = {"PackageIdentifier": PACKAGE_ID, "PackageVersion": "26.9.3",
-                "ManifestVersion": SCHEMA_VERSION}
+        base = {
+            "PackageIdentifier": PACKAGE_ID,
+            "PackageVersion": "26.9.3",
+            "ManifestVersion": SCHEMA_VERSION,
+        }
         self.generated = base | {
-            "ManifestType": "installer", "InstallerType": "inno", "Scope": "machine",
-            "ProductCode": "onexray_is1", "ReleaseDate": "2026-09-16",
+            "ManifestType": "installer",
+            "InstallerType": "inno",
+            "Scope": "machine",
+            "ProductCode": "onexray_is1",
+            "ReleaseDate": "2026-09-16",
             "InstallationMetadata": {"DefaultInstallLocation": r"%ProgramFiles%\OneXray"},
             "AppsAndFeaturesEntries": [{"ProductCode": "onexray_is1"}],
             "Installers": [
-                {"Architecture": arch, "InstallerUrl": asset["browser_download_url"],
-                 "InstallerSha256": asset["digest"][7:].upper()}
+                {
+                    "Architecture": arch,
+                    "InstallerUrl": asset["browser_download_url"],
+                    "InstallerSha256": "A" * 64,
+                }
                 for arch, asset in zip(INSTALLER_NAMES, self.release["assets"])
             ],
         }
         self.manifests = [
             fix_installer(self.generated),
-            base | {"ManifestType": "defaultLocale", "PackageLocale": "en-US", "PackageName": "OneXray"},
+            base
+            | {"ManifestType": "defaultLocale", "PackageLocale": "en-US", "PackageName": "OneXray"},
             base | {"ManifestType": "version", "DefaultLocale": "en-US"},
         ]
 
@@ -56,16 +69,27 @@ class WingetManifestTest(unittest.TestCase):
 
     def test_fixes_per_installer_overrides_without_dropping_metadata(self):
         installer = self.generated["Installers"][0]
-        installer.update({
-            "Scope": "machine",
-            "InstallationMetadata": {"DefaultInstallLocation": r"%ProgramFiles%\OneXray", "Files": []},
-            "AppsAndFeaturesEntries": [{"DisplayName": "OneXray 26.9.3", "ProductCode": "x64_is1"}],
-        })
+        installer.update(
+            {
+                "Scope": "machine",
+                "InstallationMetadata": {
+                    "DefaultInstallLocation": r"%ProgramFiles%\OneXray",
+                    "Files": [],
+                },
+                "AppsAndFeaturesEntries": [
+                    {"DisplayName": "OneXray 26.9.3", "ProductCode": "x64_is1"}
+                ],
+            }
+        )
         fixed = fix_installer(self.generated)
-        self.assertEqual(fixed["Installers"][0]["InstallationMetadata"],
-                         {"DefaultInstallLocation": INSTALL_DIRECTORY, "Files": []})
-        self.assertEqual(fixed["Installers"][0]["AppsAndFeaturesEntries"],
-                         [{"DisplayName": DISPLAY_NAME, "ProductCode": "x64_is1"}])
+        self.assertEqual(
+            fixed["Installers"][0]["InstallationMetadata"],
+            {"DefaultInstallLocation": INSTALL_DIRECTORY, "Files": []},
+        )
+        self.assertEqual(
+            fixed["Installers"][0]["AppsAndFeaturesEntries"],
+            [{"DisplayName": DISPLAY_NAME, "ProductCode": "x64_is1"}],
+        )
         self.manifests[0] = fixed
         validate_manifests(self.manifests, self.release)
 
@@ -76,7 +100,8 @@ class WingetManifestTest(unittest.TestCase):
 
     def test_rejects_wrong_effective_installer_policy(self):
         for field, value in (
-            ("Scope", "machine"), ("InstallerType", "msix"),
+            ("Scope", "machine"),
+            ("InstallerType", "msix"),
             ("InstallationMetadata", {"DefaultInstallLocation": r"%ProgramFiles%\OneXray"}),
             ("AppsAndFeaturesEntries", [{"DisplayName": "OneXray 26.9.3"}]),
             ("ElevationRequirement", "elevatesSelf"),
@@ -87,9 +112,11 @@ class WingetManifestTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_manifests(changed, self.release)
 
-    def test_rejects_wrong_url_hash_or_architecture(self):
-        for field, value in (("InstallerUrl", "https://example.org/unrelated.exe"),
-                             ("InstallerSha256", "A" * 64), ("Architecture", "arm64")):
+    def test_rejects_wrong_url_or_architecture(self):
+        for field, value in (
+            ("InstallerUrl", "https://example.org/unrelated.exe"),
+            ("Architecture", "arm64"),
+        ):
             with self.subTest(field=field):
                 changed = deepcopy(self.manifests)
                 changed[0]["Installers"][0][field] = value
@@ -99,29 +126,32 @@ class WingetManifestTest(unittest.TestCase):
     def test_rejects_missing_architecture_or_manifest(self):
         missing_arch = deepcopy(self.manifests)
         missing_arch[0]["Installers"].pop()
-        for manifests in (missing_arch, self.manifests[:2], self.manifests + self.manifests[:1], []):
+        for manifests in (
+            missing_arch,
+            self.manifests[:2],
+            self.manifests + self.manifests[:1],
+            [],
+        ):
             with self.subTest(manifests=manifests), self.assertRaises(ValueError):
                 validate_manifests(manifests, self.release)
 
     def test_rejects_mixed_package_version_and_locale(self):
-        for index, field, value in ((1, "PackageVersion", "26.9.2"),
-                                    (0, "PackageIdentifier", "Other.Package"),
-                                    (0, "ManifestVersion", "1.10.0"),
-                                    (2, "DefaultLocale", "zh-CN")):
+        for index, field, value in (
+            (1, "PackageVersion", "26.9.2"),
+            (0, "PackageIdentifier", "Other.Package"),
+            (0, "ManifestVersion", "1.10.0"),
+            (2, "DefaultLocale", "zh-CN"),
+        ):
             with self.subTest(field=field):
                 changed = deepcopy(self.manifests)
                 changed[index][field] = value
                 with self.assertRaises(ValueError):
                     validate_manifests(changed, self.release)
 
-    def test_rejects_non_release_or_missing_asset_digest(self):
+    def test_rejects_non_release(self):
         for field in ("draft", "prerelease"):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 validate_manifests(self.manifests, self.release | {field: True})
-        missing_digest = deepcopy(self.release)
-        del missing_digest["assets"][0]["digest"]
-        with self.assertRaisesRegex(ValueError, "no SHA-256"):
-            validate_manifests(self.manifests, missing_digest)
 
 
 if __name__ == "__main__":

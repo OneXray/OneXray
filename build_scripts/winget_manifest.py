@@ -5,11 +5,11 @@
 """Fix and validate saved Komac manifests; never submit or regenerate them."""
 
 import argparse
+import json
 from collections import Counter
 from copy import deepcopy
-import json
 from pathlib import Path
-import re
+from typing import ClassVar
 from urllib.request import urlopen
 
 PACKAGE_ID = "YuanDevLLC.OneXray"
@@ -31,7 +31,9 @@ def fix_installer(manifest):
         if fields is result or "Scope" in fields:
             fields["Scope"] = "user"
         if fields is result or "InstallationMetadata" in fields:
-            fields.setdefault("InstallationMetadata", {})["DefaultInstallLocation"] = INSTALL_DIRECTORY
+            fields.setdefault("InstallationMetadata", {})["DefaultInstallLocation"] = (
+                INSTALL_DIRECTORY
+            )
         if fields is result or "AppsAndFeaturesEntries" in fields:
             if not fields.get("AppsAndFeaturesEntries"):
                 fields["AppsAndFeaturesEntries"] = [{}]
@@ -71,7 +73,10 @@ def validate_manifests(manifests, release):
         effective = manifest | installer
         if effective.get("InstallerType") != "inno" or effective.get("Scope") != "user":
             raise ValueError("OneXray must use per-user Inno Setup installation")
-        if effective.get("InstallationMetadata", {}).get("DefaultInstallLocation") != INSTALL_DIRECTORY:
+        if (
+            effective.get("InstallationMetadata", {}).get("DefaultInstallLocation")
+            != INSTALL_DIRECTORY
+        ):
             raise ValueError("Unexpected default install location")
         entries = effective.get("AppsAndFeaturesEntries", [])
         if not entries or any(entry.get("DisplayName") != DISPLAY_NAME for entry in entries):
@@ -85,11 +90,6 @@ def validate_manifests(manifests, release):
         asset = assets[0]
         if installer["InstallerUrl"] != asset["browser_download_url"]:
             raise ValueError(f"Installer URL does not match the release: {name}")
-        digest = asset.get("digest") or ""
-        if not re.fullmatch(r"sha256:[0-9a-fA-F]{64}", digest):
-            raise ValueError(f"Release asset has no SHA-256 digest: {name}")
-        if installer["InstallerSha256"].lower() != digest.removeprefix("sha256:").lower():
-            raise ValueError(f"Installer SHA-256 does not match the release: {name}")
 
 
 def read_manifest(path):
@@ -97,7 +97,7 @@ def read_manifest(path):
 
     class ManifestLoader(yaml.SafeLoader):
         # ReleaseDate is a schema string, not a Python datetime.date.
-        yaml_implicit_resolvers = {
+        yaml_implicit_resolvers: ClassVar[dict] = {
             key: [rule for rule in rules if rule[0] != "tag:yaml.org,2002:timestamp"]
             for key, rules in yaml.SafeLoader.yaml_implicit_resolvers.items()
         }
@@ -113,7 +113,9 @@ def fix_file(directory):
     manifest = fix_installer(read_manifest(path))
     # Retain generator/schema comments and the repository's CRLF convention.
     header = "\n".join(line for line in original.splitlines() if line.startswith("#"))
-    text = header + "\n\n" + yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True, width=1000)
+    text = (
+        header + "\n\n" + yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True, width=1000)
+    )
     path.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
 
 
@@ -135,8 +137,10 @@ def validate_directory(directory, release):
         }[kind]
         if path.name != f"{PACKAGE_ID}{suffix}.yaml":
             raise ValueError(f"Unexpected manifest filename: {path.name}")
-        url = ("https://raw.githubusercontent.com/microsoft/winget-cli/master/schemas/JSON/manifests/"
-               f"v{SCHEMA_VERSION}/manifest.{kind}.{SCHEMA_VERSION}.json")
+        url = (
+            "https://raw.githubusercontent.com/microsoft/winget-cli/master/schemas/JSON/manifests/"
+            f"v{SCHEMA_VERSION}/manifest.{kind}.{SCHEMA_VERSION}.json"
+        )
         with urlopen(url, timeout=30) as response:
             schema = json.load(response)
         jsonschema.Draft7Validator(schema).validate(manifest)

@@ -2,13 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onexray/core/ffi/windows/tun2socks.dart';
 
 void main() {
-  test('builds the credential-free VCore config with IPv6 policy', () {
+  test('builds the credential-free Vole UWP config with IPv6 policy', () {
     final enabled = buildWindowsTun2SocksConfig('1080', enableIPv6: true);
     expect(enabled, '''ipv6: true
 
 tun:
   enable: true
-  mtu: 1500
+  mtu: 1400
 
 proxies:
   - name: onexray-local-socks

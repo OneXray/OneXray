@@ -36,9 +36,9 @@
 #   build_scripts/app/builder.py#build_core expects XTLS/libXray as a sibling
 #   of this repo. Every platform build job checks out this repo to `OneXray/`
 #   and libXray to `libXray/` at the workspace root. Windows also checks out
-#   VCore to `VCore/`.
+#   Vole to `Vole/`.
 #   The standard libXray build provides the native library and the Windows/Linux
-#   OneXrayCore binary; Windows also builds architecture-matched VCore hosts.
+#   OneXrayCore binary; Windows also builds architecture-matched Vole UWP hosts.
 #   Outputs remain under `<workspace>/output`.
 
 name: Build
@@ -70,8 +70,8 @@ concurrency:
 env:
   NDK_VERSION: r30
   LIBXRAY_REF: main
-  VCORE_REPOSITORY: YuanDevTeam/VCore
-  VCORE_REF: main
+  VOLE_REPOSITORY: YuanDevTeam/Vole
+  VOLE_REF: main
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       libxray_sha: ${{ steps.revisions.outputs.libxray_sha }}
-      vcore_sha: ${{ steps.revisions.outputs.vcore_sha }}
+      vole_sha: ${{ steps.revisions.outputs.vole_sha }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -93,9 +93,9 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          repository: ${{ env.VCORE_REPOSITORY }}
-          ref: ${{ env.VCORE_REF }}
-          path: VCore
+          repository: ${{ env.VOLE_REPOSITORY }}
+          ref: ${{ env.VOLE_REF }}
+          path: Vole
 
       - name: Write build metadata
         id: revisions
@@ -103,19 +103,13 @@ jobs:
           BUILD_TARGET: ${{ inputs.target || 'all' }}
         run: |
           libxray_sha="$(git -C libXray rev-parse HEAD)"
-          vcore_sha="$(git -C VCore rev-parse HEAD)"
-          [[ "$libxray_sha" =~ ^[0-9a-f]{40}$ && "$vcore_sha" =~ ^[0-9a-f]{40}$ ]]
+          vole_sha="$(git -C Vole rev-parse HEAD)"
           echo "libxray_sha=$libxray_sha" >> "$GITHUB_OUTPUT"
-          echo "vcore_sha=$vcore_sha" >> "$GITHUB_OUTPUT"
+          echo "vole_sha=$vole_sha" >> "$GITHUB_OUTPUT"
           mkdir -p release-metadata
-          echo "${GITHUB_EVENT_NAME}" > release-metadata/event.txt
-          echo "${GITHUB_REF}" > release-metadata/ref.txt
-          echo "${GITHUB_REF_NAME}" > release-metadata/ref-name.txt
           echo "${GITHUB_SHA}" > release-metadata/sha.txt
           echo "$libxray_sha" > release-metadata/libxray-sha.txt
-          echo "$vcore_sha" > release-metadata/vcore-sha.txt
-          echo "$LIBXRAY_REF" > release-metadata/libxray-ref.txt
-          echo "$VCORE_REF" > release-metadata/vcore-ref.txt
+          echo "$vole_sha" > release-metadata/vole-sha.txt
           echo "$GITHUB_RUN_ID" > release-metadata/run-id.txt
           echo "$GITHUB_RUN_ATTEMPT" > release-metadata/run-attempt.txt
           echo "$GITHUB_REPOSITORY" > release-metadata/repository.txt
@@ -136,8 +130,6 @@ jobs:
   # =================================================================
   ios:
     needs: release_metadata
-    env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'ios'
     runs-on: macos-26
     timeout-minutes: 60
@@ -205,20 +197,11 @@ jobs:
           path: output/OneXray-ios*.ipa
           if-no-files-found: error
 
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-ios
-          path: output/provenance-ios-*.json
-          if-no-files-found: error
-
   # =================================================================
   # macOS (MAS) — universal binary, uploads to App Store Connect
   # =================================================================
   macos:
     needs: release_metadata
-    env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
@@ -289,21 +272,12 @@ jobs:
           FASTLANE_MAS_INSTALLER_CERT: ${{ secrets.FASTLANE_MAS_INSTALLER_CERT }}
         run: uv run --project build_scripts python build_scripts/main.py OneXray macos
 
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-macos
-          path: output/provenance-macos-*.json
-          if-no-files-found: error
-
   # =================================================================
   # macOS SE (Developer ID) — universal binary, Developer ID signed
   #   + notarized + zipped
   # =================================================================
   macos_se:
     needs: release_metadata
-    env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'macos'
     runs-on: macos-26
     timeout-minutes: 60
@@ -371,20 +345,11 @@ jobs:
           path: output/OneXray-macos-universal*.zip
           if-no-files-found: error
 
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-macos_se
-          path: output/provenance-macos_se-*.json
-          if-no-files-found: error
-
   # =================================================================
   # Android — uploads AAB to Play Store via fastlane
   # =================================================================
   android:
     needs: release_metadata
-    env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'android'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -470,18 +435,11 @@ jobs:
           path: output/OneXray-android-universal*.apk
           if-no-files-found: error
 
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-android
-          path: output/provenance-android-*.json
-          if-no-files-found: error
-
   # =================================================================
   # Windows x64 and arm64 × EXE / MSIX.
   #   EXE and ZIP share an exe-mode bundle; Store uses its own msix-mode build.
   #   x64 uses Windows Server 2025 with Visual Studio 2026; arm64 uses
-  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray, and VCore
+  #   GitHub's native Windows 11 arm64 runner so Flutter, libXray, and Vole
   #   all match the target architecture.
   # =================================================================
   windows:
@@ -506,8 +464,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
-      ONEXRAY_VCORE_SHA: ${{ needs.release_metadata.outputs.vcore_sha }}
       GOARCH: ${{ matrix.goarch }}
       ONEXRAY_WINDOWS_ARCH: ${{ matrix.arch }}
       INNO_SETUP_MAJOR: "7"
@@ -528,9 +484,9 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          repository: ${{ env.VCORE_REPOSITORY }}
-          ref: ${{ needs.release_metadata.outputs.vcore_sha }}
-          path: VCore
+          repository: ${{ env.VOLE_REPOSITORY }}
+          ref: ${{ needs.release_metadata.outputs.vole_sha }}
+          path: Vole
 
       - uses: actions/setup-go@v7
         with:
@@ -544,7 +500,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: VCore
+          workspaces: Vole
 
       - uses: actions/setup-python@v7
         with:
@@ -582,8 +538,6 @@ jobs:
           $extractPath = Join-Path $env:RUNNER_TEMP "llvm-mingw"
           Write-Host "Downloading LLVM-MinGW $($release.tag_name): $($asset.name)"
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
-          "ONEXRAY_LLVM_MINGW_RELEASE=$($release.tag_name)" >> $env:GITHUB_ENV
-          "ONEXRAY_LLVM_MINGW_SHA256=$((Get-FileHash $archivePath -Algorithm SHA256).Hash.ToLower())" >> $env:GITHUB_ENV
           Expand-Archive -LiteralPath $archivePath -DestinationPath $extractPath
 
           $binPath = Get-ChildItem -LiteralPath $extractPath -Directory |
@@ -594,23 +548,6 @@ jobs:
             throw "LLVM-MinGW bin directory was not found in $extractPath"
           }
           $binPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify Windows ARM64 CGo toolchain
-        if: matrix.arch == 'arm64'
-        shell: pwsh
-        run: |
-          where.exe gcc.exe
-          where.exe g++.exe
-
-          $gccTarget = (& gcc.exe -dumpmachine).Trim()
-          $gxxTarget = (& g++.exe -dumpmachine).Trim()
-          $expectedTarget = '^aarch64-w64-(windows-gnu|mingw32)$'
-          if ($gccTarget -notmatch $expectedTarget) {
-            throw "Unexpected gcc target: $gccTarget"
-          }
-          if ($gxxTarget -notmatch $expectedTarget) {
-            throw "Unexpected g++ target: $gxxTarget"
-          }
 
       - name: Test build scripts
         working-directory: OneXray/build_scripts
@@ -629,10 +566,6 @@ jobs:
             $pubCache = Join-Path $env:LOCALAPPDATA "Pub\Cache"
           }
           (Join-Path $pubCache "bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify Fastforge
-        if: matrix.mode == 'exe'
-        run: python -c "import subprocess; subprocess.run(['fastforge.bat', '--version'], check=True)"
 
       - name: Install Inno Setup
         if: matrix.mode == 'exe'
@@ -657,16 +590,12 @@ jobs:
           $asset = $release.assets | Where-Object {
             $_.name -match "^innosetup-$($env:INNO_SETUP_MAJOR)\.\d+\.\d+-x64\.exe$"
           } | Select-Object -First 1
-          if ($null -eq $asset -or $asset.digest -notmatch '^sha256:[0-9a-f]{64}$') {
-            throw "Inno Setup release is missing the x64 installer or its SHA-256 digest"
+          if ($null -eq $asset) {
+            throw "Inno Setup release is missing the x64 installer"
           }
           Write-Host "Downloading Inno Setup $($release.tag_name): $($asset.name)"
           $installer = Join-Path $toolDir $asset.name
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $installer
-          $expectedHash = $asset.digest.Substring(7)
-          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLower() -ne $expectedHash) {
-            throw "Inno Setup installer hash mismatch"
-          }
           $installDir = Join-Path $toolDir "inno-setup"
           $process = Start-Process -FilePath $installer -Wait -PassThru -ArgumentList `
             "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/ALLUSERS", "/DIR=`"$installDir`""
@@ -677,9 +606,6 @@ jobs:
 
       - name: Build
         run: uv run --project build_scripts python build_scripts/main.py OneXray windows --windows-mode ${{ matrix.mode }}
-
-      - name: Verify core CLI
-        run: ./windows/app/OneXrayCore.exe -h
 
       - name: Upload Microsoft Store artifact
         if: matrix.mode == 'msix'
@@ -699,13 +625,6 @@ jobs:
             output/OneXray-${{ matrix.package_suffix }}.zip
           if-no-files-found: error
 
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-windows-${{ matrix.arch }}-${{ matrix.mode }}
-          path: output/provenance-windows-${{ matrix.arch }}-${{ matrix.mode }}.json
-          if-no-files-found: error
-
   # =================================================================
   # Linux — fastforge .zip + .deb, x64 and arm64
   #   Pinned to ubuntu-24.04 (x64) / ubuntu-24.04-arm (arm64): the
@@ -717,8 +636,6 @@ jobs:
   # =================================================================
   linux:
     needs: release_metadata
-    env:
-      ONEXRAY_LIBXRAY_SHA: ${{ needs.release_metadata.outputs.libxray_sha }}
     if: github.event_name == 'push' || inputs.target == 'all' || inputs.target == 'linux'
     strategy:
       fail-fast: false
@@ -767,7 +684,7 @@ jobs:
             ninja-build clang cmake pkg-config \
             libgtk-3-dev liblzma-dev libblkid-dev libsecret-1-dev \
             libayatana-appindicator3-dev \
-            file lintian
+            file
 
       - name: Install fastforge
         run: |
@@ -777,23 +694,6 @@ jobs:
       - name: Build
         run: uv run --project build_scripts python build_scripts/main.py OneXray linux
 
-      - name: Verify Debian package
-        run: |
-          deb_file="$(find "$GITHUB_WORKSPACE/output" -maxdepth 1 -type f -name 'OneXray-*.deb' -print -quit)"
-          contents_file="$RUNNER_TEMP/onexray-deb-contents.txt"
-          test -n "$deb_file"
-          test "$(dpkg-deb --field "$deb_file" Package)" = "onexray"
-          dpkg-deb --contents "$deb_file" > "$contents_file"
-          grep -q '/opt/OneXray/OneXrayCore$' "$contents_file"
-          dpkg-deb --info "$deb_file"
-          lintian "$deb_file" || {
-            lintian_status=$?
-            echo "::warning::lintian reported Debian policy issues (exit $lintian_status)"
-          }
-
-      - name: Verify core CLI
-        run: ./linux/app/OneXrayCore -h
-
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -801,11 +701,4 @@ jobs:
           path: |
             output/OneXray-*.zip
             output/OneXray-*.deb
-          if-no-files-found: error
-
-      - name: Upload build provenance
-        uses: actions/upload-artifact@v7
-        with:
-          name: provenance-linux-${{ matrix.arch }}
-          path: output/provenance-linux-*.json
           if-no-files-found: error

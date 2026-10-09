@@ -182,8 +182,8 @@ Cross-device connectivity, UDP, firewalls, lock screen and signed channels requi
 TUN 地址只读，隧道 IPv4/IPv6 DNS 与 Apple DoT 域名可编辑，独立于路由 DNS，保存在平台策略 JSON。
 原生 DNS 必须是对应地址族 IP；DoT 域名不是搜索域，需与服务器证书匹配。
 有效设置变化按已连接确认重连；停用的域名/IPv6 设置保留，不因其变化重连。
-Windows/Linux 给 Xray 明确绑定已选网卡，VCore 不新增绑定要求，Raw 不能覆盖。
-Windows EXE 使用 Xray 原生 TUN/Wintun，MSIX 使用私有 SOCKS 和 VCore 系统隧道。
+Windows/Linux 给 Xray 明确绑定已选网卡，Vole 不新增绑定要求，Raw 不能覆盖。
+Windows EXE 使用 Xray 原生 TUN/Wintun，MSIX 使用私有 SOCKS 和 Vole UWP 系统隧道。
 
 EXE 默认 autoSystemWfpBlockLeak: [dns]，Raw 可用 [] 关闭；不启用 misconfigtun，也不承诺阻断所有 DoH。
 Linux 不默认接管系统 DNS；Raw 的 autoSystemDnsToGateway 依赖可工作的 systemd-resolved/resolvectl、
@@ -200,7 +200,7 @@ iOS/iPadOS 隐藏图标默认关闭，仅非全流量时生效：运行副本追
 
 ### IPv6 策略
 
-关闭时 Apple/Android/Linux/EXE 不配置隧道 IPv6 地址、路由和 DNS；MSIX/VCore 保留自身处理。
+关闭时 Apple/Android/Linux/EXE 不配置隧道 IPv6 地址、路由和 DNS；MSIX/Vole 保留自身处理。
 Dart 只把 DNS 查询设为 UseIPv4，开启 UseIP；普通按 server，Raw 同时根级和对象 server。
 不额外屏蔽 IPv6 流量、不加 ForceIPv4/hosts/预解析，也不拒绝 IPv6 节点；Raw 用户其他 IPv6 字段保留。
 
@@ -225,7 +225,7 @@ run/start.json 是唯一原生启动请求：coreInvokeText 为实际输入，me
 
 桌面启动前在旧 Core 停止后清理 core-inputs，生成本次唯一输入和 error 文件，通过 -error-file 获取加载/构造/启动原因，
 无诊断才用通用错误，不再运行 testXray。发布需包含支持该参数的 Core。
-MSIX snapshotToken 只验证 VCore 宿主会话，不是可删的 App 快照。
+MSIX snapshotToken 只验证 Vole 宿主会话，不是可删的 App 快照。
 EXE/Linux 按精确 Core 进程名管理全部匹配实例，不保存 PID/路径归属记录；停止可影响其他安装的同名 Core。
 只有确认全部退出才断开，查询/提权/监测失败不伪装空闲；过期查询不更新状态。
 Geodata 始终使用唯一平铺 datDir，启动不复制文件；SE 跨容器传输见 [数据管理](data-management.md)。

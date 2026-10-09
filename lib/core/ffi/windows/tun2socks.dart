@@ -10,7 +10,7 @@ String buildWindowsTun2SocksConfig(
 
 tun:
   enable: true
-  mtu: 1500
+  mtu: 1400
 
 proxies:
   - name: onexray-local-socks

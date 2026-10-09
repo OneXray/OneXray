@@ -158,20 +158,26 @@ Map<String, dynamic> _$WindowsVpnPolicyToJson(WindowsVpnPolicy instance) =>
       'excludedCidrs': instance.excludedCidrs,
     };
 
+Map<String, dynamic> _$WindowsVpnProfilePayloadToJson(
+  WindowsVpnProfilePayload instance,
+) => <String, dynamic>{'profileName': instance.profileName};
+
 WindowsStartVpnPayload _$WindowsStartVpnPayloadFromJson(
   Map<String, dynamic> json,
 ) {
   $checkKeys(
     json,
     allowedKeys: const [
+      'profileName',
       'configYaml',
       'networkSettings',
       'policy',
       'sessionBackend',
     ],
-    requiredKeys: const ['policy'],
+    requiredKeys: const ['profileName', 'policy'],
   );
   return WindowsStartVpnPayload(
+    profileName: json['profileName'] as String,
     configYaml: json['configYaml'] as String,
     networkSettings: WindowsVpnNetworkSettings.fromJson(
       json['networkSettings'] as Map<String, dynamic>,
@@ -188,6 +194,7 @@ WindowsStartVpnPayload _$WindowsStartVpnPayloadFromJson(
 Map<String, dynamic> _$WindowsStartVpnPayloadToJson(
   WindowsStartVpnPayload instance,
 ) => <String, dynamic>{
+  'profileName': instance.profileName,
   'configYaml': instance.configYaml,
   'networkSettings': instance.networkSettings.toJson(),
   'policy': instance.policy.toJson(),

@@ -21,7 +21,10 @@ final class WindowsNativeException implements Exception {
 
 final class WindowsNativeApi {
   static const _maxHostResponseBytes = 1024 * 1024;
-  static final _snapshotToken = RegExp(r'^vcore-session-v2:[0-9a-f]{64}$');
+  static const profileName = bool.fromEnvironment('ONEXRAY_WINDOWS_DEVELOPMENT')
+      ? 'OneXray Dev'
+      : 'OneXray';
+  static final _snapshotToken = RegExp(r'^vole-session-v2:[0-9a-f]{64}$');
   static final WindowsNativeApi _singleton = WindowsNativeApi._(
     _invokeWindowsHostInWorker,
   );
@@ -50,8 +53,12 @@ final class WindowsNativeApi {
     return environment;
   }
 
-  Future<WindowsVpnProfileState> getVpnStatus() async =>
-      _vpnState(await _invokeHost(WindowsNativeMethod.getVpnStatus));
+  Future<WindowsVpnProfileState> getVpnStatus() async => _vpnState(
+    await _invokeHost(
+      WindowsNativeMethod.getVpnStatus,
+      const WindowsVpnProfilePayload(profileName).toJson(),
+    ),
+  );
 
   Future<WindowsVpnProfileState> startVpn(
     String configYaml,
@@ -62,6 +69,7 @@ final class WindowsNativeApi {
     await _invokeHost(
       WindowsNativeMethod.startVpn,
       WindowsStartVpnPayload(
+        profileName: profileName,
         configYaml: configYaml,
         networkSettings: networkSettings,
         policy: policy,
@@ -70,8 +78,12 @@ final class WindowsNativeApi {
     ),
   );
 
-  Future<WindowsVpnProfileState> stopVpn() async =>
-      _vpnState(await _invokeHost(WindowsNativeMethod.stopVpn));
+  Future<WindowsVpnProfileState> stopVpn() async => _vpnState(
+    await _invokeHost(
+      WindowsNativeMethod.stopVpn,
+      const WindowsVpnProfilePayload(profileName).toJson(),
+    ),
+  );
 
   Future<WindowsStartupTaskState> getStartupTaskStatus() async => _startupState(
     await _invokeHost(WindowsNativeMethod.getStartupTaskStatus),
@@ -166,18 +178,18 @@ Future<String> _invokeWindowsHostInWorker(String requestJson) =>
     Isolate.run(() => _invokeDll(requestJson));
 
 String _invokeDll(String requestJson) {
-  final path = p.join(p.dirname(Platform.resolvedExecutable), 'vcore.dll');
+  final path = p.join(p.dirname(Platform.resolvedExecutable), 'vole.dll');
   final bindings = NativeLibrary(DynamicLibrary.open(path));
   final request = requestJson.toNativeUtf8().cast<Char>();
   try {
-    final response = bindings.VCoreWindowsVpnInvoke(request);
+    final response = bindings.VoleWindowsVpnInvoke(request);
     if (response == nullptr) {
-      throw const WindowsNativeException('VCoreWindowsVpnInvoke returned NULL');
+      throw const WindowsNativeException('VoleWindowsVpnInvoke returned NULL');
     }
     try {
       return response.cast<Utf8>().toDartString();
     } finally {
-      bindings.VCoreFree(response);
+      bindings.VoleFree(response);
     }
   } finally {
     malloc.free(request);
