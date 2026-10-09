@@ -46,12 +46,11 @@ jobs:
           check-latest: true
 
       - name: Download build artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BUILD_RUN_ID: ${{ inputs.run_id }}
-        run: |
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
-          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
 
       - name: Resolve release tag
         id: release
@@ -75,8 +74,10 @@ jobs:
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ inputs.run_id }}
           RELEASE_TAG: ${{ inputs.tag_name }}
         run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
           tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq '.sha')"
           python3 build_scripts/verify_release.py artifacts build-run.json \
             --tag "$RELEASE_TAG" --tag-sha "$tag_sha" > release-files.txt
@@ -89,24 +90,6 @@ jobs:
       - name: List release files
         run: cat release-files.txt
 
-      - name: Delete matching existing release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: |
-          if ! gh release view "$RELEASE_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG does not exist yet; nothing to delete."
-            exit 0
-          fi
-
-          while IFS= read -r file; do
-            asset="$(basename "$file")"
-            echo "Deleting existing asset if present: $asset"
-            gh release delete-asset "$RELEASE_TAG" "$asset" \
-              --repo "${{ github.repository }}" \
-              --yes >/dev/null 2>&1 || true
-          done < release-files.txt
-
       - name: Publish GitHub pre-release
         uses: softprops/action-gh-release@v3
         with:
@@ -114,5 +97,6 @@ jobs:
           prerelease: true
           make_latest: false
           files: ${{ steps.verify.outputs.files }}
+          overwrite_files: true
           fail_on_unmatched_files: true
           generate_release_notes: true

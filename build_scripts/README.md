@@ -30,8 +30,34 @@ dart pub global activate fastforge
 ```
 
 Keep `LIBXRAY_REF=main` unless explicitly instructed otherwise. Run Flutter/Dart
-commands serially. [setup_flutter.sh](setup_flutter.sh) recreates its SDK directory;
-use a disposable `ONEXRAY_FLUTTER_ROOT`, not an SDK checkout containing local work.
+commands serially.
+
+## GitHub Actions
+
+Prefer maintained Actions for SDK/tool setup, downloads, artifacts and releases.
+Keep scripts for OneXray's build commands, credentials, release policy and native
+packaging. Check target architecture support before replacing a setup step.
+
+| Workflow / jobs | Actions and retained project logic |
+| --- | --- |
+| [Build](../.github/workflows/build.yml): `release_metadata` | Checkout outputs supply dependency commits; a short script writes the shared run metadata. |
+| Build: `ios`, `macos`, `macos_se`, `android`, `windows`, `linux` | Setup Actions provide SDKs and uv; Apple Actions import certificates; release-downloader fetches LLVM-MinGW and Inno Setup; upload-artifact stores packages. Build scripts retain signing, packaging and store uploads. |
+| [Validate](../.github/workflows/validate.yml): `dart` | Setup Actions provide Python, uv and Flutter; commands run generation, analysis and project checks. |
+| [Publish](../.github/workflows/publish.yml): `pre_release` | download-artifact retrieves the selected run; action-gh-release replaces matching assets. The release verifier selects channel files and checks source metadata. |
+| [Microsoft Store](../.github/workflows/publish-microsoft-store.yml): `inspect`, `publish` | Artifact Actions transfer metadata, MSIX packages and the bundle. The verifier checks the Build run; MakeAppx creates the multi-architecture bundle. |
+| [WinGet](../.github/workflows/update-winget.yml): `winget` | Rust, uv and cargo-install Actions provide tooling; Komac and the manifest helper retain release checks, generation and submission. |
+
+The shared [Flutter Action](../.github/actions/setup-flutter/action.yml) uses
+[subosito/flutter-action](https://github.com/subosito/flutter-action) for macOS
+and x64 hosts. Windows/Linux ARM64 have no stable SDK archives in Flutter's
+release index, so `actions/checkout` obtains `flutter/flutter@stable` and Flutter
+bootstraps its native Dart SDK. Both paths expose `FLUTTER_ROOT`, `PUB_CACHE` and
+the Pub executable directory, including Fastforge.
+
+[setup-uv](https://github.com/astral-sh/setup-uv) replaces pip-based installation.
+[release-downloader](https://github.com/robinraju/release-downloader) handles
+release asset downloads and LLVM-MinGW extraction. Inno Setup remains on the
+latest stable 7.x release; its silent installation uses a short PowerShell step.
 
 ## Build
 
@@ -131,6 +157,10 @@ Rerun metadata and build jobs together when retrying a release.
 - [Microsoft Store](../.github/workflows/publish-microsoft-store.yml) selects x64
   and ARM64 MSIX files for MakeAppx bundling; Partner Center submission is manual.
 - [WinGet](../.github/workflows/update-winget.yml) uses stable published EXE assets.
+  [cargo-install](https://github.com/baptiste0928/cargo-install) builds Komac from
+  upstream `main` with stable Rust and `locked: true`, using that branch's Cargo
+  lockfile. The Action resolves `main` on each run and caches binaries by the
+  resolved revision. This includes Inno Setup 7 support missing from Komac 2.16.0.
   [winget_manifest.py](winget_manifest.py) retains identity, release URL and user
   installation policy checks. Komac supplies the schema-required `InstallerSha256`;
   no extra comparison with GitHub asset digests is performed. Only the final
