@@ -157,15 +157,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          NO_COLOR: "1"
         run: |
           version="${RELEASE_TAG#v}"
           mapfile -t urls < <(jq -r '.assets[] | select(.name == "OneXray-windows-amd64.exe" or .name == "OneXray-windows-arm64.exe") | .browser_download_url' "$WINGET_OUTPUT/release.json")
-
-          komac update "$WINGET_IDENTIFIER" --version "$version" \
-            --dry-run --output "$WINGET_OUTPUT/generated" --urls "${urls[@]}"
-
           manifest_dir="$WINGET_OUTPUT/generated/manifests/y/YuanDevLLC/OneXray/$version"
-          test -d "$manifest_dir"
+          mkdir -p "$manifest_dir"
+
+          # Komac dry-run prints manifests but returns before handling --output.
+          # Split at its generated headers and name each file from its metadata.
+          komac update "$WINGET_IDENTIFIER" --version "$version" \
+            --dry-run --urls "${urls[@]}" \
+            | awk -v dir="$manifest_dir" -v id="$WINGET_IDENTIFIER" '
+                function save() {
+                  if (type == "") return
+                  suffix = type == "version" ? "" : (type == "installer" ? ".installer" : ".locale." locale)
+                  file = dir "/" id suffix ".yaml"
+                  printf "%s", manifest > file
+                  close(file)
+                }
+                { sub(/\r$/, "") }
+                /^# Created with / { save(); manifest = ""; type = ""; locale = ""; active = 1 }
+                active { manifest = manifest $0 "\r\n" }
+                /^ManifestType: / { type = $2 }
+                /^PackageLocale: / { locale = $2 }
+                END { save() }
+              '
+
+          test -s "$manifest_dir/$WINGET_IDENTIFIER.installer.yaml"
           echo "manifest_dir=$manifest_dir" >> "$GITHUB_OUTPUT"
 
       - name: Fix installer fields
