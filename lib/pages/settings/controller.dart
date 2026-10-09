@@ -250,7 +250,7 @@ class SettingsController extends PageCubit<SettingsPageState> {
     final uri = switch (link) {
       SettingsLink.documentation => DocURLHelper.docUri(),
       SettingsLink.review => null,
-      SettingsLink.community => Uri.parse('https://t.me/OneXrayApp'),
+      SettingsLink.community => Uri.parse('https://t.me/YuanDevTeam'),
       SettingsLink.feedback => Uri.parse(
         'https://github.com/YuanDevTeam/OneXray/issues/new',
       ),
