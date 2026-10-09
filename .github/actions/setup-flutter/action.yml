@@ -1,0 +1,39 @@
+name: Setup Flutter
+description: Install stable Flutter on all OneXray build hosts
+
+runs:
+  using: composite
+  steps:
+    - name: Install Flutter SDK
+      if: runner.os == 'macOS' || runner.arch != 'ARM64'
+      uses: subosito/flutter-action@v2
+      with:
+        channel: stable
+
+    # The stable release archive index has no Windows/Linux ARM64 SDKs.
+    # Checkout lets Flutter bootstrap the native Dart SDK on those hosts.
+    - name: Checkout Flutter for ARM64
+      if: runner.os != 'macOS' && runner.arch == 'ARM64'
+      uses: actions/checkout@v7
+      with:
+        repository: flutter/flutter
+        ref: stable
+        path: references/flutter-sdk
+        persist-credentials: false
+
+    - name: Configure Flutter paths for ARM64
+      if: runner.os != 'macOS' && runner.arch == 'ARM64'
+      uses: actions/github-script@v8
+      with:
+        script: |
+          const path = require('node:path');
+          const flutterRoot = path.join(process.env.GITHUB_WORKSPACE, 'references', 'flutter-sdk');
+          const pubCache = path.join(process.env.RUNNER_TEMP, 'flutter-pub-cache');
+          core.exportVariable('FLUTTER_ROOT', flutterRoot);
+          core.exportVariable('PUB_CACHE', pubCache);
+          core.addPath(path.join(flutterRoot, 'bin'));
+          core.addPath(path.join(pubCache, 'bin'));
+
+    - name: Initialize Flutter
+      shell: bash
+      run: flutter --version

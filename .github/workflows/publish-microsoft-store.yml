@@ -38,6 +38,22 @@ jobs:
           python-version: "3.x"
           check-latest: true
 
+      - name: Download build metadata
+        uses: actions/download-artifact@v8
+        with:
+          name: release-metadata
+          path: artifacts/release-metadata
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+
+      - name: Download Microsoft Store packages for inspection
+        uses: actions/download-artifact@v8
+        with:
+          pattern: windows-store-*
+          path: artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+
       - name: Inspect Build run
         id: build
         env:
@@ -47,10 +63,6 @@ jobs:
           echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
 
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
-          for artifact in release-metadata windows-store-x64 windows-store-arm64; do
-            gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-              --name "$artifact" --dir "artifacts/$artifact"
-          done
           if [ -f artifacts/release-metadata/tag.txt ]; then
             metadata_tag="$(cat artifacts/release-metadata/tag.txt)"
             tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$metadata_tag" --jq '.sha')"
