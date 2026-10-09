@@ -21,12 +21,12 @@ Add Flutter, Go and Go-installed tools (`GOBIN`, or `GOPATH/bin`) to `PATH`.
 From your workspace, clone only missing repositories:
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```
 
-Keep them as siblings; Windows also needs `VCore/` or `VCORE_DIR`. All commands
+Keep them as siblings; Windows also needs Vole (see [checkout layout](../build_scripts/README.md#prepare-the-workspace)). All commands
 below start in the App root. Use compatible dependency revisions from the
 [Build workflow](../.github/workflows/build.yml); a separate Xray-core checkout
 is unnecessary. Check `flutter doctor -v` before continuing. Run Flutter/Dart
@@ -76,7 +76,7 @@ chmod +x linux/app/OneXrayCore
 ### Windows
 
 Prepare the complete native bundle using [the build guide](../build_scripts/README.md#windows).
-Copying only libXray is insufficient: both modes need Core, Wintun and VCore.
+Copying only libXray is insufficient: the current bundle also includes Core, Wintun and Vole.
 Once `windows/app/` is ready, ordinary Debug uses EXE mode.
 
 ### Copy the complete Geodata directory

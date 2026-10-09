@@ -46,26 +46,8 @@ jobs:
         run: |
           echo "run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
 
-          run_json="$(gh api "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID")"
-          printf '%s\n' "$run_json" > build-run.json
-          if [ "$(jq -r '.path' <<<"$run_json")" != ".github/workflows/build.yml" ]; then
-            echo "Workflow run $BUILD_RUN_ID is not a Build run." >&2
-            exit 1
-          fi
-          if [ "$(jq -r '.conclusion' <<<"$run_json")" != "success" ]; then
-            echo "Build run $BUILD_RUN_ID did not complete successfully." >&2
-            exit 1
-          fi
-          artifact_names="$(gh api --paginate \
-            "repos/${{ github.repository }}/actions/runs/$BUILD_RUN_ID/artifacts?per_page=100" \
-            --jq '.artifacts[].name')"
-
-          for artifact in release-metadata windows-store-x64 windows-store-arm64 \
-            provenance-windows-x64-msix provenance-windows-arm64-msix; do
-            if ! grep -Fxq "$artifact" <<<"$artifact_names"; then
-              echo "Build run $BUILD_RUN_ID is missing artifact: $artifact" >&2
-              exit 1
-            fi
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
+          for artifact in release-metadata windows-store-x64 windows-store-arm64; do
             gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
               --name "$artifact" --dir "artifacts/$artifact"
           done

@@ -1,10 +1,10 @@
 # Issue tracker: GitHub
 
-Issues and specs live in GitHub Issues for `OneXray/OneXray`.
+Issues and specs live in GitHub Issues for `YuanDevTeam/OneXray`.
 
-Use the `gh` CLI. Because this clone's `origin` uses `yiguo.dev`,
-include `--repo OneXray/OneXray` in every `gh issue` and `gh pr` command.
-For `gh api`, use explicit `repos/OneXray/OneXray/...` endpoints.
+Use the `gh` CLI with `--repo YuanDevTeam/OneXray` in every `gh issue` and
+`gh pr` command so repository selection is independent of checkout aliases.
+For `gh api`, use explicit `repos/YuanDevTeam/OneXray/...` endpoints.
 
 ## Conventions
 
@@ -27,16 +27,16 @@ For `gh api`, use explicit `repos/OneXray/OneXray/...` endpoints.
 
 ## Issue operations
 
-- Publish a ticket: `gh issue create --repo OneXray/OneXray --title "..." --body "..."`
-- Fetch a ticket: `gh issue view <number> --repo OneXray/OneXray --comments`; include its labels when assessing state.
-- List tickets: `gh issue list --repo OneXray/OneXray --state open --json number,title,body,labels,comments`
-- Comment: `gh issue comment <number> --repo OneXray/OneXray --body "..."`
-- Add or remove labels: `gh issue edit <number> --repo OneXray/OneXray --add-label "..."` or `--remove-label "..."`
-- Close: `gh issue close <number> --repo OneXray/OneXray --comment "..."`
+- Publish a ticket: `gh issue create --repo YuanDevTeam/OneXray --title "..." --body "..."`
+- Fetch a ticket: `gh issue view <number> --repo YuanDevTeam/OneXray --comments`; include its labels when assessing state.
+- List tickets: `gh issue list --repo YuanDevTeam/OneXray --state open --json number,title,body,labels,comments`
+- Comment: `gh issue comment <number> --repo YuanDevTeam/OneXray --body "..."`
+- Add or remove labels: `gh issue edit <number> --repo YuanDevTeam/OneXray --add-label "..."` or `--remove-label "..."`
+- Close: `gh issue close <number> --repo YuanDevTeam/OneXray --comment "..."`
 
 GitHub shares one number space across issues and PRs. Resolve an ambiguous
-number with `gh pr view <number> --repo OneXray/OneXray`, falling back to
-`gh issue view <number> --repo OneXray/OneXray`.
+number with `gh pr view <number> --repo YuanDevTeam/OneXray`, falling back to
+`gh issue view <number> --repo YuanDevTeam/OneXray`.
 
 ## Pull requests as a triage surface
 
@@ -55,6 +55,6 @@ Used by `/wayfinder`. The map is one issue with child issues as tickets.
   `Blocked by: #<n>` at the top of the child body.
 - Frontier: choose the first open, unassigned child in map order without
   an open blocker.
-- Claim: `gh issue edit <number> --repo OneXray/OneXray --add-assignee @me`
+- Claim: `gh issue edit <number> --repo YuanDevTeam/OneXray --add-assignee @me`
 - Resolve: comment with the answer, close the child, then add a context
   pointer to the map's Decisions-so-far.

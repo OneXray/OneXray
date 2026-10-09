@@ -14,7 +14,7 @@ void main() {
         'success': true,
         'data': {
           'status': 'connected',
-          'snapshotToken': 'vcore-session-v2:$digest',
+          'snapshotToken': 'vole-session-v2:$digest',
         },
         'error': '',
       });
@@ -23,11 +23,11 @@ void main() {
     final state = await api.getVpnStatus();
 
     expect(state.status, WindowsVpnStatus.connected);
-    expect(state.snapshotToken, 'vcore-session-v2:$digest');
+    expect(state.snapshotToken, 'vole-session-v2:$digest');
     expect(jsonDecode(requestJson!), {
       'bridgeVersion': 3,
       'method': 'getVpnStatus',
-      'payload': <String, Object?>{},
+      'payload': {'profileName': WindowsNativeApi.profileName},
     });
   });
 
@@ -42,7 +42,7 @@ void main() {
           'success': true,
           'data': {
             'status': 'connected',
-            'snapshotToken': 'vcore-session-v2:$digest',
+            'snapshotToken': 'vole-session-v2:$digest',
           },
           'error': '',
         });
@@ -83,6 +83,7 @@ void main() {
         'bridgeVersion': 3,
         'method': 'startVpn',
         'payload': {
+          'profileName': WindowsNativeApi.profileName,
           'configYaml': 'ipv6: true\ntun:\n  enable: true\n',
           'networkSettings': {
             'ipv4Address': '192.168.8.1',
@@ -133,6 +134,48 @@ void main() {
       expect(WindowsVpnPolicy.fromJson(policyJson).toJson(), policyJson);
     },
   );
+
+  test(
+    'uses the same profile after reopening and excludes it from StartupTask',
+    () async {
+      final requests = <Map<String, dynamic>>[];
+      Future<String> invoke(String text) async {
+        final request = jsonDecode(text) as Map<String, dynamic>;
+        requests.add(request);
+        return jsonEncode({
+          'success': true,
+          'data': request['method'] == 'getStartupTaskStatus'
+              ? {'state': 'disabled'}
+              : {'status': 'disconnected', 'snapshotToken': null},
+          'error': '',
+        });
+      }
+
+      await WindowsNativeApi.forTest(invoke).getVpnStatus();
+      final reopened = WindowsNativeApi.forTest(invoke);
+      await reopened.stopVpn();
+      await reopened.getStartupTaskStatus();
+      expect(requests[0]['payload'], {
+        'profileName': WindowsNativeApi.profileName,
+      });
+      expect(requests[1]['payload'], requests[0]['payload']);
+      expect(requests[2]['payload'], isEmpty);
+    },
+  );
+
+  test('rejects old session tokens rather than converting them', () async {
+    final api = WindowsNativeApi.forTest(
+      (_) async => jsonEncode({
+        'success': true,
+        'data': {
+          'status': 'connected',
+          'snapshotToken': 'vcore-session-v2:${'a' * 64}',
+        },
+        'error': '',
+      }),
+    );
+    await expectLater(api.getVpnStatus(), throwsA(isA<FormatException>()));
+  });
 
   test('surfaces bounded native failures', () async {
     final api = WindowsNativeApi.forTest((_) async {

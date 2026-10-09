@@ -37,7 +37,7 @@ void main() {
       '11999',
       '12001',
       '{"apiVersion":3,"method":"runXray"}',
-      snapshotToken: 'vcore-session-v2:${List.filled(64, 'a').join()}',
+      snapshotToken: 'vole-session-v2:${List.filled(64, 'a').join()}',
       metadataJson: '{"mode":"smart"}',
     );
 

@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="最新版本"></a>
-  <a href="../LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="许可证"></a>
+  <a href="https://github.com/YuanDevTeam/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/YuanDevTeam/OneXray?display_name=tag&sort=semver" alt="最新版本"></a>
+  <a href="../LICENSE"><img src="https://img.shields.io/github/license/YuanDevTeam/OneXray" alt="许可证"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="支持平台">
 </p>
 
 <p align="center">
   <a href="https://onexray.com">文档站</a> ·
-  <a href="https://github.com/OneXray/OneXray/releases">版本发布</a> ·
+  <a href="https://github.com/YuanDevTeam/OneXray/releases">版本发布</a> ·
   <a href="https://t.me/OneXrayApp">Telegram</a>
 </p>
 
@@ -66,14 +66,14 @@ VPN Tunnel 操作、预期行为与验证步骤。不为系统设置虚构 JSON 
 
 | 平台 | 系统要求 | 下载 |
 | --- | --- | --- |
-| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-ios.ipa) |
 | macOS | macOS 13+，Apple silicon 或 Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS — OneXraySE | macOS 13+，Apple silicon 或 Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android 手机 / 平板 | Android 10+，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [通用 APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
-| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| macOS — OneXraySE | macOS 13+，Apple silicon 或 Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android 手机 / 平板 | Android 10+，arm64-v8a 或 x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [通用 APK](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#安装说明) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
 本文描述当前代码中的功能，商店和已发布版本可能有所不同。各平台的安装要求见[安装说明](#安装说明)。
 
@@ -206,21 +206,9 @@ ZIP 不会自动注册 `onexray://` 链接。GNOME 用户可能需要安装 [App
 - [使用文档](https://onexray.com)与 [Telegram 社区](https://t.me/OneXrayApp)。
 - 本地调试参阅[开发环境配置](./FIRST_RUN.zh_CN.md)，打包参阅[构建脚本](../build_scripts/README.md)。
 - [App 当前行为与工程约定](../docs/README.md)，包括[导入与 OneXray 链接](../docs/subscriptions-and-sharing.md)。
-- [反馈问题或建议](https://github.com/OneXray/OneXray/issues)：请附上平台、App / Xray-core 版本和复现步骤，不要公开私密凭据。
+- [反馈问题或建议](https://github.com/YuanDevTeam/OneXray/issues)：请附上平台、App / Xray-core 版本和复现步骤，不要公开私密凭据。
 
-欢迎贡献代码、翻译和[文档改进](https://github.com/OneXray/onexray.com)。
-
-## 捐赠
-
-可以通过 **Solana 网络**捐赠 **USDC 或 USDT**，支持 OneXray 的开发。捐赠完全自愿。
-使用下方地址框的复制按钮，或打开[捐赠页面](https://onexray.com/zh/docs/donate/)。
-
-```text
-A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
-```
-
-请仅通过 Solana 网络发送 USDC 或 USDT。转账前核对网络和完整地址，使用其他网络可能导致资产丢失。
-捐赠不会解锁功能，也不提供服务器或订阅。
+欢迎贡献代码、翻译和[文档改进](https://github.com/yiguodev/onexray.com)。
 
 ## 许可证
 

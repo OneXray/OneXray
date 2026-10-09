@@ -89,24 +89,17 @@ def run_command(
     *,
     cwd: str | None = None,
     env: dict[str, str] | None = None,
-    redact: bool = False,
 ):
     command_env = get_env(env)
-    if is_windows() and not os.path.dirname(cmd[0]):
-        # Windows does not use the child PATH to locate the executable.
-        if executable := shutil.which(cmd[0], path=command_env["PATH"]):
-            cmd = [os.path.abspath(executable), *cmd[1:]]
-    print("[redacted command]" if redact else cmd, flush=True)
+    # Windows does not use the child PATH to locate the executable.
+    if (
+        is_windows()
+        and not os.path.dirname(cmd[0])
+        and (executable := shutil.which(cmd[0], path=command_env["PATH"]))
+    ):
+        cmd = [os.path.abspath(executable), *cmd[1:]]
+    print(cmd, flush=True)
     subprocess.run(cmd, cwd=cwd, env=command_env, check=True)
-
-
-def cp_dir_files(src_dir: str, dst_dir: str):
-    for entry in os.listdir(src_dir):
-        full_path = os.path.join(src_dir, entry)
-        if os.path.isdir(full_path):
-            cp_dir_files(full_path, dst_dir)
-        else:
-            shutil.copy2(full_path, dst_dir)
 
 
 def download_file(file_url: str, save_path: str):

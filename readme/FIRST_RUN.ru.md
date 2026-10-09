@@ -21,12 +21,12 @@ Git, Python 3.12+, Go согласно `go.mod` libXray и LLVM/libclang для 
 В рабочем каталоге клонируйте только отсутствующие репозитории:
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```
 
-Репозитории должны быть соседними; для Windows нужен также `VCore/` или `VCORE_DIR`.
+Репозитории должны быть соседними; для Windows нужен также Vole — см. [структуру каталогов](../build_scripts/README.md#prepare-the-workspace).
 Все команды ниже выполняются из корня приложения. Совместимые версии зависимостей
 определены в [Build workflow](../.github/workflows/build.yml); отдельный Xray-core
 не нужен. Сначала проверьте `flutter doctor -v`. Выполняйте Flutter/Dart последовательно,
@@ -76,7 +76,7 @@ chmod +x linux/app/OneXrayCore
 ### Windows
 
 Подготовьте полный нативный bundle по [руководству сборки](../build_scripts/README.md#windows).
-Оба режима требуют Core, Wintun и VCore; одного libXray недостаточно.
+Текущий комплект обоих режимов включает Core, Wintun и Vole; одного libXray недостаточно.
 После подготовки `windows/app/` обычный Debug использует режим EXE.
 
 ### Скопируйте весь каталог Geodata

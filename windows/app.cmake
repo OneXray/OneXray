@@ -8,13 +8,13 @@ install(CODE "file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/bin\")"
 install(FILES
         "${APP_DIR}/libXray.dll"
         "${APP_DIR}/wintun.dll"
-        "${APP_DIR}/vcore.dll"
+        "${APP_DIR}/vole.dll"
         DESTINATION "${CMAKE_INSTALL_PREFIX}"
         COMPONENT Runtime)
 
 install(PROGRAMS
         "${APP_DIR}/OneXrayCore.exe"
-        "${APP_DIR}/vcore-windows-vpn-host.exe"
-        "${APP_DIR}/vcore-windows-session-host.exe"
+        "${APP_DIR}/vole-windows-vpn-host.exe"
+        "${APP_DIR}/vole-windows-session-host.exe"
         DESTINATION "${CMAKE_INSTALL_PREFIX}"
         COMPONENT Runtime)

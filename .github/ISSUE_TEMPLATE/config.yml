@@ -4,5 +4,5 @@ contact_links:
     url: https://onexray.com
     about: Read installation, routing, and platform-specific guidance.
   - name: OneXray releases
-    url: https://github.com/OneXray/OneXray/releases
+    url: https://github.com/YuanDevTeam/OneXray/releases
     about: Check available versions and release notes before reporting a problem.

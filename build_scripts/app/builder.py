@@ -12,8 +12,7 @@ from app.command_line import (
 )
 from app.config import PROJECT_CONFIG
 
-# ponytail: Only pubspec's top-level version is needed; add a YAML parser if the
-# build interface ever needs structured YAML data.
+# Rewrite only the top-level version, preserving comments and line endings.
 _PUBSPEC_VERSION = re.compile(
     r"^(?P<prefix>version:[ \t]*)(?P<quote>[\"']?)"
     r"(?P<value>[^\"'#\s]+)(?P=quote)"
@@ -42,7 +41,6 @@ class Builder:
         self.project_dir = os.path.join(self.root_dir, system)
         self.output_dir = os.path.abspath(os.path.join(self.root_dir, "..", "output"))
         self.workspace_dir = os.path.dirname(self.root_dir)
-        self.fastlane = "deploy"
 
         try:
             self.project_config = PROJECT_CONFIG[project]
@@ -62,6 +60,7 @@ class Builder:
 
     def before_build(self):
         check_and_create_dir(self.output_dir)
+        self.build_core()
 
     def build_core(self):
         lib_dir = os.path.join(self.workspace_dir, self.project_config["core.dir"])
@@ -85,9 +84,7 @@ class Builder:
                 shutil.copy(lib_src_path, lib_dst_path)
 
         dat_src_path = os.path.join(lib_dir, "dat")
-        dat_dst_path = os.path.join(
-            self.project_dir, self.project_config["core.dat.dst.dir"]
-        )
+        dat_dst_path = os.path.join(self.project_dir, self.project_config["core.dat.dst.dir"])
         check_and_delete_dir(dat_dst_path)
         shutil.copytree(dat_src_path, dat_dst_path, symlinks=True)
 
@@ -106,9 +103,6 @@ class Builder:
         shutil.copy(src_path, dst_path)
         if self.system != "windows":
             os.chmod(dst_path, 0o755)
-
-    def after_build(self):
-        pass
 
     def fastforge_build(
         self,
@@ -163,17 +157,3 @@ class Builder:
         updated = text[: match.start()] + replacement + text[match.end() :]
         with open(file_path, mode="w", encoding="utf-8", newline="") as pubspec:
             pubspec.write(updated)
-
-    def find_file(self, file_type: str) -> str:
-        for entry in os.listdir(self.output_dir):
-            full_path = os.path.join(self.output_dir, entry)
-            if os.path.isfile(full_path) and entry.endswith(file_type):
-                return entry
-        return ""
-
-    def rename_file(self, file_name: str, file_type: str) -> str:
-        new_file_name = f"{self.project}-{self.package_suffix}{file_type}"
-        src_path = os.path.join(self.output_dir, file_name)
-        dst_path = os.path.join(self.output_dir, new_file_name)
-        shutil.move(src_path, dst_path)
-        return new_file_name

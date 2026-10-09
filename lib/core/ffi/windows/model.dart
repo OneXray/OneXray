@@ -148,12 +148,23 @@ final class WindowsVpnPolicy {
   Map<String, dynamic> toJson() => _$WindowsVpnPolicyToJson(this);
 }
 
+@JsonSerializable(createFactory: false)
+final class WindowsVpnProfilePayload {
+  final String profileName;
+
+  const WindowsVpnProfilePayload(this.profileName);
+
+  Map<String, dynamic> toJson() => _$WindowsVpnProfilePayloadToJson(this);
+}
+
 @JsonSerializable(
   explicitToJson: true,
   includeIfNull: false,
   disallowUnrecognizedKeys: true,
 )
 final class WindowsStartVpnPayload {
+  @JsonKey(required: true)
+  final String profileName;
   final String configYaml;
   final WindowsVpnNetworkSettings networkSettings;
   @JsonKey(required: true)
@@ -161,6 +172,7 @@ final class WindowsStartVpnPayload {
   final WindowsSessionBackend? sessionBackend;
 
   const WindowsStartVpnPayload({
+    required this.profileName,
     required this.configYaml,
     required this.networkSettings,
     required this.policy,

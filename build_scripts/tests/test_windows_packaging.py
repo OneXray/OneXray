@@ -1,589 +1,355 @@
-import hashlib
-import json
 import os
-import re
 import shutil
 import tempfile
 import unittest
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
 from app.windows import (
-    WindowsBuilder,
-    _copy_vcore_artifacts,
-    _VCORE_ARTIFACTS,
-    _RUNTIME_FILES,
+    _VOLE_ARTIFACTS,
     _WINTUN_VERSION,
+    VOLE_HEADERS,
+    WindowsBuilder,
 )
-from app.windows_msix import augment_manifest, package_with_vcore
+from app.windows_msix import pack_msix
 
 
 class WindowsPackagingTest(unittest.TestCase):
     def setUp(self):
-        fixtures = Path(__file__).resolve().parents[3] / "references" / "windows-build" / "tests"
+        fixtures = Path(__file__).resolve().parents[3] / "references/windows-build/tests"
         fixtures.mkdir(parents=True, exist_ok=True)
-        self.temp_dir = tempfile.TemporaryDirectory(dir=fixtures)
-        self.addCleanup(self.temp_dir.cleanup)
-
-        self.project_dir = os.path.join(self.temp_dir.name, "windows")
-        os.makedirs(self.project_dir)
-        self.pubspec_path = os.path.join(self.temp_dir.name, "pubspec.yaml")
-        with open(self.pubspec_path, mode="wb") as f:
-            f.write(b"name: OneXray\ndescription: Test fixture\nversion: 26.7.3+412\n")
-
-        self.builder = WindowsBuilder.__new__(WindowsBuilder)
-        self.builder.project = "OneXray"
-        self.builder.root_dir = self.temp_dir.name
-        self.builder.project_dir = self.project_dir
-        self.builder.workspace_dir = self.temp_dir.name
-        self.builder.mode = "msix"
-        self.builder.output_dir = os.path.join(self.temp_dir.name, "output")
-        self.builder.package_suffix = "windows-amd64"
-        self.builder.target_architecture = "x64"
-        self.builder._prepare_msix_bundle = lambda: None
-        os.makedirs(self.builder.output_dir)
-        self.config_path = Path(self.project_dir) / "packaging/exe/make_config.yaml"
-        self.config_path.parent.mkdir(parents=True)
+        temporary = tempfile.TemporaryDirectory(dir=fixtures)
+        self.addCleanup(temporary.cleanup)
+        self.workspace = Path(temporary.name)
+        self.root = self.workspace / "OneXray"
+        self.config = self.root / "windows/packaging/exe/make_config.yaml"
+        self.config.parent.mkdir(parents=True)
         shutil.copy2(
             Path(__file__).resolve().parents[2] / "windows/packaging/exe/make_config.yaml",
-            self.config_path,
+            self.config,
         )
+        self.pubspec = self.root / "pubspec.yaml"
+        self.pubspec.write_bytes(b"name: onexray\nversion: 26.7.3+412\n")
+        self.output = self.workspace / "output"
+        self.output.mkdir()
+        self.addCleanup(patch.stopall)
+        patch.dict(
+            os.environ,
+            {
+                "BUILD_NUMBER": "12",
+                "ONEXRAY_DEV_SIGN": "0",
+                "VOLE_DIR": "",
+                "ONEXRAY_DEV_CERT_THUMBPRINT": "a" * 40,
+                "ONEXRAY_DEV_PUBLISHER": "CN=Development Fixture",
+            },
+        ).start()
 
-    def _bundle(self):
-        source = (Path(self.builder.root_dir) / "build/windows" /
-                  self.builder.target_architecture / "runner/Release")
+    def builder(self, architecture="x64", mode="msix", development=False):
+        with patch.dict(
+            os.environ,
+            {"ONEXRAY_WINDOWS_ARCH": architecture, "ONEXRAY_DEV_SIGN": "1" if development else "0"},
+        ):
+            return WindowsBuilder("OneXray", "windows", str(self.root / "build_scripts"), mode=mode)
+
+    def bundle(self, builder):
+        source = self.root / "build/windows" / builder.target_architecture / "runner/Release"
         source.mkdir(parents=True, exist_ok=True)
-        runtime_files = self.builder._required_crt_files()
-        for name in ("OneXray.exe", "flutter_windows.dll", *_RUNTIME_FILES, *runtime_files):
-            (source / name).write_bytes(_pe(self.builder._machine()))
-        for name in ("data/icudtl.dat", "data/app.so", "data/flutter_assets/AssetManifest.bin",
-                     "data/flutter_assets/assets/dat/geoip.dat", "plugin.dll"):
+        for name in ("OneXray.exe", "msvcp140.dll", *_VOLE_ARTIFACTS):
+            (source / name).write_bytes(name.encode())
+        for name in ("data/icudtl.dat", "data/app.so", "data/flutter_assets/AssetManifest.bin"):
             file = source / name
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(b"fixture")
         return source
 
-    def test_fastforge_builds_both_formats_with_explicit_mode_and_architecture(self):
-        self.builder.mode = "exe"
-        original_config = self.config_path.read_bytes()
-        pubspec = Path(self.pubspec_path).read_bytes()
-        for target, package_arch, inno_arch, processor_arch in (
-            ("x64", "amd64", "x64os", "AMD64"),
-            ("arm64", "arm64", "arm64", "ARM64"),
+    def test_exe_and_zip_share_one_build_and_restore_installer_inputs(self):
+        original_config, original_pubspec = self.config.read_bytes(), self.pubspec.read_bytes()
+        for architecture, inno, processor in (
+            ("x64", "x64os", "AMD64"),
+            ("arm64", "arm64", "ARM64"),
         ):
-            with self.subTest(architecture=target):
-                self.builder.target_architecture = target
-                self.builder.package_suffix = f"windows-{package_arch}"
+            builder = self.builder(architecture, "exe")
+            calls = []
 
-                def package(*args, **kwargs):
-                    config = self.config_path.read_text()
-                    self.assertIn(f"architectures_allowed: {inno_arch}\n", config)
-                    self.assertIn(f"architectures_install_in_64bit_mode: {inno_arch}\n", config)
-                    self.assertEqual(self.builder.read_version(), "26.7.3")
-                    self._bundle()
-                    dist = Path(self.builder.root_dir) / "dist" / self.builder.read_version()
-                    dist.mkdir(parents=True, exist_ok=True)
-                    for extension in ("exe", "zip"):
-                        (dist / f"OneXray-windows-{package_arch}.{extension}").write_bytes(
-                            f"Fastforge {target} {extension}".encode()
-                        )
-                    (dist / "unrelated.msix").write_bytes(b"not an EXE-mode artifact")
-
-                with patch.object(self.builder, "fastforge_build", side_effect=package) as fastforge:
-                    self.builder.build_app()
-                fastforge.assert_called_once_with(
-                    "exe,zip",
-                    arguments=(
-                        "--build-dart-define", "ONEXRAY_WINDOWS_MODE=exe",
-                        "--flutter-build-args", "build-number=412",
-                        "--artifact-name", f"OneXray-windows-{package_arch}." + "{{ext}}",
-                    ),
-                    env={"PROCESSOR_ARCHITECTURE": processor_arch},
+            def command(
+                args, calls=calls, processor=processor, builder=builder, inno=inno, **kwargs
+            ):
+                calls.append(args)
+                self.assertIn("exe,zip", args)
+                self.assertIn("--skip-clean", args)
+                self.assertIn("ONEXRAY_WINDOWS_MODE=exe", args)
+                self.assertIn("build-number=412", args)
+                self.assertEqual(kwargs["env"], {"PROCESSOR_ARCHITECTURE": processor})
+                self.assertEqual(builder.read_version(), "26.7.3")
+                self.assertIn(f"architectures_allowed: {inno}\n", self.config.read_text())
+                self.assertIn(
+                    f"architectures_install_in_64bit_mode: {inno}\n", self.config.read_text()
                 )
+                dist = self.root / "dist/26.7.3"
+                dist.mkdir(parents=True, exist_ok=True)
                 for extension in ("exe", "zip"):
-                    self.assertEqual(
-                        (Path(self.builder.output_dir) / f"OneXray-windows-{package_arch}.{extension}").read_bytes(),
-                        f"Fastforge {target} {extension}".encode(),
+                    (dist / f"OneXray-{builder.package_suffix}.{extension}").write_bytes(
+                        extension.encode()
                     )
-                self.assertFalse((Path(self.builder.output_dir) / "unrelated.msix").exists())
-                self.assertEqual(self.config_path.read_bytes(), original_config)
-                self.assertEqual(Path(self.pubspec_path).read_bytes(), pubspec)
+                (dist / "unrelated.msix").write_bytes(b"other channel")
 
-    def test_fastforge_failure_restores_configuration_without_collecting_packages(self):
-        self.builder.target_architecture = "arm64"
-        original_config = self.config_path.read_bytes()
-        original_pubspec = Path(self.pubspec_path).read_bytes()
-        with patch.object(self.builder, "fastforge_build", side_effect=RuntimeError("packaging failed")):
-            with self.assertRaisesRegex(RuntimeError, "packaging failed"):
-                self.builder.package_exe_and_zip()
-        self.assertEqual(self.config_path.read_bytes(), original_config)
-        self.assertEqual(Path(self.pubspec_path).read_bytes(), original_pubspec)
-        self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
-
-    def test_fastforge_requires_both_outputs_for_the_current_version(self):
-        self._bundle()
-        dist = Path(self.builder.root_dir) / "dist"
-        for version, extensions in (("old-version", ("exe", "zip")), ("26.7.3", ("exe",))):
-            directory = dist / version
-            directory.mkdir(parents=True)
-            for extension in extensions:
-                (directory / f"OneXray-windows-amd64.{extension}").write_bytes(b"fixture")
-        with patch.object(self.builder, "fastforge_build"), self.assertRaisesRegex(FileNotFoundError, "Fastforge package missing"):
-            self.builder.package_exe_and_zip()
-        self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
-
-    def test_bundle_rejects_missing_dependencies_and_wrong_architecture(self):
-        source = self._bundle()
-        for name in (*_RUNTIME_FILES, "data/app.so", "data/flutter_assets/AssetManifest.bin"):
-            with self.subTest(missing=name):
-                original = (source / name).read_bytes()
-                (source / name).unlink()
-                with self.assertRaises(FileNotFoundError):
-                    self.builder._release_bundle()
-                (source / name).write_bytes(original)
-        (source / "wintun.dll").write_bytes(_pe(0xAA64))
-        with self.assertRaisesRegex(ValueError, "wrong architecture"):
-            self.builder._release_bundle()
-
-    def test_fastforge_rejects_missing_visual_cpp_runtime_before_collecting_packages(self):
-        # Keep expectations independent from the helper used by the bundle fixture.
-        for architecture, package_arch, required_files in (
-            ("x64", "amd64", ("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")),
-            ("arm64", "arm64", ("msvcp140.dll", "vcruntime140.dll")),
-        ):
-            self.builder.target_architecture = architecture
-            self.builder.package_suffix = f"windows-{package_arch}"
-            self.assertEqual(self.builder._required_crt_files(), required_files)
-            source = self._bundle()
-            dist = Path(self.builder.root_dir) / "dist/26.7.3"
-            dist.mkdir(parents=True, exist_ok=True)
+            with patch("app.builder.run_command", side_effect=command):
+                builder.build_app()
+            self.assertEqual(len(calls), 1)
             for extension in ("exe", "zip"):
-                (dist / f"OneXray-windows-{package_arch}.{extension}").write_bytes(b"fixture")
-            for name in required_files:
-                with self.subTest(architecture=architecture, runtime=name):
-                    original = (source / name).read_bytes()
-                    (source / name).unlink()
-                    with patch.object(self.builder, "fastforge_build"):
-                        with self.assertRaisesRegex(FileNotFoundError, "Windows release runtime missing"):
-                            self.builder.package_exe_and_zip()
-                    self.assertEqual(list(Path(self.builder.output_dir).iterdir()), [])
-                    (source / name).write_bytes(original)
+                self.assertEqual(
+                    (self.output / f"OneXray-{builder.package_suffix}.{extension}").read_bytes(),
+                    extension.encode(),
+                )
+            self.assertFalse((self.output / "unrelated.msix").exists())
+            self.assertEqual(self.config.read_bytes(), original_config)
+            self.assertEqual(self.pubspec.read_bytes(), original_pubspec)
 
-    def test_msix_rejects_visual_cpp_runtime_of_the_other_architecture(self):
-        del self.builder._prepare_msix_bundle
-        for architecture, wrong_machine in (("x64", 0xAA64), ("arm64", 0x8664)):
-            with self.subTest(architecture=architecture):
-                self.builder.target_architecture = architecture
-                source = self._bundle()
-                (source / "msvcp140.dll").write_bytes(_pe(wrong_machine))
-                with patch("app.windows.run_command") as create:
-                    with patch("app.windows.package_with_vcore") as augment:
-                        with self.assertRaisesRegex(ValueError, "wrong architecture.*msvcp140"):
-                            self.builder.package_msix()
-                create.assert_not_called()
-                augment.assert_not_called()
+    def test_failed_or_incomplete_fastforge_output_is_not_collected(self):
+        builder = self.builder(mode="exe")
+        original_config, original_pubspec = self.config.read_bytes(), self.pubspec.read_bytes()
+        dist = self.root / "dist/26.7.3"
+        dist.mkdir(parents=True)
+        (dist / "OneXray-windows-amd64.exe").write_bytes(b"incomplete")
+        for failure, expected in (
+            (RuntimeError("packaging failed"), RuntimeError),
+            (None, FileNotFoundError),
+        ):
+            with patch("app.builder.run_command", side_effect=failure), self.assertRaises(expected):
+                builder.build_app()
+            self.assertEqual(self.config.read_bytes(), original_config)
+            self.assertEqual(self.pubspec.read_bytes(), original_pubspec)
+            self.assertEqual(list(self.output.iterdir()), [])
 
-    def test_wintun_copies_only_the_verified_architecture_dll(self):
-        archive = Path(self.builder.workspace_dir) / "references/windows-build" / f"wintun-{_WINTUN_VERSION}.zip"
+    def test_msix_builds_stages_packs_once_and_signs_only_development_packages(self):
+        for architecture in ("x64", "arm64"):
+            for development in (False, True):
+                with self.subTest(architecture=architecture, development=development):
+                    builder = self.builder(architecture, development=development)
+                    source = self.bundle(builder)
+                    original_crt = (source / "msvcp140.dll").read_bytes()
+                    stage = (
+                        self.root / f"build/windows/{architecture}/{architecture}/runner/Release"
+                    )
+                    commands = []
+
+                    def command(
+                        args, commands=commands, architecture=architecture, stage=stage, **kwargs
+                    ):
+                        commands.append(args)
+                        if "msix:build" in args:
+                            self.assertIn("--build-windows", args)
+                            self.assertIn("false", args)
+                            self.assertIn("26.7.3.0", args)
+                            self.assertEqual(args[args.index("--architecture") + 1], architecture)
+                            (stage / "AppxManifest.xml").write_text(
+                                MANIFEST.replace(
+                                    'ProcessorArchitecture="x64"',
+                                    f'ProcessorArchitecture="{architecture}"',
+                                )
+                            )
+                        elif args[0] == "makeappx.exe":
+                            self.assertEqual(args[1], "pack")
+                            with zipfile.ZipFile(args[args.index("/p") + 1], "w") as package:
+                                for file in stage.rglob("*"):
+                                    if file.is_file():
+                                        package.write(file, file.relative_to(stage))
+                        elif args[0] == "signtool.exe":
+                            self.assertNotIn("/f", args)
+                            self.assertEqual(args[1], "sign")
+                            self.assertIn("a" * 40, args)
+                            with zipfile.ZipFile(args[-1], "a") as package:
+                                package.writestr("AppxSignature.p7x", b"fixture signature")
+
+                    with (
+                        patch("app.windows.run_command", side_effect=command),
+                        patch("app.windows_msix.run_command", side_effect=command),
+                        patch("app.windows_msix._sdk_tool", side_effect=lambda name: name),
+                    ):
+                        builder.build_app()
+                    flutter = commands[0]
+                    self.assertIn("ONEXRAY_WINDOWS_MODE=msix", " ".join(flutter))
+                    self.assertEqual(
+                        "--dart-define=ONEXRAY_WINDOWS_DEVELOPMENT=true" in flutter, development
+                    )
+                    self.assertEqual(len(commands), 4 if development else 3)
+                    package_path = self.output / f"OneXray-{builder.package_suffix}.msix"
+                    with zipfile.ZipFile(package_path) as package:
+                        self.assertTrue(set(_VOLE_ARTIFACTS).issubset(package.namelist()))
+                        self.assertEqual("AppxSignature.p7x" in package.namelist(), development)
+                        manifest = ET.fromstring(package.read("AppxManifest.xml"))
+                        identity = manifest.find("f:Identity", NS)
+                        self.assertEqual(
+                            identity.get("Name"),
+                            "OneXray.Dev" if development else "YuanDevLLC.OneXray",
+                        )
+                        self.assertEqual(identity.get("ProcessorArchitecture"), architecture)
+                        self.assertEqual(
+                            identity.get("Publisher"),
+                            "CN=Development Fixture" if development else "CN=Store",
+                        )
+                        self.assertEqual(
+                            len(manifest.findall("f:Applications/f:Application", NS)), 1
+                        )
+                        self.assertIsNotNone(
+                            manifest.find(
+                                ".//desktop:Extension[@Executable='vole-windows-session-host.exe']",
+                                NS,
+                            )
+                        )
+                        provider = manifest.find(
+                            ".//f:Extension[@EntryPoint='Vole.VpnBackgroundTask']", NS
+                        )
+                        self.assertEqual(
+                            provider.get(f"{{{NS['uap10']}}}TrustLevel"), "appContainer"
+                        )
+                        self.assertIsNotNone(
+                            provider.find("f:BackgroundTasks/uap:Task[@Type='vpnClient']", NS)
+                        )
+                        self.assertEqual(
+                            manifest.find(".//f:InProcessServer/f:Path", NS).text, "vole.dll"
+                        )
+                        self.assertIsNotNone(
+                            manifest.find(
+                                ".//desktop:StartupTask[@TaskId='VoleStartup'][@Enabled='false']",
+                                NS,
+                            )
+                        )
+                        self.assertIsNotNone(manifest.find(".//uap:Protocol[@Name='onexray']", NS))
+                    self.assertFalse(stage.exists())
+                    self.assertEqual((source / "msvcp140.dll").read_bytes(), original_crt)
+                    self.assertFalse((source / "AppxManifest.xml").exists())
+
+    def test_failed_msix_asset_generation_cleans_staging_but_preserves_bundle(self):
+        builder = self.builder()
+        source = self.bundle(builder)
+        with (
+            patch("app.windows.run_command", side_effect=RuntimeError("asset generation failed")),
+            self.assertRaises(RuntimeError),
+        ):
+            builder.package_msix()
+        self.assertTrue((source / "OneXray.exe").is_file())
+        self.assertFalse((source.parents[1] / "x64/runner/Release").exists())
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_packaging_or_signing_failure_preserves_the_previous_package(self):
+        stage = self.workspace / "stage"
+        stage.mkdir()
+        package = self.output / "OneXray.msix"
+        package.write_bytes(b"previous package")
+        for failure_at in ("pack", "sign"):
+            (stage / "AppxManifest.xml").write_text(MANIFEST)
+
+            def command(args, failure_at=failure_at, **kwargs):
+                if args[1] == failure_at:
+                    raise RuntimeError("packaging or signing failed")
+                if args[1] == "pack":
+                    Path(args[args.index("/p") + 1]).write_bytes(b"new package")
+
+            with (
+                patch("app.windows_msix._sdk_tool", side_effect=lambda name: name),
+                patch("app.windows_msix.run_command", side_effect=command),
+                self.assertRaises(RuntimeError),
+            ):
+                pack_msix(str(stage), str(package), local_development=True)
+            self.assertEqual(package.read_bytes(), b"previous package")
+            self.assertEqual(list(self.output.iterdir()), [package])
+
+    def test_missing_development_signing_settings_fail_before_packaging(self):
+        for settings in ({"ONEXRAY_DEV_PUBLISHER": ""}, {"ONEXRAY_DEV_CERT_THUMBPRINT": ""}):
+            with patch.dict(os.environ, settings), self.assertRaises(ValueError):
+                pack_msix("missing stage", "missing.msix", local_development=True)
+
+    def test_vole_build_copies_uwp_runtime_files_and_headers(self):
+        builder = self.builder()
+        source, checkout = self.vole_fixture(builder)
+        with patch("app.windows.run_command") as run:
+            builder.build_vole()
+        self.assertEqual(
+            run.call_args.args[0][-5:], ["vole-scripts", "build", "windows", "--backend", "uwp"]
+        )
+        self.assertEqual(Path(run.call_args.kwargs["cwd"]), checkout)
+        for name in (*_VOLE_ARTIFACTS, *(f"include/{header}" for header in VOLE_HEADERS)):
+            target = (
+                self.root / "c" / name
+                if name.startswith("include/")
+                else self.root / "windows/app" / name
+            )
+            self.assertEqual(target.read_bytes(), (source / name).read_bytes())
+        self.assertFalse((self.root / "windows/app/vole.dll.lib").exists())
+        with (
+            patch.dict(os.environ, {"VOLE_DIR": str(checkout / "missing")}),
+            self.assertRaises(FileNotFoundError),
+        ):
+            builder.build_vole()
+
+    def vole_fixture(self, builder):
+        checkout = self.workspace / "references/Vole"
+        source = checkout / f"dist/windows/{builder.target_architecture}/uwp"
+        source.mkdir(parents=True, exist_ok=True)
+        (checkout / "Cargo.toml").write_text("[package]\n")
+        for name in _VOLE_ARTIFACTS:
+            (source / name).write_bytes(name.encode())
+        (source / "include").mkdir(exist_ok=True)
+        for name in VOLE_HEADERS:
+            (source / "include" / name).write_bytes(name.encode())
+        return source, checkout
+
+    def test_missing_vole_output_stops_the_build(self):
+        builder = self.builder()
+        source, _ = self.vole_fixture(builder)
+        (source / "vole-windows-session-host.exe").unlink()
+        with patch("app.windows.run_command"), self.assertRaises(FileNotFoundError):
+            builder.build_vole()
+
+    def test_wintun_extracts_the_selected_architecture(self):
+        archive = self.workspace / "references/windows-build" / f"wintun-{_WINTUN_VERSION}.zip"
         archive.parent.mkdir(parents=True)
         with zipfile.ZipFile(archive, "w") as package:
-            package.writestr("wintun/bin/amd64/wintun.dll", _pe(0x8664))
-            package.writestr("wintun/bin/arm64/wintun.dll", _pe(0xAA64))
-            package.writestr("wintun/LICENSE.txt", "upstream license")
-        for architecture, machine in (("x64", 0x8664), ("arm64", 0xAA64)):
-            self.builder.target_architecture = architecture
-            with patch("app.windows._WINTUN_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest()):
-                self.builder.install_wintun()
-            app = Path(self.project_dir) / "app"
-            self.assertEqual([file.name for file in app.iterdir()], ["wintun.dll"])
-            self.assertEqual((app / "wintun.dll").read_bytes(), _pe(machine))
-        with patch("app.windows._WINTUN_SHA256", "0" * 64), self.assertRaisesRegex(ValueError, "hash mismatch"):
-            self.builder.install_wintun()
-
-    def test_installer_keeps_released_identity_and_user_scope(self):
-        root = Path(__file__).resolve().parents[2]
-        # These distributed identity values must not drift across upgrades.
-        config = (root / "windows/packaging/exe/make_config.yaml").read_text()
-        self.assertIn("app_id: 835d7bbd-85bb-4c73-97f8-ce0740f151a7", config)
-        self.assertIn("executable_name: OneXray.exe", config)
-        self.assertIn("privileges_required: lowest", config)
-
-    def test_msix_uses_store_version_without_rebuilding_windows(self):
-        with (
-            patch("app.windows.dart_command", return_value="dart"),
-            patch("app.windows.run_command") as run_command,
-            patch("app.windows.package_with_vcore") as package_with_vcore,
-        ):
-            self.builder.build_app()
-
-        run_command.assert_called_once_with(
-            [
-                "dart",
-                "run",
-                "msix:create",
-                "--build-windows",
-                "false",
-                "--store",
-                "--architecture",
-                "x64",
-                "--version",
-                "26.7.3.0",
-                "--output-path",
-                self.builder.output_dir,
-                "--output-name",
-                "OneXray-windows-amd64",
-            ],
-            cwd=self.builder.root_dir,
-        )
-        package_with_vcore.assert_called_once_with(
-            os.path.join(
-                self.builder.output_dir,
-                "OneXray-windows-amd64.msix",
-            ),
-            local_development=False,
-            certificate_thumbprint=None,
-            certificate_path=None,
-            certificate_password=None,
-            development_publisher=None,
-        )
-
-    def test_arm64_msix_uses_arm64_architecture(self):
-        self.builder.target_architecture = "arm64"
-        self.builder.package_suffix = "windows-arm64"
-
-        with (
-            patch("app.windows.dart_command", return_value="dart"),
-            patch("app.windows.run_command") as run_command,
-            patch("app.windows.package_with_vcore"),
-        ):
-            self.builder.package_msix()
-
-        command = run_command.call_args.args[0]
-        self.assertEqual(command[command.index("--architecture") + 1], "arm64")
-        self.assertEqual(command[-1], "OneXray-windows-arm64")
-
-    def test_vcore_build_uses_build_only_cli_and_native_architecture(self):
-        vcore_dir = os.path.join(self.temp_dir.name, "VCore")
-        with (
-            patch.object(self.builder, "_vcore_dir", return_value=vcore_dir),
-            patch("app.windows.run_command") as run_command,
-            patch("app.windows._copy_vcore_artifacts") as copy_vcore_artifacts,
-        ):
-            self.builder.build_vcore()
-
-        run_command.assert_called_once_with(
-            [
-                "uv",
-                "run",
-                "--project",
-                os.path.join(vcore_dir, "scripts"),
-                "--locked",
-                "vcore-scripts",
-                "build",
-                "windows",
-            ],
-            cwd=vcore_dir,
-        )
-        copy_vcore_artifacts.assert_called_once_with(
-            os.path.join(vcore_dir, "dist", "windows", "x64"),
-            os.path.join(self.project_dir, "app"),
-            "x64",
-        )
-
-    def test_prepare_msix_bundle_stages_path_resolved_by_msix_3_18(self):
-        self.builder.target_architecture = "arm64"
-        source = os.path.join(
-            self.temp_dir.name,
-            "build",
-            "windows",
-            "arm64",
-            "runner",
-            "Release",
-        )
-        self._bundle()
-
-        WindowsBuilder._prepare_msix_bundle(self.builder)
-
-        self.assertTrue(
-            os.path.isfile(
-                os.path.join(
-                    self.temp_dir.name,
-                    "build",
-                    "windows",
-                    "arm64",
-                    "arm64",
-                    "runner",
-                    "Release",
-                    "OneXray.exe",
-                )
-            )
-        )
-
-    def test_msix_rejects_versions_the_store_cannot_accept(self):
-        versions = ("26.8", "dev.8.5", "26.70000.5", "0.8.5")
-        for version in versions:
-            with self.subTest(version=version):
-                with patch.object(self.builder, "read_version", return_value=version):
-                    with self.assertRaises(ValueError):
-                        self.builder.msix_version()
-
-    def test_target_architecture_prefers_workflow_setting(self):
-        with patch.dict(os.environ, {"ONEXRAY_WINDOWS_ARCH": "arm64"}):
-            self.assertEqual(WindowsBuilder._target_architecture(), "arm64")
-
-    def test_local_signing_requires_certificate_and_publisher(self):
-        with self.assertRaises(ValueError):
-            package_with_vcore(
-                "missing.msix",
-                local_development=True,
-                certificate_path="missing.pfx",
-                certificate_password="test",
-                development_publisher="CN=OneXray Development",
-            )
-        with self.assertRaisesRegex(ValueError, "40 hexadecimal"):
-            package_with_vcore(
-                "missing.msix",
-                local_development=True,
-                certificate_thumbprint="invalid",
-                development_publisher="CN=OneXray Development",
+            for architecture, directory in (("x64", "amd64"), ("arm64", "arm64")):
+                package.writestr(f"wintun/bin/{directory}/wintun.dll", architecture.encode())
+        for architecture in ("x64", "arm64"):
+            builder = self.builder(architecture)
+            builder.install_wintun()
+            self.assertEqual(
+                (self.root / "windows/app/wintun.dll").read_bytes(), architecture.encode()
             )
 
-    def test_vcore_artifact_manifest_is_verified_before_copying(self):
-        source = os.path.join(self.temp_dir.name, "vcore")
-        destination = os.path.join(self.project_dir, "app")
-        _write_vcore_set(source)
-
-        _copy_vcore_artifacts(source, destination, "x64")
-
-        for name in _VCORE_ARTIFACTS:
-            self.assertTrue(os.path.isfile(os.path.join(destination, name)))
-
-    def test_vcore_artifacts_ignore_build_identity(self):
-        identities = {
-            "omitted": None,
-            "schema31": "VCore;engine=rust;coreVersion=0.1.0;invokeApiVersion=5;configVersion=31",
-            "other": "different build identity",
-        }
-        for name, identity in identities.items():
-            with self.subTest(identity=name):
-                source = os.path.join(self.temp_dir.name, f"vcore-{name}")
-                destination = os.path.join(self.project_dir, f"app-{name}")
-                manifest = _write_vcore_set(source)
-                if identity is not None:
-                    manifest["buildIdentity"] = identity
-                _write_manifest(source, manifest)
-                _copy_vcore_artifacts(source, destination, "x64")
-                self.assertEqual(set(os.listdir(destination)), set(_VCORE_ARTIFACTS))
-
-    def test_vcore_artifact_manifest_rejects_incompatible_sets(self):
-        mutations = {
-            "format": lambda manifest: manifest.update(formatVersion=2),
-            "revision": lambda manifest: manifest.update(
-                windowsPackageIntegrationRevision=1
-            ),
-            "previous revision": lambda manifest: manifest.update(
-                windowsPackageIntegrationRevision=2
-            ),
-            "architecture": lambda manifest: manifest.update(architecture="arm64"),
-            "file set": lambda manifest: manifest["artifacts"].pop(
-                "vcore-windows-session-host.exe"
-            ),
-            "hash": lambda manifest: manifest["artifacts"].update(
-                {"vcore.dll": "0" * 64}
-            ),
-        }
-        for name, mutate in mutations.items():
-            with self.subTest(name=name):
-                source = os.path.join(self.temp_dir.name, name.replace(" ", "-"))
-                manifest = _write_vcore_set(source)
-                mutate(manifest)
-                _write_manifest(source, manifest)
-                with self.assertRaises(ValueError):
-                    _copy_vcore_artifacts(
-                        source,
-                        os.path.join(self.project_dir, "app"),
-                        "x64",
-                    )
-
-    def test_store_and_local_manifests_have_one_application_contract(self):
-        for local_development in (False, True):
-            with self.subTest(local_development=local_development):
-                manifest = os.path.join(
-                    self.temp_dir.name,
-                    f"AppxManifest-{local_development}.xml",
-                )
-                with open(manifest, "w", encoding="utf-8") as output:
-                    output.write(_MANIFEST_FIXTURE)
-
-                augment_manifest(
-                    manifest,
-                    local_development=local_development,
-                    development_publisher="CN=OneXray Development",
-                )
-
-                root = ET.parse(manifest).getroot()
-                ns = {
-                    "f": _FOUNDATION,
-                    "uap": _UAP,
-                    "uap10": _UAP10,
-                    "desktop": _DESKTOP,
-                }
-                identity = root.find("f:Identity", ns)
-                self.assertEqual(
-                    identity.attrib["Name"],
-                    "OneXray.Dev" if local_development else "YuanDevLLC.OneXray",
-                )
-                self.assertEqual(
-                    identity.attrib["Publisher"],
-                    "CN=OneXray Development" if local_development else "CN=Store",
-                )
-                ignorable = root.attrib["IgnorableNamespaces"].split()
-                self.assertIn("uap10", ignorable)
-                self.assertNotIn("uap3", ignorable)
-
-                applications = root.findall("f:Applications/f:Application", ns)
-                self.assertEqual(len(applications), 1)
-                application = applications[0]
-                self.assertEqual(application.attrib["Id"], "OneXray")
-                self.assertEqual(application.attrib["Executable"], "OneXray.exe")
-                self.assertFalse(
-                    any("AppListEntry" in element.attrib for element in root.iter())
-                )
-
-                session = application.find(
-                    "f:Extensions/desktop:Extension"
-                    "[@Category='windows.fullTrustProcess']",
-                    ns,
-                )
-                self.assertEqual(
-                    session.attrib["Executable"],
-                    "vcore-windows-session-host.exe",
-                )
-                self.assertIsNotNone(session.find("desktop:FullTrustProcess", ns))
-
-                provider = application.find(
-                    "f:Extensions/f:Extension[@Category='windows.backgroundTasks']",
-                    ns,
-                )
-                self.assertEqual(
-                    provider.attrib["Executable"],
-                    "vcore-windows-vpn-host.exe",
-                )
-                self.assertEqual(
-                    provider.attrib["EntryPoint"],
-                    "VCore.VpnBackgroundTask",
-                )
-                self.assertEqual(
-                    provider.attrib[f"{{{_UAP10}}}RuntimeBehavior"],
-                    "windowsApp",
-                )
-                self.assertEqual(
-                    provider.attrib[f"{{{_UAP10}}}TrustLevel"],
-                    "appContainer",
-                )
-                self.assertIsNotNone(
-                    provider.find("f:BackgroundTasks/uap:Task[@Type='vpnClient']", ns)
-                )
-                self.assertIsNotNone(
-                    application.find(
-                        "f:Extensions/uap:Extension[@Category='windows.protocol']"
-                        "/uap:Protocol[@Name='onexray']",
-                        ns,
-                    )
-                )
-                startup = application.find(
-                    "f:Extensions/desktop:Extension[@Category='windows.startupTask']"
-                    "/desktop:StartupTask",
-                    ns,
-                )
-                self.assertEqual(startup.attrib["TaskId"], "VCoreStartup")
-                self.assertEqual(startup.attrib["Enabled"], "false")
-                self.assertEqual(
-                    root.find(".//f:InProcessServer/f:Path", ns).text,
-                    "vcore.dll",
-                )
-
-    def test_manifest_rejects_duplicate_vcore_extensions(self):
-        manifest = os.path.join(self.temp_dir.name, "AppxManifest.xml")
-        with open(manifest, "w", encoding="utf-8") as output:
-            output.write(_MANIFEST_FIXTURE)
-        augment_manifest(manifest)
-
-        with self.assertRaises(ValueError):
-            augment_manifest(manifest)
+    def test_installer_identity_remains_stable(self):
+        config = self.config.read_text()
+        for setting in (
+            "app_id: 835d7bbd-85bb-4c73-97f8-ce0740f151a7",
+            "executable_name: OneXray.exe",
+            "privileges_required: lowest",
+        ):
+            self.assertIn(setting, config)
 
 
-def _write_vcore_set(path):
-    os.makedirs(path)
-    hashes = {}
-    for name in _VCORE_ARTIFACTS:
-        artifact = os.path.join(path, name)
-        contents = _pe(0x8664)
-        with open(artifact, "wb") as output:
-            output.write(contents)
-        hashes[name] = hashlib.sha256(contents).hexdigest()
-    manifest = {
-        "formatVersion": 1,
-        "windowsPackageIntegrationRevision": 3,
-        "architecture": "x64",
-        "artifacts": hashes,
-    }
-    _write_manifest(path, manifest)
-    return manifest
-
-
-def _pe(machine):
-    contents = bytearray(0x86)
-    contents[:2] = b"MZ"
-    contents[0x3C:0x40] = (0x80).to_bytes(4, "little")
-    contents[0x80:0x84] = b"PE\0\0"
-    contents[0x84:0x86] = machine.to_bytes(2, "little")
-    return contents
-
-
-def _write_manifest(path, manifest):
-    with open(
-        os.path.join(path, "vcore-windows-artifacts.json"),
-        "w",
-        encoding="utf-8",
-    ) as output:
-        json.dump(manifest, output)
-
-
-_FOUNDATION = "http://schemas.microsoft.com/appx/manifest/foundation/windows10"
-_UAP = "http://schemas.microsoft.com/appx/manifest/uap/windows10"
-_UAP10 = "http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-_DESKTOP = "http://schemas.microsoft.com/appx/manifest/desktop/windows10"
-_MANIFEST_FIXTURE = f'''<?xml version="1.0" encoding="utf-8"?>
-<Package xmlns="{_FOUNDATION}"
- xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
- xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
- xmlns:desktop="{_DESKTOP}"
+NS = {
+    "f": "http://schemas.microsoft.com/appx/manifest/foundation/windows10",
+    "uap": "http://schemas.microsoft.com/appx/manifest/uap/windows10",
+    "uap10": "http://schemas.microsoft.com/appx/manifest/uap/windows10/10",
+    "desktop": "http://schemas.microsoft.com/appx/manifest/desktop/windows10",
+}
+MANIFEST = f'''<Package xmlns="{NS["f"]}" xmlns:uap="{NS["uap"]}" xmlns:desktop="{NS["desktop"]}"
  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
- IgnorableNamespaces="uap uap3 desktop rescap">
- <Identity Name="YuanDevLLC.OneXray" Publisher="CN=Store" Version="1.0.0.0" ProcessorArchitecture="x64" />
+ IgnorableNamespaces="uap desktop rescap">
+ <Identity Name="YuanDevLLC.OneXray" Publisher="CN=Store" Version="26.7.3.0" ProcessorArchitecture="x64" />
  <Capabilities>
-  <Capability Name="internetClientServer" />
-  <Capability Name="privateNetworkClientServer" />
-  <rescap:Capability Name="runFullTrust" />
-  <rescap:Capability Name="networkingVpnProvider" />
+  <Capability Name="internetClientServer" /><Capability Name="privateNetworkClientServer" />
+  <rescap:Capability Name="runFullTrust" /><rescap:Capability Name="networkingVpnProvider" />
  </Capabilities>
- <Applications>
-  <Application Id="OneXray" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
-   <Extensions>
-    <uap:Extension Category="windows.protocol">
-     <uap:Protocol Name="onexray" />
-    </uap:Extension>
-    <desktop:Extension Category="windows.startupTask" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
-     <desktop:StartupTask TaskId="VCoreStartup" Enabled="false" DisplayName="OneXray" />
-    </desktop:Extension>
-   </Extensions>
-  </Application>
- </Applications>
-</Package>
-'''
+ <Applications><Application Id="OneXray" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
+  <Extensions>
+   <uap:Extension Category="windows.protocol"><uap:Protocol Name="onexray" /></uap:Extension>
+   <desktop:Extension Category="windows.startupTask" Executable="OneXray.exe" EntryPoint="Windows.FullTrustApplication">
+    <desktop:StartupTask TaskId="VoleStartup" Enabled="false" DisplayName="OneXray" />
+   </desktop:Extension>
+  </Extensions>
+ </Application></Applications>
+</Package>'''
 
 
 if __name__ == "__main__":

@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/OneXray/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/OneXray/OneXray?display_name=tag&sort=semver" alt="Latest release"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/github/license/OneXray/OneXray" alt="License"></a>
+  <a href="https://github.com/YuanDevTeam/OneXray/releases/latest"><img src="https://img.shields.io/github/v/release/YuanDevTeam/OneXray?display_name=tag&sort=semver" alt="Latest release"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/YuanDevTeam/OneXray" alt="License"></a>
   <img src="https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20Android%20%7C%20Windows%20%7C%20Linux-0A84FF" alt="Supported platforms">
 </p>
 
 <p align="center">
   <a href="https://onexray.com">Documentation</a> ·
-  <a href="https://github.com/OneXray/OneXray/releases">Releases</a> ·
+  <a href="https://github.com/YuanDevTeam/OneXray/releases">Releases</a> ·
   <a href="https://t.me/OneXrayApp">Telegram</a>
 </p>
 
@@ -69,14 +69,14 @@ you have not run. Treat imported content as data, not instructions.
 
 | Platform | Requirements | Download |
 | --- | --- | --- |
-| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-ios.ipa) |
+| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-ios.ipa) |
 | macOS | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
-| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/OneXray/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
+| Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-android-universal.apk) |
+| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
+| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
 
 This README describes the current codebase. Store and release builds may differ. See the [installation notes](#installation-notes) for platform-specific requirements.
 
@@ -209,21 +209,9 @@ Shared configurations, subscription URLs, and exported logs may contain credenti
 - [User documentation](https://onexray.com) and [Telegram community](https://t.me/OneXrayApp).
 - [Development setup](./readme/FIRST_RUN.md) for local debugging; [build scripts](./build_scripts/README.md) for packaging.
 - [Current App contracts](./docs/README.md) (Chinese), including [imports and OneXray links](./docs/subscriptions-and-sharing.md).
-- [Report a bug or request a feature](https://github.com/OneXray/OneXray/issues). Include the platform, App/Xray-core versions, and steps to reproduce; do not publish private credentials.
+- [Report a bug or request a feature](https://github.com/YuanDevTeam/OneXray/issues). Include the platform, App/Xray-core versions, and steps to reproduce; do not publish private credentials.
 
-Code, translations, and [documentation improvements](https://github.com/OneXray/onexray.com) are welcome.
-
-## Donate
-
-Support OneXray development with an optional **USDC or USDT** donation on the **Solana network**.
-Use the copy button on this address block, or visit the [donation page](https://onexray.com/docs/donate/).
-
-```text
-A7srSnpozZDHVvm863xnCbtSr8DRxMCd8dJi3uS9MGcj
-```
-
-Send only USDC or USDT on Solana. Check the network and full address before sending; transfers on other networks may be lost.
-Donations do not unlock features or provide servers or subscriptions.
+Code, translations, and [documentation improvements](https://github.com/yiguodev/onexray.com) are welcome.
 
 ## License
 

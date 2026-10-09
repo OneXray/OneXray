@@ -252,9 +252,11 @@ class SettingsController extends PageCubit<SettingsPageState> {
       SettingsLink.review => null,
       SettingsLink.community => Uri.parse('https://t.me/OneXrayApp'),
       SettingsLink.feedback => Uri.parse(
-        'https://github.com/OneXray/OneXray/issues/new',
+        'https://github.com/YuanDevTeam/OneXray/issues/new',
       ),
-      SettingsLink.source => Uri.parse('https://github.com/OneXray/OneXray'),
+      SettingsLink.source => Uri.parse(
+        'https://github.com/YuanDevTeam/OneXray',
+      ),
       SettingsLink.credits => DocURLHelper.creditsUri(),
       SettingsLink.privacy => DocURLHelper.privacyUri(),
     };

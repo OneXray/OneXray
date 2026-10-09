@@ -11,7 +11,7 @@ import 'package:onexray/core/pigeon/messages.g.dart';
 import 'package:onexray/core/pigeon/model.dart';
 
 void main() {
-  final token = 'vcore-session-v2:${'a' * 64}';
+  final token = 'vole-session-v2:${'a' * 64}';
   String response(String status) => jsonEncode({
     'success': true,
     'error': '',

@@ -21,12 +21,12 @@
 在工作空间中只 clone 尚未准备的仓库：
 
 ```shell
-git clone https://github.com/OneXray/OneXray.git
+git clone https://github.com/YuanDevTeam/OneXray.git
 git clone https://github.com/XTLS/libXray.git
 cd OneXray
 ```
 
-两个仓库放在同一级；Windows 另需 `VCore/` 或 `VCORE_DIR`。下文命令均从 App 根目录
+两个仓库放在同一级；Windows 另需 Vole，目录规则见[构建手册](../build_scripts/README.md#prepare-the-workspace)。下文命令均从 App 根目录
 执行。使用与 App 匹配的依赖，CI 引用见 [Build workflow](../.github/workflows/build.yml)，
 无需额外 clone Xray-core。先检查 `flutter doctor -v`。Flutter/Dart 命令跨终端也须
 串行；生成或检查前停止正在运行的 `flutter run`。
@@ -74,7 +74,7 @@ chmod +x linux/app/OneXrayCore
 ### Windows
 
 按[构建手册](../build_scripts/README.md#windows)准备完整原生 bundle。两种模式都需要
-Core、Wintun 和 VCore，仅复制 libXray 不足以运行。`windows/app/` 就绪后，普通
+Core、Wintun 和 Vole，仅复制 libXray 不足以运行。`windows/app/` 就绪后，普通
 Debug 默认使用 EXE 模式。
 
 ### 复制完整 Geodata
