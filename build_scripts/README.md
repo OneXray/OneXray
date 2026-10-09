@@ -161,6 +161,8 @@ Rerun metadata and build jobs together when retrying a release.
   upstream `main` with stable Rust and `locked: true`, using that branch's Cargo
   lockfile. The Action resolves `main` on each run and caches binaries by the
   resolved revision. This includes Inno Setup 7 support missing from Komac 2.16.0.
+  The workflow pipes `komac update --dry-run` output through `awk` to save separate
+  YAML files by manifest type and locale; dry-run returns before handling `--output`.
   [winget_manifest.py](winget_manifest.py) retains identity, release URL and user
   installation policy checks. Komac supplies the schema-required `InstallerSha256`;
   no extra comparison with GitHub asset digests is performed. Only the final
