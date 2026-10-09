@@ -23,7 +23,7 @@
 <p align="center">
   <a href="https://onexray.com">文档站</a> ·
   <a href="https://github.com/YuanDevTeam/OneXray/releases">版本发布</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a>
+  <a href="https://t.me/YuanDevTeam">Telegram</a>
 </p>
 
 <p align="center">
@@ -203,7 +203,7 @@ ZIP 不会自动注册 `onexray://` 链接。GNOME 用户可能需要安装 [App
 
 ## 文档与贡献
 
-- [使用文档](https://onexray.com)与 [Telegram 社区](https://t.me/OneXrayApp)。
+- [使用文档](https://onexray.com)与 [Telegram 社区](https://t.me/YuanDevTeam)。
 - 本地调试参阅[开发环境配置](./FIRST_RUN.zh_CN.md)，打包参阅[构建脚本](../build_scripts/README.md)。
 - [App 当前行为与工程约定](../docs/README.md)，包括[导入与 OneXray 链接](../docs/subscriptions-and-sharing.md)。
 - [反馈问题或建议](https://github.com/YuanDevTeam/OneXray/issues)：请附上平台、App / Xray-core 版本和复现步骤，不要公开私密凭据。

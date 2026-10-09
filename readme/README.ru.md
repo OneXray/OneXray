@@ -23,7 +23,7 @@
 <p align="center">
   <a href="https://onexray.com">Документация</a> ·
   <a href="https://github.com/YuanDevTeam/OneXray/releases">Релизы</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a>
+  <a href="https://t.me/YuanDevTeam">Telegram</a>
 </p>
 
 <p align="center">
@@ -208,7 +208,7 @@ ZIP-сборки не регистрируют ссылки `onexray://` авт�
 
 ## Документация и участие
 
-- [Руководство пользователя](https://onexray.com) и [сообщество Telegram](https://t.me/OneXrayApp).
+- [Руководство пользователя](https://onexray.com) и [сообщество Telegram](https://t.me/YuanDevTeam).
 - [Настройка среды разработки](./FIRST_RUN.ru.md) для локальной отладки; [скрипты сборки](../build_scripts/README.md) для создания пакетов.
 - [Текущие правила работы приложения](../docs/README.md) (на китайском), включая [импорт и ссылки OneXray](../docs/subscriptions-and-sharing.md).
 - [Сообщить об ошибке или предложить функцию](https://github.com/YuanDevTeam/OneXray/issues). Укажите платформу, версии приложения и Xray-core, шаги воспроизведения; не публикуйте конфиденциальные данные.

@@ -23,7 +23,7 @@
 <p align="center">
   <a href="https://onexray.com">Documentation</a> ·
   <a href="https://github.com/YuanDevTeam/OneXray/releases">Releases</a> ·
-  <a href="https://t.me/OneXrayApp">Telegram</a>
+  <a href="https://t.me/YuanDevTeam">Telegram</a>
 </p>
 
 <p align="center">
@@ -206,7 +206,7 @@ Shared configurations, subscription URLs, and exported logs may contain credenti
 
 ## Documentation and contributing
 
-- [User documentation](https://onexray.com) and [Telegram community](https://t.me/OneXrayApp).
+- [User documentation](https://onexray.com) and [Telegram community](https://t.me/YuanDevTeam).
 - [Development setup](./readme/FIRST_RUN.md) for local debugging; [build scripts](./build_scripts/README.md) for packaging.
 - [Current App contracts](./docs/README.md) (Chinese), including [imports and OneXray links](./docs/subscriptions-and-sharing.md).
 - [Report a bug or request a feature](https://github.com/YuanDevTeam/OneXray/issues). Include the platform, App/Xray-core versions, and steps to reproduce; do not publish private credentials.
