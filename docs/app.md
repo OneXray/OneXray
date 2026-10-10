@@ -68,6 +68,10 @@ Linux runner 在创建 Flutter View 前关闭 Impeller，其他平台不受影�
 套餐摘要与详情复用订阅列表/分组页，无信息时隐藏，不限制节点或连接操作。
 导入、更新、分享和套餐语义见 [服务器与分享](subscriptions-and-sharing.md)。
 测速不锁定菜单；批量按钮可取消当前分组的手动任务，不影响其他任务。队列边界见 [数据管理](data-management.md)。
+手动单节点、订阅和地区分组测速在 VPN 已连接时先提醒请求可能经过当前 VPN、延迟结果可能不准确，
+提供“取消／继续测速”；每次操作只确认一次，多批次不重复。连接或断开中、以及仍可断开的失败状态
+同样提醒，普通准备和已断开状态直接测速。等待确认时不入队、不增加共享 loading，连续点击不叠加弹窗；
+取消、关闭弹窗或退出页面不提交任务。继续测速不改变 VPN 连接。自动测速不弹窗，也受当前 VPN 路径影响。
 
 ### 高级
 
@@ -82,7 +86,7 @@ Linux runner 在创建 Flutter View 前关闭 Impeller，其他平台不受影�
   广播自动化在独立详情页配置，立即保存，不重连，见 [外部接口](external-interfaces.md)。
 - Windows 系统 VPN 入口仅 MSIX 显示，提供自动连接、局域网绕过及排除网段。
   EXE 不应用或校验停用的 MSIX 策略，两种模式均保留公共设置和出口网卡。
-- Xray 提供路由数据、更新周期、测速 URL/超时、日志、局域网代理共享、只读实际运行配置。
+- Xray 提供路由数据、更新周期、测速 URL/超时与出口地区探测开关、日志、局域网代理共享、只读实际运行配置。
   The sharing switch is in the Xray configuration section; its port is edited on a separate page.
   Saving either only persists settings, without a restart prompt. Changes apply when the App next
   compiles a connection for start/restart; the current VPN and native saved-start input remain unchanged.
@@ -93,6 +97,10 @@ Linux runner 在创建 Flutter View 前关闭 Impeller，其他平台不受影�
   System Extension 隐藏整个日志区和对应保存/恢复按钮，不提供原生日志读取；其他入口不受影响。
 
 高级页没有 iOS Debug Proxy 开关；模拟器适配属于 Swift，见 [Raw 运行边界](xray-configuration.md#raw-json)。
+测速设置的出口地区探测默认关闭，旧偏好缺少该设置时也关闭；页面说明开启会显著增加测速时间，
+关闭后保留已有地区，并常驻说明 VPN 开启时延迟可能不准确、建议关闭 VPN 后测速。
+保存影响后续手动及自动任务，无需重连；取消不保存草稿，正在执行的任务沿用开始时的设置。
+地区展示、分组和连接选择保留，请求与缓存规则见 [测速结果](data-management.md#测速结果)。
 
 ### 设置
 
@@ -163,7 +171,8 @@ Android 设置页可请求固定 `home_widget`，不把请求完成当作已添�
 提示保留操作和具体原因，区分输入、配置、网络、权限、存储、冲突和运行失败，不猜未知原因。
 系统/libXray 原始诊断保留来源文本；不为分类新增 App 侧 Xray 校验。
 表单与 JSON 失败保留草稿和可复制原因，迟到/取消结果不污染新操作；运行错误不替代原生状态。
-测速失败仅保留进程内行提示，重试成功清除，不存错误历史。
+测速失败仅保留进程内行提示，重试成功清除，不存错误历史。延迟成功而地区失败时使用普通提示，
+延迟失败才使用测速错误样式；关闭地区后完成新测速会清除旧地区错误提示。
 
 连接页、托盘与快捷方式复用失败解释；后台入口额外通知。托盘节点不足仅通知、不抢占窗口，
 授权/网卡等需处理的问题显示窗口。取消不通知失败，停止/退出失败保留重试入口。

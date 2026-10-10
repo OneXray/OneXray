@@ -956,7 +956,9 @@ class ServerNodeRow extends StatelessWidget {
                         : AppLocalizations.of(context)!.prototypeSpeedTest,
                   ),
                   style: AppTypography.settingsDetailNote.copyWith(
-                    color: ColorManager.palette(context).destructive,
+                    color: failure.success
+                        ? ColorManager.palette(context).mutedForeground
+                        : ColorManager.palette(context).destructive,
                   ),
                 ),
               ),

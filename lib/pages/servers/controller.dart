@@ -224,6 +224,7 @@ class ServersController extends PageCubit<ServersPageState>
 
   late final ServerAssetService assets;
   final PingService _ping;
+  bool _confirmingTest = false;
   final search = TextEditingController();
   @override
   ServerGrouping get grouping =>
@@ -538,6 +539,10 @@ class ServersController extends PageCubit<ServersPageState>
   }) async {
     final ids = rows.map((row) => row.id).toSet();
     if (ids.isEmpty) return;
+    final confirmed = await _confirmManualTest(context);
+    if (!confirmed || !context.mounted || !_testPageVisible(context)) {
+      return;
+    }
     await run(context, () async {
       final request = Object();
       emit(
@@ -561,6 +566,38 @@ class ServersController extends PageCubit<ServersPageState>
         );
       }
     });
+  }
+
+  bool _testPageVisible(BuildContext context) =>
+      context.mounted &&
+      isPageActive &&
+      TickerMode.valuesOf(context).enabled &&
+      (ModalRoute.of(context)?.isCurrent ?? true);
+
+  Future<bool> _confirmManualTest(BuildContext context) async {
+    if (_confirmingTest || !_testPageVisible(context)) return false;
+    final view = coordinator.state.value;
+    final l = AppLocalizations.of(context)!;
+    final title = switch (view.phase) {
+      ConnectionPhase.connected => l.pingVpnActiveTitle,
+      ConnectionPhase.connecting ||
+      ConnectionPhase.disconnecting => l.pingVpnChangingTitle,
+      ConnectionPhase.failed when view.canDisconnect =>
+        l.pingVpnPossiblyActiveTitle,
+      _ => null,
+    };
+    if (title == null) return true;
+    _confirmingTest = true;
+    try {
+      return await ContextAlert.showConfirmDialog(
+        context,
+        title: title,
+        content: l.pingVpnWarning,
+        confirmLabel: l.pingContinueTest,
+      );
+    } finally {
+      _confirmingTest = false;
+    }
   }
 
   void cancelTest(String groupId) {

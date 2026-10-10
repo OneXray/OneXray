@@ -1836,9 +1836,9 @@
   "@prototypeSpeedTest": {
     "description": "Approved prototype copy: Speed test"
   },
-  "prototypeSpeedTestSummary": "Timeout and speed test URL",
+  "prototypeSpeedTestSummary": "Timeout, test URL, and region detection",
   "@prototypeSpeedTestSummary": {
-    "description": "Approved prototype copy: Timeout and speed test URL"
+    "description": "Summary of the speed test settings page."
   },
   "prototypeTimeout": "Timeout",
   "@prototypeTimeout": {
@@ -3006,5 +3006,21 @@
         "type": "String"
       }
     }
-  }
+  },
+  "pingLocationEnabled": "Detect node exit region",
+  "@pingLocationEnabled": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingLocationEnabledHint": "Enabling this makes an extra request for each node’s exit region and significantly increases test time. Existing region information is kept when disabled.",
+  "@pingLocationEnabledHint": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingVpnAccuracyHint": "While the VPN is on, test requests may pass through the current VPN and latency results may be inaccurate. Disconnect the VPN before testing for more accurate results.",
+  "@pingVpnAccuracyHint": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingVpnActiveTitle": "VPN is on",
+  "@pingVpnActiveTitle": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingVpnChangingTitle": "VPN status is changing",
+  "@pingVpnChangingTitle": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingVpnPossiblyActiveTitle": "VPN may still be running",
+  "@pingVpnPossiblyActiveTitle": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingVpnWarning": "Test requests may pass through the current VPN connection, so latency results may be inaccurate. We recommend disconnecting the VPN before testing.",
+  "@pingVpnWarning": {"description": "Node latency test setting or VPN accuracy reminder."},
+  "pingContinueTest": "Continue test",
+  "@pingContinueTest": {"description": "Node latency test setting or VPN accuracy reminder."}
 }

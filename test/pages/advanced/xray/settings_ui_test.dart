@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:onexray/core/constants/preferences.dart';
 import 'package:onexray/l10n/localizations/app_localizations.dart';
 import 'package:onexray/service/settings/language/locale.dart';
@@ -24,9 +25,10 @@ import 'package:shared_preferences_platform_interface/shared_preferences_async_p
 void main() {
   late AppEventBus eventBus;
 
-  setUp(() {
+  setUp(() async {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
+    await PreferencesKey().clearUserDataPreferences();
     eventBus = AppEventBus();
   });
 
@@ -45,7 +47,7 @@ void main() {
           colorScheme: const ShadBlueColorScheme.light(),
           radius: const BorderRadius.all(Radius.circular(8)),
         ),
-        child: appChild ?? const SizedBox.shrink(),
+        child: ShadToaster(child: appChild ?? const SizedBox.shrink()),
       ),
       home: child,
     );
@@ -63,9 +65,75 @@ void main() {
     expect(find.byType(PageActionBar), findsOneWidget);
     expect(find.byType(Slider), findsNothing);
     expect(find.byType(SettingSelect<double>), findsOneWidget);
+    expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, isFalse);
+    final l = AppLocalizations.of(tester.element(find.byType(PingPage)))!;
+    expect(find.text(l.pingLocationEnabledHint), findsOneWidget);
+    expect(find.text(l.pingVpnAccuracyHint), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+
+  for (final save in [false, true]) {
+    testWidgets('region setting ${save ? 'saves' : 'cancels'} its draft', (
+      tester,
+    ) async {
+      await (PingState()
+            ..url = PingUrl.google
+            ..timeout = 7)
+          .saveToPreferences();
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, _) => Scaffold(
+              body: TextButton(
+                onPressed: () => context.push('/ping'),
+                child: const Text('Open ping settings'),
+              ),
+            ),
+          ),
+          GoRoute(path: '/ping', builder: (_, _) => const PingPage()),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: AppTheme.light,
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalePolicy.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+          builder: (_, child) => ShadTheme(
+            data: AppTheme.shad(Brightness.light),
+            child: ShadToaster(child: child!),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Open ping settings'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byType(ShadSwitch));
+      await tester.tap(find.byType(ShadSwitch));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, isTrue);
+      final storedDraft = PingState();
+      await storedDraft.readFromPreferences();
+      expect(storedDraft.locationEnabled, isFalse);
+
+      await tester.tap(find.text(save ? 'Save' : 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PingPage), findsNothing);
+      final restored = PingState();
+      await restored.readFromPreferences();
+      expect(restored.locationEnabled, save);
+      expect(restored.url, PingUrl.google);
+      expect(restored.timeout, 7);
+
+      await tester.tap(find.text('Open ping settings'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<ShadSwitch>(find.byType(ShadSwitch)).value, save);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   for (final locale in AppLocalizations.supportedLocales) {
     testWidgets('runtime preference fields fit ${locale.toLanguageTag()}', (

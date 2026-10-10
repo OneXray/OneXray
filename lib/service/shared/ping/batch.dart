@@ -98,7 +98,7 @@ class PingBatchRunner {
           .toList(growable: false),
       pingState.timeout.toInt(),
       pingState.realUrl,
-      locationUrl: NetClient.geoIPUrl,
+      locationUrl: pingState.locationEnabled ? NetClient.geoIPUrl : null,
     );
     final PingBatchResponse? response;
     try {

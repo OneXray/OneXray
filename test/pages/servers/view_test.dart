@@ -118,12 +118,22 @@ void main() {
     Locale locale = const Locale('en'),
     Brightness brightness = Brightness.light,
     bool groupPage = false,
+    ValueNotifier<bool>? pageVisibility,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = Size(width, 900);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
     final mobile = width <= AppLayout.mobileBreakpoint;
+    final browser = BlocBuilder<_Controller, ServersPageState>(
+      bloc: controller,
+      builder: (context, _) => groupPage
+          ? ServerGroupView(
+              controller: controller,
+              group: controller.groups(AppLocalizations.of(context)!).first,
+            )
+          : ServerBrowser(controller: controller, scroll: scroll),
+    );
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.material(brightness, mobile: mobile),
@@ -145,17 +155,14 @@ void main() {
                 ),
               Expanded(
                 child: ResponsiveContent(
-                  child: BlocBuilder<_Controller, ServersPageState>(
-                    bloc: controller,
-                    builder: (context, _) => groupPage
-                        ? ServerGroupView(
-                            controller: controller,
-                            group: controller
-                                .groups(AppLocalizations.of(context)!)
-                                .first,
-                          )
-                        : ServerBrowser(controller: controller, scroll: scroll),
-                  ),
+                  child: pageVisibility == null
+                      ? browser
+                      : ValueListenableBuilder<bool>(
+                          valueListenable: pageVisibility,
+                          child: browser,
+                          builder: (_, active, child) =>
+                              TickerMode(enabled: active, child: child!),
+                        ),
                 ),
               ),
             ],
@@ -165,6 +172,287 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  Future<List<int>> installPing(WidgetTester tester, {int count = 1}) async {
+    final batches = <int>[];
+    await tester.runAsync(() async {
+      final rows = <CoreConfigData>[];
+      for (var index = 0; index < count; index++) {
+        final id = await db.coreConfigDao.insertRow(
+          outboundCompanion({'tag': 'Probe $index', 'protocol': 'socks'})
+              .copyWith(countryCode: const Value('JP')),
+        );
+        rows.add((await db.coreConfigDao.searchRow(id))!);
+      }
+      await controller.close();
+      controller = _Controller(
+        database: db,
+        coordinator: coordinator,
+        ping: PingService.forTesting(
+          database: db,
+          runBatch: (sources, _) async {
+            batches.add(sources.length);
+            return [
+              for (final _ in sources) const PingBatchResult(true, 20, ''),
+            ];
+          },
+        ),
+      )..servers = rows;
+    });
+    return batches;
+  }
+
+  for (final phase in [
+    ConnectionPhase.disconnected,
+    ConnectionPhase.preparing,
+    ConnectionPhase.failed,
+  ]) {
+    testWidgets('manual probing needs no confirmation when $phase', (
+      tester,
+    ) async {
+      final batches = await installPing(tester);
+      coordinator.state.value = ConnectionView(phase: phase);
+      await pumpBrowser(tester, 427);
+      final context = tester.element(find.byType(ServerBrowser));
+      await tester.runAsync(
+        () => controller
+            .test(context, controller.servers)
+            .timeout(const Duration(seconds: 5)),
+      );
+      await tester.pumpAndSettle();
+      expect(batches, [1]);
+      expect(controller.state.serverTests, isEmpty);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final view in const [
+    ConnectionView(phase: ConnectionPhase.connected),
+    ConnectionView(phase: ConnectionPhase.connecting),
+    ConnectionView(phase: ConnectionPhase.disconnecting),
+    ConnectionView(phase: ConnectionPhase.failed, issue: 'stopFailed'),
+  ]) {
+    testWidgets('manual probing confirms before queuing when ${view.phase}', (
+      tester,
+    ) async {
+      final batches = await installPing(tester);
+      // Failed views can change their stop capability without changing phase;
+      // confirmation must read the coordinator, rather than a page snapshot.
+      coordinator.state.value = ConnectionView(phase: view.phase);
+      coordinator.state.value = view;
+      await pumpBrowser(tester, 427);
+      final context = tester.element(find.byType(ServerBrowser));
+      final l = AppLocalizations.of(context)!;
+      late Future<void> operation;
+      await tester.runAsync(() async {
+        operation = controller.serverAction(
+          context,
+          controller.servers.single,
+          ServerAction.test,
+        );
+      });
+      await tester.pumpAndSettle();
+      final title = view.phase == ConnectionPhase.connected
+          ? l.pingVpnActiveTitle
+          : view.phase == ConnectionPhase.failed
+          ? l.pingVpnPossiblyActiveTitle
+          : l.pingVpnChangingTitle;
+      expect(find.text(title), findsOneWidget);
+      expect(find.text(l.pingVpnWarning), findsOneWidget);
+      expect(batches, isEmpty);
+      expect(controller.state.serverTests, isEmpty);
+      expect(AppEventBus.instance.state.pinging, isFalse);
+      await tester.runAsync(() async {
+        await tester.tap(find.text(l.pingContinueTest));
+        await operation.timeout(const Duration(seconds: 5));
+      });
+      await tester.pumpAndSettle();
+      expect(batches, [1]);
+      expect(controller.state.serverTests, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final grouping in ServerGrouping.values) {
+    testWidgets(
+      'group confirmation cancels safely and covers every batch: $grouping',
+      (tester) async {
+        final batches = await installPing(tester, count: 7);
+        final before = controller.servers.first;
+        controller.groupBy(grouping);
+        coordinator.state.value = const ConnectionView(
+          phase: ConnectionPhase.connected,
+        );
+        await pumpBrowser(tester, 427, groupPage: true);
+        final context = tester.element(find.byType(ServerGroupView));
+        final l = AppLocalizations.of(context)!;
+        await tester.tap(
+          find.widgetWithText(OutlinedButton, l.prototypeTestServers),
+        );
+        await tester.pumpAndSettle();
+        await controller.test(context, controller.servers);
+        await tester.pumpAndSettle();
+        expect(find.text(l.pingVpnActiveTitle), findsOneWidget);
+        expect(batches, isEmpty);
+        expect(controller.state.serverTests, isEmpty);
+        expect(AppEventBus.instance.state.pinging, isFalse);
+        await tester.tap(find.text(l.buttonCancel));
+        await tester.pumpAndSettle();
+        final unchanged = await tester.runAsync(
+          () => db.coreConfigDao.searchRow(before.id),
+        );
+        expect(unchanged!.delay, before.delay);
+        expect(unchanged.countryCode, before.countryCode);
+        expect(batches, isEmpty);
+
+        late Future<void> operation;
+        await tester.runAsync(() async {
+          operation = controller.test(
+            context,
+            controller.servers,
+            groupId: controller.groups(l).single.id,
+          );
+        });
+        await tester.pumpAndSettle();
+        expect(find.text(l.pingVpnActiveTitle), findsOneWidget);
+        await tester.runAsync(() async {
+          await tester.tap(find.text(l.pingContinueTest));
+          await operation.timeout(const Duration(seconds: 5));
+        });
+        await tester.pumpAndSettle();
+        expect(batches, [5, 2]);
+        expect(find.text(l.pingVpnActiveTitle), findsNothing);
+        expect(controller.state.serverTests, isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('a dismissed confirmation never queues a probe', (tester) async {
+    final batches = await installPing(tester);
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+    );
+    await pumpBrowser(tester, 427);
+    final context = tester.element(find.byType(ServerBrowser));
+    final operation = controller.test(context, controller.servers);
+    await tester.pumpAndSettle();
+    Navigator.of(context, rootNavigator: true).pop();
+    await operation;
+    await tester.pumpAndSettle();
+    expect(batches, isEmpty);
+    expect(controller.state.serverTests, isEmpty);
+    expect(AppEventBus.instance.state.pinging, isFalse);
+  });
+
+  testWidgets('switching away from a retained tab cancels pending probing', (
+    tester,
+  ) async {
+    final batches = await installPing(tester);
+    final visible = ValueNotifier(true);
+    addTearDown(visible.dispose);
+    coordinator.state.value = const ConnectionView(
+      phase: ConnectionPhase.connected,
+    );
+    await pumpBrowser(tester, 427, pageVisibility: visible);
+    final context = tester.element(find.byType(ServerBrowser));
+    final l = AppLocalizations.of(context)!;
+    final operation = controller.test(context, controller.servers);
+    await tester.pumpAndSettle();
+    visible.value = false;
+    await tester.pump();
+    expect(context.mounted, isTrue);
+    expect(controller.isPageActive, isTrue);
+    await tester.tap(find.text(l.pingContinueTest));
+    await operation;
+    await tester.pumpAndSettle();
+    expect(batches, isEmpty);
+    expect(controller.state.serverTests, isEmpty);
+    expect(AppEventBus.instance.state.pinging, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final closeController in [false, true]) {
+    testWidgets(
+      'leaving the page while confirming skips probing (closed: $closeController)',
+      (tester) async {
+        final batches = await installPing(tester);
+        coordinator.state.value = const ConnectionView(
+          phase: ConnectionPhase.connected,
+        );
+        await pumpBrowser(tester, 427);
+        final context = tester.element(find.byType(ServerBrowser));
+        final l = AppLocalizations.of(context)!;
+        final operation = controller.test(context, controller.servers);
+        await tester.pumpAndSettle();
+        if (closeController) {
+          // A real page disposes its widgets with the controller. Retain the
+          // dialog, but remove the search field before releasing its resource.
+          Navigator.of(context, rootNavigator: true).replace(
+            oldRoute: ModalRoute.of(context)!,
+            newRoute: MaterialPageRoute<void>(
+              builder: (_) => const Scaffold(body: Text('Another page')),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(context.mounted, isFalse);
+          await controller.close();
+          await tester.tap(find.text(l.pingContinueTest));
+        } else {
+          final dialogRoute = ModalRoute.of(
+            tester.element(find.text(l.pingContinueTest)),
+          )!;
+          final navigator = Navigator.of(context, rootNavigator: true);
+          unawaited(
+            navigator.push<void>(
+              MaterialPageRoute(
+                builder: (_) => const Scaffold(body: Text('Another page')),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          // Confirmation and navigation may complete in either order. A still
+          // mounted controller does not mean its originating route is active.
+          navigator.removeRoute(dialogRoute, true);
+        }
+        await operation;
+        await tester.pumpAndSettle();
+        expect(batches, isEmpty);
+        expect(controller.state.serverTests, isEmpty);
+        expect(AppEventBus.instance.state.pinging, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'location errors use a note while latency errors use destructive color',
+    (tester) async {
+      await pumpBrowser(tester, 427, groupPage: true);
+      for (final result in const [
+        PingBatchResult(true, 20, '', locationError: 'Location failed'),
+        PingBatchResult(false, -1, 'Latency failed'),
+      ]) {
+        AppEventBus.instance.updatePingResults({1: result});
+        await tester.pumpAndSettle();
+        final message = tester.widget<SelectableText>(
+          find.descendant(
+            of: find.byType(ServerNodeRow).first,
+            matching: find.byType(SelectableText),
+          ),
+        );
+        final palette = ColorManager.palette(
+          tester.element(find.byType(ServerNodeRow).first),
+        );
+        expect(
+          message.style!.color,
+          result.success ? palette.mutedForeground : palette.destructive,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final (locale, width) in const [
     (Locale('en'), 1160.0),

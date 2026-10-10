@@ -254,7 +254,12 @@ class PingService {
               table.data.equals(row.data!),
         ))
         .write(
-          CoreConfigCompanion(delay: Value(delay), countryCode: Value(country)),
+          CoreConfigCompanion(
+            delay: Value(delay),
+            countryCode: country == null
+                ? const Value.absent()
+                : Value(country),
+          ),
         );
   }
 }
