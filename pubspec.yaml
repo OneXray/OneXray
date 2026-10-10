@@ -78,6 +78,7 @@ dependencies:
   re_highlight: ^0.0.3
 
   # desktop
+  nativeapi: ^0.5.2
   tray_manager: ^0.8.0
   window_manager: ^0.5.2
   macos_window_utils: ^1.9.1

@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:ui' show Size;
 
 import 'package:onexray/core/tools/platform.dart';
 import 'package:onexray/service/shared/menu/tray/entry.dart';
 import 'package:tray_manager/tray_manager.dart' as native;
+import 'package:nativeapi/nativeapi.dart' as nativeapi;
 
 abstract interface class TrayPlatform {
   void init({
@@ -37,7 +37,7 @@ final class NativeTrayPlatform implements TrayPlatform {
     _tray = tray;
     _onMenuVisibility = onMenuVisibility;
     tray.setContextMenuTrigger(native.ContextMenuTrigger.none);
-    tray.iconSize = const Size.square(18);
+    tray.iconSize = nativeapi.Size(width: 18, height: 18);
     tray.setTooltip('OneXray');
     if (AppPlatform.isMacOS) tray.setTitle('');
     _listener = tray.addListener((event) {
