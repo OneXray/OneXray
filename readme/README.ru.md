@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://apps.apple.com/us/app/onexray/id6745748773">App Store</a> ·
-  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray">Google Play</a> ·
-  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D">Microsoft Store</a>
+  <a href="https://apps.apple.com/us/app/onexray/id6745748773"><img src="./store-badges/ru/app-store.svg" height="48" align="middle" alt="Загрузить в App Store"></a>&nbsp;
+  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray"><img src="./store-badges/ru/google-play.png" height="64" align="middle" alt="Скачать в Google Play"></a>&nbsp;
+  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D"><img src="./store-badges/ru/microsoft-store.svg" height="48" align="middle" alt="Скачать из Microsoft Store"></a>
 </p>
 
 <p align="center">

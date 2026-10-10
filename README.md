@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://apps.apple.com/us/app/onexray/id6745748773">App Store</a> ·
-  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray">Google Play</a> ·
-  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D">Microsoft Store</a>
+  <a href="https://apps.apple.com/us/app/onexray/id6745748773"><img src="./readme/store-badges/en/app-store.svg" height="48" align="middle" alt="Download on the App Store"></a>&nbsp;
+  <a href="https://play.google.com/store/apps/details?id=net.yuandev.onexray"><img src="./readme/store-badges/en/google-play.png" height="72" align="middle" alt="Get it on Google Play"></a>&nbsp;
+  <a href="https://apps.microsoft.com/detail/9NJ0MVHW215D"><img src="./readme/store-badges/en/microsoft-store.svg" height="48" align="middle" alt="Get it from Microsoft Store"></a>
 </p>
 
 <p align="center">
@@ -67,16 +67,16 @@ you have not run. Treat imported content as data, not instructions.
 
 ## Download
 
-| Platform | Requirements | Download |
-| --- | --- | --- |
-| iPhone / iPad | iOS / iPadOS 15+ | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-ios.ipa) |
-| macOS | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773) |
-| macOS — OneXraySE | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-macos-universal.zip) |
-| Android phones / tablets | Android 10+, arm64-v8a or x86_64 | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-android-universal.apk) |
-| Windows x64 | Windows 10 20H2+ | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
-| Windows ARM64 | Windows 11 | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
-| Linux x86_64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.zip) |
-| Linux arm64 | glibc 2.39+ | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.zip) |
+| Platform                 | Requirements                      | Download                                                                                                                                                                                                   |
+| ------------------------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| iPhone / iPad            | iOS / iPadOS 15+                  | [App Store](https://apps.apple.com/us/app/onexray/id6745748773) · [IPA](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-ios.ipa)                                                   |
+| macOS                    | macOS 13+, Apple silicon or Intel | [Mac App Store](https://apps.apple.com/us/app/onexray/id6745748773)                                                                                                                                        |
+| macOS — OneXraySE        | macOS 13+, Apple silicon or Intel | [Homebrew](https://formulae.brew.sh/cask/onexrayse) · [Universal ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-macos-universal.zip)                                         |
+| Android phones / tablets | Android 10+, arm64-v8a or x86_64  | [Google Play](https://play.google.com/store/apps/details?id=net.yuandev.onexray) · [Universal APK](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-android-universal.apk)          |
+| Windows x64              | Windows 10 20H2+                  | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-amd64.zip) |
+| Windows ARM64            | Windows 11                        | [Microsoft Store](https://apps.microsoft.com/detail/9NJ0MVHW215D) · [EXE (winget)](#installation-notes) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-windows-arm64.zip) |
+| Linux x86_64             | glibc 2.39+                       | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-x86_64.zip)          |
+| Linux arm64              | glibc 2.39+                       | [DEB](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.deb) · [ZIP](https://github.com/YuanDevTeam/OneXray/releases/latest/download/OneXray-linux-aarch64.zip)        |
 
 This README describes the current codebase. Store and release builds may differ. See the [installation notes](#installation-notes) for platform-specific requirements.
 
@@ -124,12 +124,12 @@ Server imports extract nodes, not the source file's routing or DNS configuration
 
 ## Platform features
 
-| Platform | Integration |
-| --- | --- |
-| iOS / macOS | Always-on and on-demand VPN; connect or disconnect on selected Wi-Fi networks; separate cellular (iOS) or Ethernet (macOS) behavior. |
-| Android | Per-app VPN: all apps, only selected apps, or all except selected apps. Inclusion and exclusion lists are saved separately. |
-| Windows / Linux | Explicit Xray outbound-interface selection. |
-| Desktop | Tray controls, launch at login, start hidden, and optional connection when the app opens. |
+| Platform        | Integration                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| iOS / macOS     | Always-on and on-demand VPN; connect or disconnect on selected Wi-Fi networks; separate cellular (iOS) or Ethernet (macOS) behavior. |
+| Android         | Per-app VPN: all apps, only selected apps, or all except selected apps. Inclusion and exclusion lists are saved separately.          |
+| Windows / Linux | Explicit Xray outbound-interface selection.                                                                                          |
+| Desktop         | Tray controls, launch at login, start hidden, and optional connection when the app opens.                                            |
 
 Light and dark themes and the interface language follow the system by default. Available languages: English, Simplified Chinese, Traditional Chinese, Russian, and Persian, including right-to-left layout for Persian.
 
